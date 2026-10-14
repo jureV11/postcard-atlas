@@ -14,6 +14,12 @@ export function formatDate(d: string): string {
   });
 }
 
+/** "October" from a YYYY-MM-DD date column. */
+export function monthName(d: string): string {
+  const [y, m] = d.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-GB", { month: "long", timeZone: "UTC" });
+}
+
 /** Whole days between two YYYY-MM-DD dates. */
 export function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);

@@ -3,12 +3,13 @@ import { Flag } from "@/components/Flag";
 import { GroupStats } from "@/components/GroupStats";
 import { PostcardTile } from "@/components/PostcardTile";
 import { formatDate } from "@/lib/dates";
-import { loadGroupData } from "@/lib/postcards";
+import { groupByMonth, loadGroupData, type SortOrder } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
 import { groupStats } from "@/lib/stats";
 import { signPaths } from "@/lib/storage";
 
-export default async function PostcardsPage() {
+export default async function PostcardsPage({ searchParams }: { searchParams: Promise<{ sort?: string }> }) {
+  const sort: SortOrder = (await searchParams).sort === "oldest" ? "oldest" : "newest";
   const { supabase, member } = await requireMember();
   const { postcards, members, membersById } = await loadGroupData(supabase, member);
   const stats = groupStats(postcards, members);
@@ -17,6 +18,7 @@ export default async function PostcardsPage() {
   const myOnTheWay = postcards.filter((c) => c.status === "in_transit" && c.sender_id === member.id);
   const received = postcards.filter((c) => c.status === "received");
   const fronts = await signPaths(supabase, "postcards", received.map((c) => c.front_path));
+  const months = groupByMonth(received, sort);
 
   return (
     <div className="space-y-8">
@@ -67,8 +69,27 @@ export default async function PostcardsPage() {
         </section>
       )}
 
-      <section className="space-y-3">
-        <h2 className="font-display text-xl font-semibold">Received</h2>
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-display text-xl font-semibold">Received</h2>
+          {received.length > 1 && (
+            <nav aria-label="Sort postcards" className="flex rounded-full border border-ink/10 bg-white/70 p-0.5 text-sm font-medium">
+              {(["newest", "oldest"] as const).map((s) => (
+                <Link
+                  key={s}
+                  href={s === "newest" ? "/postcards" : "/postcards?sort=oldest"}
+                  aria-current={sort === s ? "true" : undefined}
+                  scroll={false}
+                  className={`rounded-full px-3.5 py-1.5 transition ${
+                    sort === s ? "bg-ink text-paper" : "text-ink-soft hover:text-ink"
+                  }`}
+                >
+                  {s === "newest" ? "Newest first" : "Oldest first"}
+                </Link>
+              ))}
+            </nav>
+          )}
+        </div>
         {received.length === 0 ? (
           <div className="card text-center text-ink-soft">
             <p>No postcards have been revealed yet.</p>
@@ -77,17 +98,27 @@ export default async function PostcardsPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {received.map((c) => (
-              <PostcardTile
-                key={c.id}
-                card={c}
-                frontUrl={c.front_path ? (fronts.get(c.front_path) ?? null) : null}
-                sender={membersById.get(c.sender_id ?? "")}
-                recipient={membersById.get(c.recipient_id)}
-              />
-            ))}
-          </div>
+          months.map((g) => (
+            <div key={g.key} className="space-y-3">
+              <h3 className="flex items-baseline gap-2 border-b border-ink/10 pb-1.5 font-display text-lg font-semibold">
+                {g.label}
+                <span className="font-sans text-xs font-normal text-ink-soft">
+                  {g.cards.length} {g.cards.length === 1 ? "postcard" : "postcards"} sent
+                </span>
+              </h3>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {g.cards.map((c) => (
+                  <PostcardTile
+                    key={c.id}
+                    card={c}
+                    frontUrl={c.front_path ? (fronts.get(c.front_path) ?? null) : null}
+                    sender={membersById.get(c.sender_id ?? "")}
+                    recipient={membersById.get(c.recipient_id)}
+                  />
+                ))}
+              </div>
+            </div>
+          ))
         )}
       </section>
     </div>

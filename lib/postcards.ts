@@ -1,6 +1,28 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { monthName } from "@/lib/dates";
 import type { Member, Postcard } from "@/lib/types";
 import { signAvatarUrls } from "@/lib/storage";
+
+export type SortOrder = "newest" | "oldest";
+
+/** Cards grouped under "2026 → October" headers by the date they were sent, in the chosen order. */
+export function groupByMonth<T extends Postcard>(cards: T[], sort: SortOrder) {
+  const dir = sort === "newest" ? -1 : 1;
+  const sorted = [...cards].sort(
+    (a, b) => dir * (a.sent_on.localeCompare(b.sent_on) || a.created_at.localeCompare(b.created_at)),
+  );
+  const groups: { key: string; label: string; cards: T[] }[] = [];
+  for (const c of sorted) {
+    const key = c.sent_on.slice(0, 7); // YYYY-MM
+    let g = groups[groups.length - 1];
+    if (!g || g.key !== key) {
+      g = { key, label: `${key.slice(0, 4)} → ${monthName(c.sent_on)}`, cards: [] };
+      groups.push(g);
+    }
+    g.cards.push(c);
+  }
+  return groups;
+}
 
 /**
  * Who may see a card (mirrors the `postcard_feed` view, as a second guard so
