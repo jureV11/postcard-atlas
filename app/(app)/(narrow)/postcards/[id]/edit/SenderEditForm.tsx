@@ -2,24 +2,34 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { setPostcardAddress } from "@/app/(app)/address-actions";
+import { AddressSelect, currentAddressId } from "@/components/AddressSelect";
 import { CitySearch } from "@/components/CitySearch";
 import { MemberPicker } from "@/components/MemberPicker";
 import { todayLocal } from "@/lib/dates";
 import type { City } from "@/lib/geo";
-import type { LocatedPostcard, MemberWithAvatar } from "@/lib/types";
+import type { Address, LocatedPostcard, MemberWithAvatar } from "@/lib/types";
 import { updatePostcard } from "../../actions";
 
 export function SenderEditForm({
   card,
   recipients,
   recipientLocked,
+  addresses,
 }: {
   card: LocatedPostcard;
   recipients: MemberWithAvatar[];
   recipientLocked: boolean;
+  addresses: Address[];
 }) {
   const router = useRouter();
   const [recipientId, setRecipientId] = useState(card.recipient_id);
+  const recipientAddresses = addresses.filter((a) => a.member_id === recipientId);
+  // Keep the card's address while the recipient is unchanged; otherwise their current one.
+  const [addressId, setAddressId] = useState<string | null>(card.recipient_address_id ?? null);
+  const effectiveAddressId = recipientAddresses.some((a) => a.id === addressId)
+    ? addressId
+    : currentAddressId(recipientAddresses);
   const [from, setFrom] = useState<City | null>({
     name: card.from_city,
     country: card.from_country,
@@ -47,6 +57,13 @@ export function SenderEditForm({
       setBusy(false);
       return setError(result.error);
     }
+    if (effectiveAddressId && effectiveAddressId !== card.recipient_address_id) {
+      const r = await setPostcardAddress(card.id, effectiveAddressId);
+      if (r.error) {
+        setBusy(false);
+        return setError(`Saved, but the address didn't change: ${r.error}`);
+      }
+    }
     router.push(`/postcards/${card.id}`);
     router.refresh();
   }
@@ -66,6 +83,19 @@ export function SenderEditForm({
             <MemberPicker members={recipients} value={recipientId} onChange={setRecipientId} />
           )}
         </div>
+        {recipientAddresses.length > 0 && (
+          <div>
+            <label className="label" htmlFor="sentTo">
+              Sent to address
+            </label>
+            {recipientAddresses.length > 1 ? (
+              <AddressSelect id="sentTo" addresses={recipientAddresses} value={effectiveAddressId} onChange={setAddressId} />
+            ) : (
+              <p className="text-sm text-ink-soft">{recipientAddresses[0].address_line}</p>
+            )}
+            <p className="hint">Distances and stats follow the address you pick.</p>
+          </div>
+        )}
         <div>
           <label className="label" htmlFor="fromCity">
             Sent from

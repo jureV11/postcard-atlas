@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ProfileFields, type ProfileValues } from "@/components/ProfileFields";
 import { createClient } from "@/lib/supabase/client";
@@ -41,9 +42,7 @@ export function SettingsForm({
     setSaved(false);
 
     const displayName = profile.displayName.trim();
-    const home = profile.home;
     if (!displayName) return setError("Your name can't be empty.");
-    if (!home) return setError("Pick your home city from the search results.");
 
     setBusy(true);
     let newPath: string | null = null;
@@ -56,13 +55,9 @@ export function SettingsForm({
       const { error } = await supabase
         .from("members")
         .update({
+          // Home now follows your current address (Map page → Addresses).
           display_name: displayName,
           color: profile.color,
-          home_city: home.name,
-          home_country: home.country,
-          home_country_code: home.countryCode,
-          home_lat: home.lat,
-          home_lng: home.lng,
           ...(newPath ? { avatar_path: newPath } : {}),
         })
         .eq("id", member.id);
@@ -97,7 +92,15 @@ export function SettingsForm({
         }}
         takenColors={takenColors}
         currentAvatarUrl={avatarUrl}
+        showHome={false}
       />
+      <p className="text-sm text-ink-soft">
+        Moved house? Add your new address and make it current under{" "}
+        <Link href="/" className="font-medium text-stamp hover:underline">
+          Map → Addresses
+        </Link>
+        .
+      </p>
       {error && <p className="error">{error}</p>}
       <div className="flex items-center gap-3">
         <button className="btn" disabled={busy}>

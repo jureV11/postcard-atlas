@@ -18,11 +18,14 @@ export function ProfileFields({
   onChange,
   takenColors,
   currentAvatarUrl,
+  showHome = true,
 }: {
   values: ProfileValues;
   onChange: (patch: Partial<ProfileValues>) => void;
   takenColors: string[];
   currentAvatarUrl?: string | null;
+  /** Off on the profile page: home follows your current address (managed on the map page). */
+  showHome?: boolean;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -77,18 +80,20 @@ export function ProfileFields({
         />
       </div>
 
-      <div>
-        <label className="label" htmlFor="homeCity">
-          Home city
-        </label>
-        <CitySearch
-          id="homeCity"
-          value={values.home}
-          onChange={(home) => onChange({ home })}
-          placeholder="Search for your city…"
-        />
-        <p className="hint">Postcards sent to you land here on the map.</p>
-      </div>
+      {showHome && (
+        <div>
+          <label className="label" htmlFor="homeCity">
+            Home city
+          </label>
+          <CitySearch
+            id="homeCity"
+            value={values.home}
+            onChange={(home) => onChange({ home })}
+            placeholder="Search for your city…"
+          />
+          <p className="hint">Postcards sent to you land here on the map. You can add your full address later.</p>
+        </div>
+      )}
 
       <fieldset>
         <legend className="label">Your colour</legend>

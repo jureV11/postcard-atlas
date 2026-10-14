@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { setPostcardAddress } from "@/app/(app)/address-actions";
+import { AddressSelect } from "@/components/AddressSelect";
 import { todayLocal } from "@/lib/dates";
+import type { Address } from "@/lib/types";
 import { unmarkReceived, updateReceived } from "../../actions";
 
 export function RecipientEditForm({
@@ -11,16 +14,21 @@ export function RecipientEditForm({
   sentOn,
   receivedOn: initialReceivedOn,
   message: initialMessage,
+  addresses,
+  addressId: initialAddressId,
 }: {
   cardId: string;
   groupId: string;
   sentOn: string;
   receivedOn: string;
   message: string;
+  addresses: Address[]; // your own addresses
+  addressId: string | null;
 }) {
   const router = useRouter();
   const [receivedOn, setReceivedOn] = useState(initialReceivedOn);
   const [message, setMessage] = useState(initialMessage);
+  const [addressId, setAddressId] = useState<string | null>(initialAddressId);
   const [busy, setBusy] = useState<"save" | "undo" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +43,13 @@ export function RecipientEditForm({
     if (result.error) {
       setBusy(null);
       return setError(result.error);
+    }
+    if (addressId && addressId !== initialAddressId) {
+      const r = await setPostcardAddress(cardId, addressId);
+      if (r.error) {
+        setBusy(null);
+        return setError(`Saved, but the address didn't change: ${r.error}`);
+      }
     }
     router.push(`/postcards/${cardId}`);
     router.refresh();
@@ -88,6 +103,15 @@ export function RecipientEditForm({
             onChange={(e) => setMessage(e.target.value)}
           />
         </div>
+        {addresses.length > 1 && (
+          <div>
+            <label className="label" htmlFor="sentTo">
+              Which of your addresses it came to
+            </label>
+            <AddressSelect id="sentTo" addresses={addresses} value={addressId} onChange={setAddressId} />
+            <p className="hint">Distances and stats follow the address you pick.</p>
+          </div>
+        )}
         {error && <p className="error">{error}</p>}
         <button className="btn w-full" disabled={busy !== null}>
           {busy === "save" ? "Saving…" : "Save changes"}

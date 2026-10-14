@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { loadAddresses } from "@/lib/addresses";
 import { requireMember } from "@/lib/session";
 import { signAvatarUrls } from "@/lib/storage";
 import type { Member } from "@/lib/types";
@@ -13,7 +14,10 @@ export default async function NewPostcardPage() {
     .neq("id", member.id)
     .is("left_at", null) // can't send to someone who's left
     .order("display_name");
-  const others = await signAvatarUrls(supabase, (data ?? []) as Member[]);
+  const [others, addresses] = await Promise.all([
+    signAvatarUrls(supabase, (data ?? []) as Member[]),
+    loadAddresses(supabase),
+  ]);
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
@@ -23,7 +27,7 @@ export default async function NewPostcardPage() {
         </Link>
         <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight">Log a postcard</h1>
         <p className="mt-1 text-ink-soft">
-          It stays a surprise: the recipient only sees which country it&apos;s coming from until it arrives.
+          It stays a surprise: nobody else knows it&apos;s coming — or where from — until it arrives.
         </p>
       </div>
 
@@ -35,7 +39,7 @@ export default async function NewPostcardPage() {
           </Link>
         </div>
       ) : (
-        <NewPostcardForm recipients={others} />
+        <NewPostcardForm recipients={others} addresses={addresses} />
       )}
     </div>
   );

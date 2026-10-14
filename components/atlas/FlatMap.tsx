@@ -9,7 +9,7 @@ import type { FeatureCollection } from "geojson";
 import type { CityGroup, LocatedMapCard, RouteRole, Selection } from "@/lib/atlas";
 import { countryKeyFromFeature } from "@/lib/countries";
 import { PLAIN, type MapStyle } from "@/lib/mapStyle";
-import type { MemberWithAvatar } from "@/lib/types";
+import { destinationOf, type MemberWithAvatar } from "@/lib/types";
 import { loadWorld, type Country } from "@/lib/world";
 
 const LABEL_HALO = "#fbf8f2";
@@ -150,7 +150,8 @@ export function FlatMap({
       const sender = membersById.get(c.sender_id);
       if (!recipient) return [];
       const a = project(c.from_lng, c.from_lat);
-      const b = project(recipient.home_lng, recipient.home_lat);
+      const to = destinationOf(c, recipient)!; // the address it was sent to
+      const b = project(to.lng, to.lat);
       if (!a || !b) return [];
       const [x1, y1] = a;
       const [x2, y2] = b;

@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { AddressesPanel } from "@/components/atlas/AddressesPanel";
 import { Atlas } from "@/components/atlas/Atlas";
+import { loadAddresses } from "@/lib/addresses";
 import { Avatar } from "@/components/Avatar";
 import { Flag } from "@/components/Flag";
 import type { MapCard } from "@/lib/atlas";
@@ -14,7 +16,10 @@ const WORLD_COUNTRIES = 195;
 
 export default async function MapPage() {
   const { supabase, member } = await requireMember();
-  const { postcards, members, membersById } = await loadGroupData(supabase, member);
+  const [{ postcards, members, membersById }, addresses] = await Promise.all([
+    loadGroupData(supabase, member),
+    loadAddresses(supabase),
+  ]);
 
   // Hidden cards have null paths, so only revealed images get signed.
   const urls = await signPaths(supabase, "postcards", postcards.flatMap((c) => [c.front_path, c.back_path]));
@@ -43,7 +48,11 @@ export default async function MapPage() {
         </Link>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="grid gap-6 lg:grid-cols-[auto_minmax(0,1fr)_300px]">
+        <div className="lg:pt-11">
+          <AddressesPanel members={members} addresses={addresses} meId={member.id} />
+        </div>
+
         <Atlas cards={cards} members={members} />
 
         <aside className="space-y-4 lg:pt-11">

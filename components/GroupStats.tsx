@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Flag } from "@/components/Flag";
 import { formatKm } from "@/lib/geo";
 import type { GroupStats as Stats, TimedCard } from "@/lib/stats";
-import type { MemberWithAvatar } from "@/lib/types";
+import { destinationOf, type MemberWithAvatar } from "@/lib/types";
 
 /** "Group stats" block at the top of the Postcards tab. */
 export function GroupStats({ stats, membersById }: { stats: Stats; membersById: Map<string, MemberWithAvatar> }) {
@@ -70,7 +70,7 @@ function PaceCard({
       <span className="min-w-0 flex-1">
         <span className="block text-xs font-medium uppercase tracking-wide text-ink-soft">{title}</span>
         <span className="block truncate font-medium">
-          {card.from_city} → {recipient?.home_city ?? "?"}
+          {card.from_city} → {destinationOf(card, recipient)?.city || "?"}
         </span>
         <span className="block truncate text-xs text-ink-soft">
           <span style={{ color: sender?.color }}>{sender?.display_name ?? "?"}</span> →{" "}

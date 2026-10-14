@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { loadAddresses } from "@/lib/addresses";
 import { withFormerLabel } from "@/lib/members";
 import { visibleTo } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
@@ -24,6 +25,8 @@ export default async function EditPostcardPage({ params }: { params: Promise<{ i
   const received = card.status === "received";
   // Senders can always edit; recipients only once it's arrived (before that it's a mystery).
   if (!isSender && !(isRecipient && received)) notFound();
+
+  const addresses = await loadAddresses(supabase);
 
   const back = (
     <Link href={`/postcards/${card.id}`} className="text-sm text-ink-soft hover:text-ink">
@@ -54,7 +57,7 @@ export default async function EditPostcardPage({ params }: { params: Promise<{ i
               : "Still in transit, so you can change anything — even who it's for."}
           </p>
         </div>
-        <SenderEditForm card={card} recipients={recipients} recipientLocked={received} />
+        <SenderEditForm card={card} recipients={recipients} recipientLocked={received} addresses={addresses} />
         {!received && (
           <section className="card flex items-center justify-between gap-4">
             <div>
@@ -73,7 +76,10 @@ export default async function EditPostcardPage({ params }: { params: Promise<{ i
       <div>
         {back}
         <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight">Edit postcard</h1>
-        <p className="mt-1 text-ink-soft">Fix the date it arrived or the message. Photos can be changed on the postcard page.</p>
+        <p className="mt-1 text-ink-soft">
+          Fix the date it arrived, the message, or which of your addresses it came to. Photos can be changed on the
+          postcard page.
+        </p>
       </div>
       <RecipientEditForm
         cardId={card.id}
@@ -81,6 +87,8 @@ export default async function EditPostcardPage({ params }: { params: Promise<{ i
         sentOn={card.sent_on}
         receivedOn={card.received_on ?? card.sent_on}
         message={card.message ?? ""}
+        addresses={addresses.filter((a) => a.member_id === member.id)}
+        addressId={card.recipient_address_id ?? null}
       />
     </div>
   );

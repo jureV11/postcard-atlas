@@ -7,7 +7,7 @@ import { MeshPhongMaterial } from "three";
 import type { CityGroup, LocatedMapCard, RouteRole, Selection } from "@/lib/atlas";
 import { countryKeyFromFeature } from "@/lib/countries";
 import { PLAIN, type MapStyle } from "@/lib/mapStyle";
-import type { MemberWithAvatar } from "@/lib/types";
+import { destinationOf, type MemberWithAvatar } from "@/lib/types";
 import { escapeHtml } from "@/lib/utils";
 import { loadWorld, type Country } from "@/lib/world";
 
@@ -121,8 +121,8 @@ export default function GlobeView({
           color: membersById.get(card.sender_id)?.color ?? INK,
           startLat: card.from_lat,
           startLng: card.from_lng,
-          endLat: r.home_lat,
-          endLng: r.home_lng,
+          endLat: destinationOf(card, r)!.lat, // the address it was sent to
+          endLng: destinationOf(card, r)!.lng,
         };
         return card.status === "received" && role !== "other"
           ? [

@@ -11,7 +11,7 @@ import { withFormerLabel } from "@/lib/members";
 import { visibleTo } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
 import { signAvatarUrls, signPaths } from "@/lib/storage";
-import { isLocated, type Member, type Postcard } from "@/lib/types";
+import { destinationOf, isLocated, type Member, type Postcard } from "@/lib/types";
 import { PhotosEditor } from "./PhotosEditor";
 
 export default async function PostcardPage({
@@ -49,7 +49,8 @@ export default async function PostcardPage({
   const urls = await signPaths(supabase, "postcards", [card.front_path, card.back_path]);
   const frontUrl = card.front_path ? (urls.get(card.front_path) ?? null) : null;
   const backUrl = card.back_path ? (urls.get(card.back_path) ?? null) : null;
-  const distance = recipient ? haversineKm(card.from_lat, card.from_lng, recipient.home_lat, recipient.home_lng) : null;
+  const to = destinationOf(card, recipient);
+  const distance = to ? haversineKm(card.from_lat, card.from_lng, to.lat, to.lng) : null;
   const travelDays = card.received_on ? daysBetween(card.sent_on, card.received_on) : daysBetween(card.sent_on, today);
   const canEditPhotos = isRecipient && !inTransit; // photos are the recipient's job
 
@@ -136,7 +137,7 @@ export default async function PostcardPage({
               {sender?.display_name} → {recipient?.display_name}
             </span>
             <span className="block truncate text-ink-soft">
-              to {recipient?.home_city}, {recipient?.home_country}
+              to {card.to_address_line ?? `${recipient?.home_city}, ${recipient?.home_country}`}
             </span>
           </span>
         </div>

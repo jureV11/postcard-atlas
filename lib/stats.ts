@@ -1,6 +1,6 @@
 import { cityKey } from "@/lib/atlas";
 import { haversineKm } from "@/lib/geo";
-import { isLocated, type LocatedPostcard, type Member, type Postcard } from "@/lib/types";
+import { destinationOf, isLocated, type LocatedPostcard, type Member, type Postcard } from "@/lib/types";
 
 export type CountryTally = { code: string; name: string; count: number };
 
@@ -18,9 +18,10 @@ export type MemberStats = {
   mostRecent: LocatedPostcard | null;
 };
 
-/** Distance a card travelled: sent-from city → recipient's home city. */
+/** Distance a card travelled: sent-from city → the address it was sent to. */
 export function cardKm(card: LocatedPostcard, recipient: Member | undefined): number {
-  return recipient ? haversineKm(card.from_lat, card.from_lng, recipient.home_lat, recipient.home_lng) : 0;
+  const to = destinationOf(card, recipient);
+  return to ? haversineKm(card.from_lat, card.from_lng, to.lat, to.lng) : 0;
 }
 
 const newestFirst = (a: Postcard, b: Postcard) =>

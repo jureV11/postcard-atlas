@@ -7,7 +7,7 @@ import { PostcardFlip } from "@/components/PostcardFlip";
 import type { CityGroup, LocatedMapCard, Selection } from "@/lib/atlas";
 import { formatDate } from "@/lib/dates";
 import { formatKm, haversineKm } from "@/lib/geo";
-import type { MemberWithAvatar } from "@/lib/types";
+import { destinationOf, type MemberWithAvatar } from "@/lib/types";
 
 /** Floating detail panel for whatever is selected on the map/globe. */
 export function AtlasPanel({
@@ -152,7 +152,8 @@ function CardDetails({
 }) {
   const sender = membersById.get(card.sender_id);
   const recipient = membersById.get(card.recipient_id);
-  const distance = recipient ? haversineKm(card.from_lat, card.from_lng, recipient.home_lat, recipient.home_lng) : null;
+  const to = destinationOf(card, recipient);
+  const distance = to ? haversineKm(card.from_lat, card.from_lng, to.lat, to.lng) : null;
 
   return (
     <div className="space-y-3">
