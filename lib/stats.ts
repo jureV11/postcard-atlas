@@ -104,6 +104,46 @@ export function rankMembers<T extends Member>(members: T[], stats: Map<string, M
   });
 }
 
+export type TimedCard = { card: LocatedPostcard; km: number; days: number; kmPerDay: number };
+
+export type GroupStats = {
+  delivered: number;
+  totalKm: number;
+  avgDays: number | null;
+  fastest: TimedCard | null;
+  slowest: TimedCard | null;
+};
+
+/**
+ * Whole-group totals for the Postcards tab. Delivered, public cards only — no
+ * cards in transit, and none held back until the rest of their trip arrives, so
+ * these numbers never hint at a surprise.
+ */
+export function groupStats(cards: Postcard[], members: Member[]): GroupStats {
+  const byId = new Map(members.map((m) => [m.id, m]));
+  const delivered = cards.filter((c) => c.status === "received" && c.is_public).filter(isLocated);
+
+  let totalKm = 0;
+  const timed: TimedCard[] = [];
+  for (const card of delivered) {
+    const km = cardKm(card, byId.get(card.recipient_id));
+    totalKm += km;
+    if (!card.received_on) continue; // timing stats skip cards missing a date
+    // A card that arrived the same day it was posted counts as 1 day.
+    const days = Math.max(1, Math.round((Date.parse(card.received_on) - Date.parse(card.sent_on)) / 86_400_000));
+    timed.push({ card, km, days, kmPerDay: km / days });
+  }
+
+  const byPace = [...timed].sort((a, b) => b.kmPerDay - a.kmPerDay);
+  return {
+    delivered: delivered.length,
+    totalKm,
+    avgDays: timed.length ? timed.reduce((t, c) => t + c.days, 0) / timed.length : null,
+    fastest: byPace[0] ?? null,
+    slowest: byPace.length > 1 ? byPace[byPace.length - 1] : null,
+  };
+}
+
 /** Distinct countries anyone in the group has sent an arrived card from. */
 export function groupCountries(cards: Postcard[]): CountryTally[] {
   const tally = new Map<string, CountryTally>();

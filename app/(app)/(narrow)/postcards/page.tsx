@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { Flag } from "@/components/Flag";
+import { GroupStats } from "@/components/GroupStats";
 import { PostcardTile } from "@/components/PostcardTile";
 import { formatDate } from "@/lib/dates";
 import { loadGroupData } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
+import { groupStats } from "@/lib/stats";
 import { signPaths } from "@/lib/storage";
 
 export default async function PostcardsPage() {
   const { supabase, member } = await requireMember();
-  const { postcards, membersById } = await loadGroupData(supabase, member);
+  const { postcards, members, membersById } = await loadGroupData(supabase, member);
+  const stats = groupStats(postcards, members);
 
   // In transit: only ever your own (nobody else learns a card is coming).
   const myOnTheWay = postcards.filter((c) => c.status === "in_transit" && c.sender_id === member.id);
@@ -31,6 +34,8 @@ export default async function PostcardsPage() {
           </Link>
         </div>
       </div>
+
+      <GroupStats stats={stats} membersById={membersById} />
 
       {myOnTheWay.length > 0 && (
         <section className="space-y-3">
