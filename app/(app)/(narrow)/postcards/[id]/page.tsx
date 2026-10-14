@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
+import { CountryOutline } from "@/components/CountryOutline";
 import { Flag } from "@/components/Flag";
 import { MysteryGlobe } from "@/components/Mystery";
 import { PostcardFlip } from "@/components/PostcardFlip";
@@ -70,12 +71,22 @@ export default async function PostcardPage({
         </p>
       )}
 
-      <div>
-        <h1 className="flex items-center gap-3 font-display text-3xl font-semibold tracking-tight">
-          <Flag code={card.from_country_code} size={32} />
-          {card.from_city}
-        </h1>
-        <p className="mt-1 text-ink-soft">{card.from_country}</p>
+      <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,1fr)_260px]">
+        <div>
+          <h1 className="flex items-center gap-3 font-display text-3xl font-semibold tracking-tight">
+            <Flag code={card.from_country_code} size={32} />
+            {card.from_city}
+          </h1>
+          <p className="mt-1 text-ink-soft">{card.from_country}</p>
+        </div>
+        {/* Where in the country it came from */}
+        <CountryOutline
+          countryCode={card.from_country_code}
+          countryName={card.from_country}
+          city={card.from_city}
+          lat={card.from_lat}
+          lng={card.from_lng}
+        />
       </div>
 
       {inTransit && isSender && (
