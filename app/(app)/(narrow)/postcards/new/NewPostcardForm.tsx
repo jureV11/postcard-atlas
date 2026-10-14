@@ -1,0 +1,132 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { CitySearch } from "@/components/CitySearch";
+import { MemberPicker } from "@/components/MemberPicker";
+import { todayLocal } from "@/lib/dates";
+import type { City } from "@/lib/geo";
+import type { MemberWithAvatar } from "@/lib/types";
+import { logPostcard } from "../actions";
+
+// No photos here on purpose: the recipient photographs the card when it arrives.
+export function NewPostcardForm({ recipients }: { recipients: MemberWithAvatar[] }) {
+  const router = useRouter();
+  // Several recipients = one card each, same trip (revealed together once all arrive).
+  const [recipientIds, setRecipientIds] = useState<string[]>(recipients.length === 1 ? [recipients[0].id] : []);
+  const [from, setFrom] = useState<City | null>(null);
+  const [sentOn, setSentOn] = useState("");
+  const [message, setMessage] = useState("");
+  const [note, setNote] = useState("");
+  const [status, setStatus] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Set on the client so "today" is in the sender's timezone.
+  const [today, setToday] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    setToday(todayLocal());
+    setSentOn(todayLocal());
+  }, []);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!recipientIds.length) return setError("Who is the postcard for?");
+    if (!from) return setError("Pick the city you're sending it from.");
+    if (!sentOn) return setError("When did you send it?");
+
+    const ids: string[] = [];
+    for (const [i, recipientId] of recipientIds.entries()) {
+      setStatus(recipientIds.length > 1 ? `Saving ${i + 1} of ${recipientIds.length}…` : "Saving…");
+      const { id, error } = await logPostcard({ recipientId, from, sentOn, message, note });
+      if (error || !id) {
+        setStatus(null);
+        const saved = ids.length ? ` (${ids.length} saved before this one)` : "";
+        return setError((error ?? "Couldn't save the postcard") + saved);
+      }
+      ids.push(id);
+    }
+    router.push(ids.length === 1 ? `/postcards/${ids[0]}` : "/postcards");
+  }
+
+  const busy = status !== null;
+
+  return (
+    <form onSubmit={submit} className="space-y-5">
+      <section className="card space-y-5">
+        <div>
+          <p className="label">To</p>
+          <MemberPicker members={recipients} multiple value={recipientIds} onChange={setRecipientIds} />
+          <p className="hint">
+            {recipientIds.length > 1
+              ? `${recipientIds.length} cards — one each. They're revealed to everyone together, once they've all arrived.`
+              : "Sending from here to several people? Pick them all."}
+          </p>
+        </div>
+        <div>
+          <label className="label" htmlFor="fromCity">
+            Sent from
+          </label>
+          <CitySearch id="fromCity" value={from} onChange={setFrom} placeholder="Which city are you in?" />
+        </div>
+        <div>
+          <label className="label" htmlFor="sentOn">
+            Date sent
+          </label>
+          <input
+            id="sentOn"
+            type="date"
+            className="input"
+            value={sentOn}
+            max={today}
+            onChange={(e) => setSentOn(e.target.value)}
+            required
+          />
+        </div>
+      </section>
+
+      <section className="card space-y-4">
+        <div>
+          <label className="label" htmlFor="message">
+            Message <span className="font-normal text-ink-soft">(optional)</span>
+          </label>
+          <textarea
+            id="message"
+            className="input min-h-28"
+            placeholder="Type out what you wrote on the card…"
+            maxLength={4000}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="label" htmlFor="note">
+            Note <span className="font-normal text-ink-soft">(optional)</span>
+          </label>
+          <input
+            id="note"
+            className="input"
+            placeholder="e.g. Found it in a tiny shop by the harbour"
+            maxLength={500}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </div>
+        <p className="hint !mt-2">
+          Nobody else can see this card — or that it exists — until it arrives.
+          {recipientIds.length > 1 && " The message goes on every card; you can edit each one afterwards."}
+        </p>
+      </section>
+
+      <p className="text-center text-sm text-ink-soft">
+        No photos needed — the recipient snaps the front and back when it lands in their mailbox.
+      </p>
+
+      {error && <p className="error">{error}</p>}
+
+      <button className="btn w-full" disabled={busy}>
+        {status ?? "Send it off"}
+      </button>
+    </form>
+  );
+}

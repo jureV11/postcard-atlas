@@ -1,0 +1,22 @@
+# Postcard Atlas
+#
+#   docker compose --env-file .env.local up --build -d
+#
+# Then open http://localhost:3000 (or http://<this-PC's-IP>:3000 from a phone on
+# the same Wi-Fi). The database, sign-in and photo storage stay on Supabase.
+
+services:
+  web:
+    build:
+      context: .
+      args:
+        # Baked into the browser code at build time — read from .env.local
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?Run with --env-file .env.local}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:?Run with --env-file .env.local}
+    image: postcard-atlas:latest
+    container_name: postcard-atlas
+    env_file:
+      - .env.local
+    ports:
+      - "3000:3000"
+    restart: unless-stopped

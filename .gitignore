@@ -1,0 +1,14 @@
+node_modules
+.next
+.next-check
+out
+.env*.local
+.env
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+# Local-only: Claude Code launch config, packaged zips
+.claude
+*.zip
+# Stray empty repo folder created inside the project — not part of the site
+/Atlas Postcard Site/

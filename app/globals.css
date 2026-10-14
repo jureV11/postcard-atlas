@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #f6f0e4;
+  --color-paper-deep: #ebe2cf;
+  --color-ink: #2a2622;
+  --color-ink-soft: #6f655a;
+  --color-stamp: #c2503a;
+
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+/* In-transit postcards: dashes that march towards the recipient */
+@keyframes march {
+  to {
+    stroke-dashoffset: -14;
+  }
+}
+.arc-transit {
+  stroke-dasharray: 6 8;
+  animation: march 1.2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .arc-transit {
+    animation: none;
+  }
+}
+
+/* Postmark: drops onto the card with a thud, and the card gives a little bump */
+@keyframes postmark-thud {
+  0% {
+    opacity: 0;
+    transform: scale(2.4) rotate(-28deg);
+  }
+  55% {
+    opacity: 0.9;
+    transform: scale(0.94) rotate(-11deg);
+  }
+  75% {
+    transform: scale(1.03) rotate(-12deg);
+  }
+  100% {
+    opacity: 0.82;
+    transform: scale(1) rotate(-12deg);
+  }
+}
+@keyframes card-bump {
+  0%,
+  50% {
+    transform: none;
+  }
+  58% {
+    transform: translateY(3px) scale(0.992);
+  }
+  72% {
+    transform: translateY(-1px);
+  }
+  100% {
+    transform: none;
+  }
+}
+.postmark {
+  opacity: 0.82;
+  transform: rotate(-12deg);
+  mix-blend-mode: multiply;
+  animation: postmark-thud 650ms cubic-bezier(0.3, 0.7, 0.3, 1) 350ms both;
+}
+.card-bump {
+  animation: card-bump 1000ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .postmark,
+  .card-bump {
+    animation: none;
+  }
+}
+
+/* Globe pin labels: hidden until zoomed in */
+.globe-pin-label {
+  display: none;
+  position: absolute;
+  left: calc(100% + 5px);
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  pointer-events: none;
+  font: 500 11px/1 var(--font-sans);
+  color: var(--color-ink);
+  text-shadow:
+    0 0 3px #fbf8f2,
+    0 0 3px #fbf8f2,
+    0 0 3px #fbf8f2;
+}
+.globe-labels .globe-pin-label {
+  display: block;
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-ink/10 bg-white/75 p-5 shadow-[0_1px_2px_rgb(42_38_34/0.04),0_4px_16px_-6px_rgb(42_38_34/0.08)];
+  }
+  .btn {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-ink px-5 text-sm font-medium text-paper transition hover:bg-ink/85 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-ghost {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-ink/15 bg-white/60 px-5 text-sm font-medium transition hover:bg-white active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+  }
+  .input {
+    /* 16px text stops iOS zooming into the field */
+    @apply block min-h-11 w-full rounded-xl border border-ink/15 bg-white px-3.5 py-2.5 text-base outline-none transition placeholder:text-ink-soft/60 focus:border-ink/40 focus:ring-4 focus:ring-ink/5;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium;
+  }
+  .hint {
+    @apply mt-1.5 text-xs text-ink-soft;
+  }
+  .error {
+    @apply rounded-xl border border-stamp/25 bg-stamp/8 px-3.5 py-2.5 text-sm text-stamp;
+  }
+}

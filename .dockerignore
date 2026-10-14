@@ -1,0 +1,16 @@
+# Keep the build context small and secrets out of the image
+node_modules
+.next
+.next-check
+.git
+.claude
+.env
+.env*.local
+*.tsbuildinfo
+next-env.d.ts
+*.cmd
+supabase
+README.md
+Dockerfile
+docker-compose.yml
+.dockerignore
