@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { monthName } from "@/lib/dates";
+import { withFormerLabel } from "@/lib/members";
 import type { Member, Postcard } from "@/lib/types";
 import { signAvatarUrls } from "@/lib/storage";
 
@@ -45,7 +46,7 @@ export async function loadGroupData(supabase: SupabaseClient, viewer: Member) {
     supabase.from("postcard_feed").select("*").order("sent_on", { ascending: false }).order("created_at", { ascending: false }),
     supabase.from("members").select("*").eq("group_id", viewer.group_id).order("created_at"),
   ]);
-  const members = await signAvatarUrls(supabase, (memberRows ?? []) as Member[]);
+  const members = (await signAvatarUrls(supabase, (memberRows ?? []) as Member[])).map(withFormerLabel);
   return {
     postcards: ((cardRows ?? []) as Postcard[]).filter((c) => visibleTo(c, viewer.id)),
     members,

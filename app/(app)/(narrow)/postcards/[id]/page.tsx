@@ -7,6 +7,7 @@ import { MysteryGlobe } from "@/components/Mystery";
 import { PostcardFlip } from "@/components/PostcardFlip";
 import { daysBetween, formatDate, todayLocal } from "@/lib/dates";
 import { formatKm, haversineKm } from "@/lib/geo";
+import { withFormerLabel } from "@/lib/members";
 import { visibleTo } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
 import { signAvatarUrls, signPaths } from "@/lib/storage";
@@ -34,7 +35,7 @@ export default async function PostcardPage({
     .from("members")
     .select("*")
     .in("id", [card.sender_id, card.recipient_id].filter((x): x is string => !!x));
-  const people = await signAvatarUrls(supabase, (memberRows ?? []) as Member[]);
+  const people = (await signAvatarUrls(supabase, (memberRows ?? []) as Member[])).map(withFormerLabel);
   const sender = people.find((m) => m.id === card.sender_id);
   const recipient = people.find((m) => m.id === card.recipient_id);
 

@@ -153,8 +153,17 @@ export function OnboardingForm({ userId, initialCode }: { userId: string; initia
             {lookup === "notfound" && <p className="hint text-stamp">No group found with that code.</p>}
             {preview && (
               <p className="mt-3 rounded-xl bg-paper px-3.5 py-2.5 text-sm">
-                Joining <strong>{preview.group_name}</strong>
-                {preview.member_names.length > 0 && <> with {formatNames(preview.member_names)}</>}
+                {preview.rejoining ? (
+                  <>
+                    <strong>Welcome back to {preview.group_name}!</strong> Your old profile, colour and postcards
+                    come back when you rejoin.
+                  </>
+                ) : (
+                  <>
+                    Joining <strong>{preview.group_name}</strong>
+                    {preview.member_names.length > 0 && <> with {formatNames(preview.member_names)}</>}
+                  </>
+                )}
               </p>
             )}
           </div>

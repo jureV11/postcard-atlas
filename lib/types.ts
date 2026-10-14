@@ -4,12 +4,16 @@ export type Group = {
   invite_code: string;
   created_by: string;
   created_at: string;
+  owner_member_id: string | null;
 };
 
 export type Member = {
   id: string;
   group_id: string;
-  user_id: string;
+  /** Null for a former member — their account was detached when they left. */
+  user_id: string | null;
+  /** When they left the group; null while they're a member. */
+  left_at: string | null;
   display_name: string;
   avatar_path: string | null;
   color: string;

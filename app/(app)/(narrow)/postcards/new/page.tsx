@@ -11,6 +11,7 @@ export default async function NewPostcardPage() {
     .select("*")
     .eq("group_id", member.group_id)
     .neq("id", member.id)
+    .is("left_at", null) // can't send to someone who's left
     .order("display_name");
   const others = await signAvatarUrls(supabase, (data ?? []) as Member[]);
 

@@ -1,16 +1,16 @@
+import Link from "next/link";
 import { requireMember } from "@/lib/session";
 import { signAvatarUrls } from "@/lib/storage";
-import { LeaveGroupButton } from "./LeaveGroupButton";
 import { PasswordForm } from "./PasswordForm";
 import { SettingsForm } from "./SettingsForm";
 
 export default async function SettingsPage() {
   const { supabase, user, member } = await requireMember();
 
-  const [{ data: others }, [me], { data: group }] = await Promise.all([
+  const [{ data: others }, [me]] = await Promise.all([
+    // Includes former members: they keep their colour, so it stays taken.
     supabase.from("members").select("color").eq("group_id", member.group_id).neq("id", member.id),
     signAvatarUrls(supabase, [member]),
-    supabase.from("groups").select("name").eq("id", member.group_id).single(),
   ]);
 
   return (
@@ -39,9 +39,13 @@ export default async function SettingsPage() {
         </form>
       </section>
 
-      <section className="card">
-        <LeaveGroupButton groupName={group?.name ?? "this group"} />
-      </section>
+      <p className="text-center text-sm text-ink-soft">
+        Looking to leave the group? That&apos;s on the{" "}
+        <Link href="/group" className="font-medium text-stamp hover:underline">
+          Group
+        </Link>{" "}
+        tab.
+      </p>
     </div>
   );
 }

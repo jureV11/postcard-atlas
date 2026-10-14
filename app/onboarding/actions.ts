@@ -12,7 +12,13 @@ type Input = {
   home: City;
 };
 
-export type GroupPreview = { group_name: string; member_names: string[]; taken_colors: string[] };
+export type GroupPreview = {
+  group_name: string;
+  member_names: string[];
+  taken_colors: string[];
+  /** You left this group before — joining again restores your old profile and postcards. */
+  rejoining?: boolean;
+};
 
 export async function previewGroup(code: string): Promise<GroupPreview | null> {
   const supabase = await createClient();

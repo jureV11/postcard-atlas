@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { withFormerLabel } from "@/lib/members";
 import { visibleTo } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
 import { signAvatarUrls } from "@/lib/storage";
@@ -37,8 +38,10 @@ export default async function EditPostcardPage({ params }: { params: Promise<{ i
       .select("*")
       .eq("group_id", member.group_id)
       .neq("id", member.id)
+      // Current members, plus whoever this card is already addressed to (even if they've left).
+      .or(`left_at.is.null,id.eq.${card.recipient_id}`)
       .order("display_name");
-    const recipients = await signAvatarUrls(supabase, (rows ?? []) as Member[]);
+    const recipients = (await signAvatarUrls(supabase, (rows ?? []) as Member[])).map(withFormerLabel);
 
     return (
       <div className="mx-auto max-w-xl space-y-6">

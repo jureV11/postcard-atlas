@@ -49,7 +49,8 @@ export function SettingsForm({
     let newPath: string | null = null;
     try {
       if (profile.avatarFile) {
-        newPath = await uploadAvatar(supabase, member.group_id, member.user_id, profile.avatarFile);
+        // Your own, current membership — only former members have no account attached.
+        newPath = await uploadAvatar(supabase, member.group_id, member.user_id!, profile.avatarFile);
       }
 
       const { error } = await supabase

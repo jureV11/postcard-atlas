@@ -19,7 +19,7 @@ export function Avatar({
   const initials =
     name
       .split(/\s+/)
-      .filter(Boolean)
+      .filter((w) => /^\p{L}/u.test(w)) // skip "(former member)" etc.
       .slice(0, 2)
       .map((s) => s[0].toUpperCase())
       .join("") || "?";
