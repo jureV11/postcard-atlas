@@ -42,6 +42,8 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
   const [showRoutes, setShowRoutes] = useState(false);
   const [colourful, setColourful] = useState(true);
   const [filterId, setFilterId] = useState<string | null>(null);
+  // With a person selected: show the cards they sent, received, or both.
+  const [directions, setDirections] = useState({ sent: true, received: true });
   const [selection, setSelection] = useState<Selection | null>(null);
 
   // Remember view, routes and colour per device.
@@ -70,7 +72,25 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
   const shownCards = replay.active ? replay.replayCards : cards;
 
   const membersById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
-  const atlas = useMemo(() => deriveAtlas(shownCards, members, filterId), [shownCards, members, filterId]);
+  const atlas = useMemo(
+    () => deriveAtlas(shownCards, members, filterId, directions),
+    [shownCards, members, filterId, directions],
+  );
+
+  function selectPerson(id: string | null) {
+    setFilterId(id);
+    setDirections({ sent: true, received: true }); // each new person starts with both
+    setSelection(null);
+  }
+  function toggleDirection(which: "sent" | "received") {
+    setDirections((d) => {
+      const next = { ...d, [which]: !d[which] };
+      // Never both off — unticking the last one switches to the other instead.
+      return next.sent || next.received ? next : { sent: which === "received", received: which === "sent" };
+    });
+    setSelection(null);
+  }
+  const person = filterId ? membersById.get(filterId) : undefined;
 
   const layerProps = {
     cards: atlas.located,
@@ -94,14 +114,32 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
 
   return (
     <div className="space-y-3">
-      <MemberFilter
-        members={members}
-        value={filterId}
-        onChange={(id) => {
-          setFilterId(id);
-          setSelection(null);
-        }}
-      />
+      <MemberFilter members={members} value={filterId} onChange={selectPerson} />
+
+      {person && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-ink-soft">Show:</span>
+          <DirectionToggle
+            checked={directions.sent}
+            onChange={() => toggleDirection("sent")}
+            label={`Sent by ${person.display_name}`}
+            count={atlas.sentCount}
+            sample={<line x1="2" y1="4" x2="22" y2="4" stroke={person.color} strokeWidth="3" strokeLinecap="round" />}
+          />
+          <DirectionToggle
+            checked={directions.received}
+            onChange={() => toggleDirection("received")}
+            label={`Received by ${person.display_name}`}
+            count={atlas.receivedCount}
+            sample={
+              <line x1="2" y1="4" x2="22" y2="4" stroke="#2a2622" strokeWidth="3" strokeLinecap="round" strokeDasharray="0.1 5" />
+            }
+          />
+          <button type="button" onClick={() => selectPerson(null)} className="ml-1 font-medium text-stamp hover:underline">
+            Show all
+          </button>
+        </div>
+      )}
 
       <div
         className={`relative -mx-4 aspect-square max-h-[72vh] overflow-hidden border-y border-ink/10 shadow-sm sm:mx-0 sm:aspect-auto sm:h-[620px] sm:max-h-none sm:rounded-2xl sm:border lg:h-[calc(100dvh-13rem)] lg:min-h-[560px] ${
@@ -196,32 +234,6 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
           </span>
           Home countries
         </span>
-        {filterId && (
-          <>
-            <span className="flex items-center gap-1.5">
-              <svg width="24" height="8" aria-hidden="true">
-                <line x1="2" y1="4" x2="22" y2="4" stroke={membersById.get(filterId)?.color} strokeWidth="3" strokeLinecap="round" />
-              </svg>
-              Sent by {membersById.get(filterId)?.display_name}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <svg width="24" height="8" aria-hidden="true">
-                <line x1="2" y1="4" x2="22" y2="4" stroke="#2a2622" strokeWidth="3" strokeLinecap="round" strokeDasharray="0.1 5" />
-              </svg>
-              Received by {membersById.get(filterId)?.display_name}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setFilterId(null);
-                setSelection(null);
-              }}
-              className="font-medium text-stamp hover:underline"
-            >
-              Show all
-            </button>
-          </>
-        )}
         {replay.active && (
           <span className="flex items-center gap-1.5">
             <svg width="14" height="14" aria-hidden="true">
@@ -243,6 +255,44 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
         )}
       </div>
     </div>
+  );
+}
+
+/** "✓ Sent by Ana (3)" — picks which of the selected person's routes are highlighted. */
+function DirectionToggle({
+  checked,
+  onChange,
+  label,
+  count,
+  sample,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  label: string;
+  count: number;
+  sample: React.ReactNode;
+}) {
+  return (
+    <label
+      className={`flex cursor-pointer select-none items-center gap-2 rounded-full border py-1 pl-2 pr-3 transition ${
+        checked ? "border-ink/30 bg-white text-ink" : "border-ink/10 bg-white/50 text-ink-soft"
+      }`}
+    >
+      <input type="checkbox" checked={checked} onChange={onChange} className="peer sr-only" />
+      <span
+        aria-hidden="true"
+        className={`flex size-4 items-center justify-center rounded border text-[11px] leading-none peer-focus-visible:ring-2 peer-focus-visible:ring-stamp ${
+          checked ? "border-ink bg-ink text-paper" : "border-ink/30 bg-white"
+        }`}
+      >
+        {checked ? "✓" : ""}
+      </span>
+      <svg width="24" height="8" aria-hidden="true" className={checked ? "" : "opacity-40"}>
+        {sample}
+      </svg>
+      {label}
+      <span className="tabular-nums text-ink-soft">({count})</span>
+    </label>
   );
 }
 

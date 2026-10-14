@@ -33,8 +33,17 @@ export type RouteRole = "out" | "in" | "other";
  * person. With a person selected, nothing is removed: their cards are tagged
  * "out"/"in" (highlighted) and everyone else's "other" (faded).
  */
-export function deriveAtlas(cards: MapCard[], members: MemberWithAvatar[], filterId: string | null) {
-  const involves = (c: MapCard) => !filterId || c.sender_id === filterId || c.recipient_id === filterId;
+export function deriveAtlas(
+  cards: MapCard[],
+  members: MemberWithAvatar[],
+  filterId: string | null,
+  /** With a person selected: whether to highlight the cards they sent and/or received. */
+  directions: { sent: boolean; received: boolean } = { sent: true, received: true },
+) {
+  const involves = (c: MapCard) =>
+    !filterId ||
+    (directions.sent && c.sender_id === filterId) ||
+    (directions.received && c.recipient_id === filterId);
   const visibleCards = cards.filter(involves); // the selected person's cards (all cards if nobody's selected)
 
   // Received cards, plus the viewer's own cards in transit (they know where they sent them from).
@@ -44,10 +53,19 @@ export function deriveAtlas(cards: MapCard[], members: MemberWithAvatar[], filte
 
   const roles = new Map<string, RouteRole>();
   const involvedMembers = new Set<string>();
+  let sentCount = 0;
+  let receivedCount = 0;
   if (filterId) {
     involvedMembers.add(filterId);
     for (const c of located) {
-      const role: RouteRole = c.sender_id === filterId ? "out" : c.recipient_id === filterId ? "in" : "other";
+      if (c.sender_id === filterId) sentCount++;
+      if (c.recipient_id === filterId) receivedCount++;
+      const role: RouteRole =
+        directions.sent && c.sender_id === filterId
+          ? "out"
+          : directions.received && c.recipient_id === filterId
+            ? "in"
+            : "other";
       roles.set(c.id, role);
       if (role !== "other") {
         involvedMembers.add(c.sender_id);
@@ -105,6 +123,8 @@ export function deriveAtlas(cards: MapCard[], members: MemberWithAvatar[], filte
     roles,
     involvedMembers,
     focusCities,
+    sentCount, // routes on the map the selected person sent / received
+    receivedCount,
     cities: [...cityMap.values()],
     sentFrom,
     homes,
