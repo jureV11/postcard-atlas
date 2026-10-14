@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Globe, { type GlobeMethods } from "react-globe.gl";
 import { MeshPhongMaterial } from "three";
-import type { CityGroup, LocatedMapCard, Selection } from "@/lib/atlas";
+import type { CityGroup, LocatedMapCard, RouteRole, Selection } from "@/lib/atlas";
 import { countryKeyFromFeature } from "@/lib/countries";
 import { PLAIN, type MapStyle } from "@/lib/mapStyle";
 import type { MemberWithAvatar } from "@/lib/types";
@@ -18,6 +18,7 @@ const INK = "#2a2622";
 
 type ArcDatum = {
   kind: "line" | "comet";
+  role: RouteRole | null; // with a person selected: "out" solid, "in" dotted, "other" faded
   card: LocatedMapCard;
   color: string;
   startLat: number;
@@ -28,7 +29,7 @@ type ArcDatum = {
 };
 
 type PointDatum =
-  | { kind: "city"; lat: number; lng: number; city: CityGroup }
+  | { kind: "city"; lat: number; lng: number; city: CityGroup; dim: boolean }
   | { kind: "home"; lat: number; lng: number; member: MemberWithAvatar; dim: boolean };
 
 export default function GlobeView({
@@ -44,7 +45,13 @@ export default function GlobeView({
   awaiting,
   showArcs = true,
   mapStyle = PLAIN,
+  roles,
+  involvedMembers,
+  focusCities,
 }: {
+  roles?: Map<string, RouteRole>;
+  involvedMembers?: Set<string>;
+  focusCities?: Set<string>;
   showArcs?: boolean;
   mapStyle?: MapStyle;
   awaiting?: Set<string>;
@@ -87,32 +94,37 @@ export default function GlobeView({
   }, [material, mapStyle]);
 
   const involved = useMemo(() => {
-    const s = new Set<string>();
+    const s = new Set<string>(involvedMembers ?? []);
     if (filterId) s.add(filterId);
-    for (const c of cards) {
-      s.add(c.sender_id);
-      s.add(c.recipient_id);
+    if (!involvedMembers) {
+      for (const c of cards) {
+        s.add(c.sender_id);
+        s.add(c.recipient_id);
+      }
     }
     awaiting?.forEach((id) => s.add(id));
     return s;
-  }, [cards, filterId, awaiting]);
+  }, [cards, filterId, awaiting, involvedMembers]);
 
   // Received cards: a solid line plus a light "comet" travelling along it.
-  // In transit: marching dashes.
+  // In transit: marching dashes. With a person selected, other people's routes
+  // are faded (and get no comet).
   const arcs = useMemo<ArcDatum[]>(
     () =>
       cards.flatMap((card) => {
         const r = membersById.get(card.recipient_id);
         if (!r) return [];
+        const role = roles?.get(card.id) ?? null;
         const base = {
           card,
+          role,
           color: membersById.get(card.sender_id)?.color ?? INK,
           startLat: card.from_lat,
           startLng: card.from_lng,
           endLat: r.home_lat,
           endLng: r.home_lng,
         };
-        return card.status === "received"
+        return card.status === "received" && role !== "other"
           ? [
               { ...base, kind: "line" as const },
               { ...base, kind: "comet" as const },
@@ -120,12 +132,18 @@ export default function GlobeView({
           : [{ ...base, kind: "line" as const }];
         // Stagger the comets so they don't all move in sync (stable across renders).
       }).map((a, i) => ({ ...a, offset: (i * 0.37) % 1.4 })),
-    [cards, membersById],
+    [cards, membersById, roles],
   );
 
   const points = useMemo<PointDatum[]>(
     () => [
-      ...cities.map((city) => ({ kind: "city" as const, lat: city.lat, lng: city.lng, city })),
+      ...cities.map((city) => ({
+        kind: "city" as const,
+        lat: city.lat,
+        lng: city.lng,
+        city,
+        dim: !!filterId && !!focusCities && !focusCities.has(city.key),
+      })),
       ...members.map((member) => ({
         kind: "home" as const,
         lat: member.home_lat,
@@ -134,7 +152,7 @@ export default function GlobeView({
         dim: !!filterId && !involved.has(member.id),
       })),
     ],
-    [cities, members, filterId, involved],
+    [cities, members, filterId, involved, focusCities],
   );
 
   // Pulsing rings at the homes of people with a card on its way.
@@ -165,7 +183,7 @@ export default function GlobeView({
     const g = globeRef.current;
     if (!ready || !g) return;
     const pts = [
-      ...cities.map((c) => [c.lat, c.lng]),
+      ...cities.filter((c) => !filterId || !focusCities || focusCities.has(c.key)).map((c) => [c.lat, c.lng]),
       ...members.filter((m) => !filterId || involved.has(m.id)).map((m) => [m.home_lat, m.home_lng]),
     ];
     if (!pts.length) return;
@@ -218,26 +236,36 @@ export default function GlobeView({
           arcsData={showArcs ? arcs : []}
           arcColor={(d: object) => {
             const a = d as ArcDatum;
-            return a.kind === "comet" ? ["rgba(255,255,255,0)", "rgba(255,255,255,0.95)"] : a.color;
+            if (a.kind === "comet") return ["rgba(255,255,255,0)", "rgba(255,255,255,0.95)"];
+            return a.role === "other" ? withAlpha(a.color, 0.15) : a.color;
           }}
           arcStroke={(d) => {
             const a = d as ArcDatum;
             const selected = a.card.id === selectedCardId;
-            return a.kind === "comet" ? 0.7 : selected ? 1.2 : 0.55;
+            if (a.kind === "comet") return 0.7;
+            if (selected) return 1.2;
+            return a.role === "out" || a.role === "in" ? 0.9 : a.role === "other" ? 0.35 : 0.55;
           }}
           arcAltitudeAutoScale={0.4}
+          // Received-by-the-selected-person routes are dotted; in transit stays dashed.
           arcDashLength={(d) => {
             const a = d as ArcDatum;
-            return a.kind === "comet" ? 0.2 : a.card.status === "in_transit" ? 0.05 : 1;
+            if (a.kind === "comet") return 0.2;
+            if (a.role === "in") return 0.012;
+            return a.card.status === "in_transit" ? 0.05 : 1;
           }}
           arcDashGap={(d) => {
             const a = d as ArcDatum;
-            return a.kind === "comet" ? 1.4 : a.card.status === "in_transit" ? 0.035 : 0;
+            if (a.kind === "comet") return 1.4;
+            if (a.role === "in") return 0.018;
+            return a.card.status === "in_transit" ? 0.035 : 0;
           }}
           arcDashInitialGap={(d) => ((d as ArcDatum).kind === "comet" ? (d as ArcDatum).offset : 0)}
           arcDashAnimateTime={(d) => {
             const a = d as ArcDatum;
-            return a.kind === "comet" ? 3200 : a.card.status === "in_transit" ? 5000 : 0;
+            if (a.kind === "comet") return 3200;
+            if (a.role === "in") return 0;
+            return a.card.status === "in_transit" ? 5000 : 0;
           }}
           arcsTransitionDuration={600}
           arcLabel={(d) => {
@@ -286,7 +314,7 @@ function pinElement(p: PointDatum, onSelect: (s: Selection) => void): HTMLElemen
     height: `${isHome ? size : 16}px`, // stamps are landscape
     transition: "opacity 150ms",
   } satisfies Partial<CSSStyleDeclaration>);
-  if (isHome && p.dim) wrap.dataset.dim = "1";
+  if (p.dim) wrap.dataset.dim = "1";
 
   const dot = document.createElement("button");
   dot.type = "button";

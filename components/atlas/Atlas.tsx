@@ -82,9 +82,13 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
     members,
     membersById,
     filterId,
+    roles: atlas.roles,
+    involvedMembers: atlas.involvedMembers,
+    focusCities: atlas.focusCities,
     selection,
     onSelect: setSelection,
-    showArcs: showRoutes || replay.active, // the replay is all about the routes
+    // Routes show when ticked, during the replay, and whenever a person is selected.
+    showArcs: showRoutes || replay.active || filterId !== null,
     mapStyle: colourful ? COLOURFUL : PLAIN,
   };
 
@@ -162,7 +166,7 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
       {replay.active && (
         <ReplayBar
           replay={replay}
-          postcards={atlas.located.filter((c) => c.status === "received").length}
+          postcards={atlas.visibleCards.filter((c) => c.status === "received").length}
           countries={atlas.countryCount}
         />
       )}
@@ -192,6 +196,32 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
           </span>
           Home countries
         </span>
+        {filterId && (
+          <>
+            <span className="flex items-center gap-1.5">
+              <svg width="24" height="8" aria-hidden="true">
+                <line x1="2" y1="4" x2="22" y2="4" stroke={membersById.get(filterId)?.color} strokeWidth="3" strokeLinecap="round" />
+              </svg>
+              Sent by {membersById.get(filterId)?.display_name}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <svg width="24" height="8" aria-hidden="true">
+                <line x1="2" y1="4" x2="22" y2="4" stroke="#2a2622" strokeWidth="3" strokeLinecap="round" strokeDasharray="0.1 5" />
+              </svg>
+              Received by {membersById.get(filterId)?.display_name}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setFilterId(null);
+                setSelection(null);
+              }}
+              className="font-medium text-stamp hover:underline"
+            >
+              Show all
+            </button>
+          </>
+        )}
         {replay.active && (
           <span className="flex items-center gap-1.5">
             <svg width="14" height="14" aria-hidden="true">
@@ -201,15 +231,16 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
             Pulsing = a postcard was on its way
           </span>
         )}
-        <span className="hidden sm:inline">
-          {replay.active
-            ? "Dashed = in the post · solid = delivered"
-            : showRoutes
-              ? "Click a route to open its postcard"
-              : "Tick Routes to see where postcards came from"}{" "}
-          · zoom in
-          for city names
-        </span>
+        {!filterId && (
+          <span className="hidden sm:inline">
+            {replay.active
+              ? "Dashed = in the post · solid = delivered"
+              : showRoutes
+                ? "Click a route to open its postcard"
+                : "Tick Routes, or pick a person above, to see routes"}{" "}
+            · zoom in for city names
+          </span>
+        )}
       </div>
     </div>
   );

@@ -6,7 +6,7 @@ import { select } from "d3-selection";
 import "d3-transition";
 import { zoom as d3zoom, zoomIdentity, type ZoomBehavior, type ZoomTransform } from "d3-zoom";
 import type { FeatureCollection } from "geojson";
-import type { CityGroup, LocatedMapCard, Selection } from "@/lib/atlas";
+import type { CityGroup, LocatedMapCard, RouteRole, Selection } from "@/lib/atlas";
 import { countryKeyFromFeature } from "@/lib/countries";
 import { PLAIN, type MapStyle } from "@/lib/mapStyle";
 import type { MemberWithAvatar } from "@/lib/types";
@@ -32,8 +32,15 @@ export function FlatMap({
   awaiting,
   showArcs = true,
   mapStyle = PLAIN,
+  roles,
+  involvedMembers,
+  focusCities,
 }: {
   mapStyle?: MapStyle;
+  /** With a person selected: which cards they sent ("out"), received ("in"), or neither ("other"). */
+  roles?: Map<string, RouteRole>;
+  involvedMembers?: Set<string>;
+  focusCities?: Set<string>;
   cards: LocatedMapCard[];
   cities: CityGroup[];
   sentFrom: Set<string>;
@@ -118,20 +125,27 @@ export function FlatMap({
   }, []);
 
   // Members with a card in the current view (for dimming when filtered).
+  // Members to keep bright when a person is selected (them + whoever they swapped cards with).
   const involved = useMemo(() => {
-    const s = new Set<string>();
+    const s = new Set<string>(involvedMembers ?? []);
     if (filterId) s.add(filterId);
-    for (const c of cards) {
-      s.add(c.sender_id);
-      s.add(c.recipient_id);
+    if (!involvedMembers) {
+      for (const c of cards) {
+        s.add(c.sender_id);
+        s.add(c.recipient_id);
+      }
     }
     awaiting?.forEach((id) => s.add(id));
     return s;
-  }, [cards, filterId, awaiting]);
+  }, [cards, filterId, awaiting, involvedMembers]);
 
   const arcs = useMemo(() => {
     if (!showArcs) return [];
-    return cards.flatMap((c, i) => {
+    // Faded routes first, so the selected person's routes are drawn on top.
+    const ordered = roles
+      ? [...cards].sort((a, b) => Number(roles.get(a.id) !== "other") - Number(roles.get(b.id) !== "other"))
+      : cards;
+    return ordered.flatMap((c, i) => {
       const recipient = membersById.get(c.recipient_id);
       const sender = membersById.get(c.sender_id);
       if (!recipient) return [];
@@ -168,7 +182,7 @@ export function FlatMap({
         },
       ];
     });
-  }, [cards, membersById, project, showArcs]);
+  }, [cards, membersById, project, showArcs, roles]);
 
   // ─── Zoom & pan ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -199,6 +213,7 @@ export function FlatMap({
     if (!size) return zoomIdentity;
     const pts: [number, number][] = [];
     for (const c of cities) {
+      if (filterId && focusCities && !focusCities.has(c.key)) continue; // zoom to the selected person's routes
       const p = project(c.lng, c.lat);
       if (p) pts.push(p);
     }
@@ -218,7 +233,7 @@ export function FlatMap({
     const cx = (minX + maxX) / 2;
     const cy = (minY + maxY) / 2;
     return zoomIdentity.translate(size.w / 2 - k * cx, size.h / 2 - k * cy).scale(k);
-  }, [size, cities, members, filterId, involved, project]);
+  }, [size, cities, members, filterId, involved, project, focusCities]);
 
   const zoomTo = useCallback(
     (target: ZoomTransform | ((cur: ZoomTransform) => ZoomTransform), ms = 600) => {
@@ -345,23 +360,29 @@ export function FlatMap({
             {arcs.map((a) => {
               const selected = a.card.id === selectedCardId;
               const transit = a.card.status === "in_transit";
+              // With a person selected: their sent cards solid, received cards dotted, the rest faded.
+              const role = roles?.get(a.card.id);
+              const faded = role === "other";
+              const highlighted = role === "out" || role === "in";
+              const opacity = faded ? 0.14 : selectedCardId && !selected ? 0.45 : 0.95;
               return (
                 <g key={a.card.id}>
                   <path
                     d={a.d}
                     fill="none"
                     stroke={a.color}
-                    strokeWidth={selected ? 3.5 : 2}
+                    strokeWidth={selected ? 3.5 : highlighted ? 3 : faded ? 1.5 : 2}
                     strokeLinecap="round"
-                    strokeOpacity={selectedCardId && !selected ? 0.45 : 0.95}
+                    strokeOpacity={opacity}
+                    strokeDasharray={role === "in" ? "0.1 6" : undefined}
                     vectorEffect="non-scaling-stroke"
-                    className={transit ? "arc-transit" : undefined}
+                    className={transit && role !== "in" ? "arc-transit" : undefined}
                     pointerEvents="none"
                   />
                   <path
                     d="M0,0 L-7,-3.5 L-7,3.5 Z"
                     fill={a.color}
-                    fillOpacity={selectedCardId && !selected ? 0.45 : 1}
+                    fillOpacity={faded ? 0.14 : selectedCardId && !selected ? 0.45 : 1}
                     transform={`translate(${a.end[0]},${a.end[1]}) rotate(${a.angle}) translate(${-(HOME_R + 1.5) / k},0) scale(${1 / k})`}
                     pointerEvents="none"
                   />
@@ -385,7 +406,7 @@ export function FlatMap({
                     </title>
                   </path>
                   {/* A little bird carrying the postcard along its route */}
-                  {!reducedMotion && (
+                  {!reducedMotion && !faded && (
                     <g pointerEvents="none">
                       <animateMotion
                         dur={`${a.duration}s`}
@@ -407,8 +428,9 @@ export function FlatMap({
               const p = project(c.lng, c.lat);
               if (!p) return null;
               const selected = c.key === selectedCity;
+              const faded = !!filterId && !!focusCities && !focusCities.has(c.key);
               return (
-                <g key={c.key}>
+                <g key={c.key} opacity={faded ? 0.3 : 1}>
                   <StampPin
                     x={p[0]}
                     y={p[1]}

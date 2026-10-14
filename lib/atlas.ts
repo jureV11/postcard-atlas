@@ -25,19 +25,41 @@ export function cityKey(c: { from_city: string; from_lat: number; from_lng: numb
   return `${c.from_city}|${c.from_lat.toFixed(3)}|${c.from_lng.toFixed(3)}`;
 }
 
-/** Everything the map and globe draw, derived from the cards and the member filter. */
+/** A card's role when one person is selected: they sent it, received it, or neither. */
+export type RouteRole = "out" | "in" | "other";
+
+/**
+ * Everything the map and globe draw, derived from the cards and the selected
+ * person. With a person selected, nothing is removed: their cards are tagged
+ * "out"/"in" (highlighted) and everyone else's "other" (faded).
+ */
 export function deriveAtlas(cards: MapCard[], members: MemberWithAvatar[], filterId: string | null) {
-  const visibleCards = filterId
-    ? cards.filter((c) => c.sender_id === filterId || c.recipient_id === filterId)
-    : cards;
+  const involves = (c: MapCard) => !filterId || c.sender_id === filterId || c.recipient_id === filterId;
+  const visibleCards = cards.filter(involves); // the selected person's cards (all cards if nobody's selected)
 
   // Received cards, plus the viewer's own cards in transit (they know where they sent them from).
-  const located = visibleCards.filter(isLocated);
+  const located = cards.filter(isLocated);
   // Mystery cards: in transit, origin unknown to the viewer.
   const brewing = visibleCards.filter((c) => c.status === "in_transit");
 
+  const roles = new Map<string, RouteRole>();
+  const involvedMembers = new Set<string>();
+  if (filterId) {
+    involvedMembers.add(filterId);
+    for (const c of located) {
+      const role: RouteRole = c.sender_id === filterId ? "out" : c.recipient_id === filterId ? "in" : "other";
+      roles.set(c.id, role);
+      if (role !== "other") {
+        involvedMembers.add(c.sender_id);
+        involvedMembers.add(c.recipient_id);
+      }
+    }
+  }
+
+  const focusCities = new Set<string>(); // cities the selected person's routes touch
   const cityMap = new Map<string, CityGroup>();
   for (const c of located) {
+    if (involves(c)) focusCities.add(cityKey(c));
     const key = cityKey(c);
     let group = cityMap.get(key);
     if (!group) {
@@ -55,11 +77,11 @@ export function deriveAtlas(cards: MapCard[], members: MemberWithAvatar[], filte
     group.cards.push(c);
   }
 
-  // Countries highlighted as "sent from" — arrived cards only.
+  // Countries highlighted as "sent from" — arrived cards only (the selected person's, if any).
   const sentFrom = new Set<string>();
   const arrivedCountries = new Set<string>();
   for (const c of located) {
-    if (c.status !== "received") continue;
+    if (c.status !== "received" || !involves(c)) continue;
     arrivedCountries.add(c.from_country_code);
     const k = countryKeyFromAlpha2(c.from_country_code);
     if (k) sentFrom.add(k);
@@ -80,6 +102,9 @@ export function deriveAtlas(cards: MapCard[], members: MemberWithAvatar[], filte
     located,
     brewing,
     awaiting,
+    roles,
+    involvedMembers,
+    focusCities,
     cities: [...cityMap.values()],
     sentFrom,
     homes,
