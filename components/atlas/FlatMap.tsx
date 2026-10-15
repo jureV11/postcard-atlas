@@ -6,15 +6,16 @@ import { select } from "d3-selection";
 import "d3-transition";
 import { zoom as d3zoom, zoomIdentity, type ZoomBehavior, type ZoomTransform } from "d3-zoom";
 import type { FeatureCollection } from "geojson";
-import type { CityGroup, LocatedMapCard, RouteRole, Selection } from "@/lib/atlas";
+import type { CityGroup, LocatedMapCard, OldHome, RouteRole, Selection } from "@/lib/atlas";
 import { countryKeyFromFeature } from "@/lib/countries";
 import { PLAIN, type MapStyle } from "@/lib/mapStyle";
 import { destinationOf, type MemberWithAvatar } from "@/lib/types";
 import { loadWorld, type Country } from "@/lib/world";
+import { HOUSE_PATH, HOUSE_WINDOW, initialOf } from "./house";
 
 const LABEL_HALO = "#fbf8f2";
 const INK = "#2a2622";
-const HOME_R = 5.5; // screen px
+const HOME_R = 12; // screen px, roughly the house's half-height
 const CITY_R = 3.5;
 const LABEL_ZOOM = 3; // show city/member names from this zoom level
 const SMALL_COUNTRY_PX2 = 60; // countries smaller than this on screen get a highlight circle
@@ -24,6 +25,8 @@ export function FlatMap({
   cities,
   sentFrom,
   homes,
+  oldHomes = [],
+  oldHomeCountries,
   members,
   membersById,
   filterId,
@@ -48,6 +51,9 @@ export function FlatMap({
   cities: CityGroup[];
   sentFrom: Set<string>;
   homes: Map<string, MemberWithAvatar>;
+  /** Addresses people used to live at that a delivered card went to. */
+  oldHomes?: OldHome[];
+  oldHomeCountries?: Map<string, MemberWithAvatar>;
   members: MemberWithAvatar[];
   membersById: Map<string, MemberWithAvatar>;
   filterId: string | null;
@@ -306,6 +312,25 @@ export function FlatMap({
             <pattern id="hatch" patternUnits="userSpaceOnUse" width="3" height="3" patternTransform="rotate(45)">
               <line x1="0" y1="0" x2="0" y2="3" stroke={INK} strokeOpacity="0.28" strokeWidth="0.9" />
             </pattern>
+            {/* Old-address countries: stripes in that person's colour */}
+            {members.map((m) => (
+              <pattern
+                key={m.id}
+                id={`old-home-${m.id}`}
+                patternUnits="userSpaceOnUse"
+                width={4 / k}
+                height={4 / k}
+                patternTransform="rotate(45)"
+              >
+                {/* Sized by the zoom so the stripes stay the same on screen */}
+                <line x1="0" y1="0" x2="0" y2={4 / k} stroke={m.color} strokeOpacity="0.8" strokeWidth={1.8 / k} />
+              </pattern>
+            ))}
+            {members.map((m) => (
+              <clipPath key={m.id} id={`home-window-${m.id}`} clipPathUnits="userSpaceOnUse">
+                <circle cx={HOUSE_WINDOW.cx} cy={HOUSE_WINDOW.cy} r={HOUSE_WINDOW.r} />
+              </clipPath>
+            ))}
           </defs>
           <g transform={t.toString()}>
             {mapStyle.ocean && <path d={sphere} fill={mapStyle.ocean} />}
@@ -321,6 +346,8 @@ export function FlatMap({
               const home = c.key ? homes.get(c.key) : undefined;
               const sent = c.key ? sentFrom.has(c.key) : false;
               const dimHome = !!filterId && !!home && !involved.has(home.id);
+              const oldHome = !home && c.key ? oldHomeCountries?.get(c.key) : undefined;
+              const dimOld = !!filterId && !!oldHome && !involved.has(oldHome.id);
               return (
                 <g key={c.id}>
                   <path
@@ -334,7 +361,15 @@ export function FlatMap({
                   >
                     <title>{c.name}</title>
                   </path>
-                  {sent && <path d={c.d} fill="url(#hatch)" pointerEvents="none" />}
+                  {oldHome && (
+                    <path
+                      d={c.d}
+                      fill={`url(#old-home-${oldHome.id})`}
+                      opacity={dimOld ? 0.3 : 1}
+                      pointerEvents="none"
+                    />
+                  )}
+                  {sent && !oldHome && <path d={c.d} fill="url(#hatch)" pointerEvents="none" />}
                 </g>
               );
             })}
@@ -342,7 +377,7 @@ export function FlatMap({
             {/* Tiny countries (islands, microstates) get a circle so they're visible at world zoom */}
             {countryPaths.map((c) => {
               if (!c.key || c.area * k * k > SMALL_COUNTRY_PX2) return null;
-              const home = homes.get(c.key);
+              const home = homes.get(c.key) ?? oldHomeCountries?.get(c.key);
               const sent = sentFrom.has(c.key);
               if (!home && !sent) return null;
               const [x, y] = c.centroid;
@@ -477,12 +512,37 @@ export function FlatMap({
               );
             })}
 
+            {oldHomes.map((o) => {
+              const p = project(o.lng, o.lat);
+              if (!p) return null;
+              const dim = !!filterId && !involved.has(o.member.id);
+              return (
+                <g
+                  key={o.key}
+                  opacity={dim ? 0.35 : 1}
+                  className="cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelect({ kind: "member", id: o.member.id });
+                  }}
+                >
+                  <g transform={`translate(${p[0]},${p[1]}) scale(${1.1 / k})`}>
+                    <HousePin member={o.member} old />
+                  </g>
+                  <title>
+                    {o.member.display_name} · used to live in {o.city} · {o.cards} {o.cards === 1 ? "card" : "cards"} sent there
+                  </title>
+                  {showLabels && label(p[0], p[1], `${o.member.display_name} · ${o.city} (before)`, { dx: 14 })}
+                </g>
+              );
+            })}
+
             {members.map((m) => {
               const p = project(m.home_lng, m.home_lat);
               if (!p) return null;
               const dim = !!filterId && !involved.has(m.id);
               const selected = m.id === selectedMember;
-              const r = (selected ? HOME_R + 1.5 : HOME_R) / k;
+              const r = HOME_R / k;
               return (
                 <g
                   key={m.id}
@@ -500,12 +560,13 @@ export function FlatMap({
                       <animate attributeName="stroke-opacity" values="0.9;0" dur="1.8s" repeatCount="indefinite" />
                     </circle>
                   )}
-                  <circle cx={p[0]} cy={p[1]} r={r} fill={m.color} stroke="#fff" strokeWidth={2 / k} />
-                  <circle cx={p[0]} cy={p[1]} r={r * 0.32} fill="#fff" />
+                  <g transform={`translate(${p[0]},${p[1]}) scale(${(selected ? 1.6 : 1.3) / k})`}>
+                    <HousePin member={m} />
+                  </g>
                   <title>
                     {m.display_name} · home in {m.home_city}
                   </title>
-                  {(showLabels || selected) && label(p[0], p[1], `${m.display_name} · ${m.home_city}`, { bold: true })}
+                  {(showLabels || selected) && label(p[0], p[1], `${m.display_name} · ${m.home_city}`, { bold: true, dx: 16 })}
                 </g>
               );
             })}
@@ -534,6 +595,54 @@ export function FlatMap({
         </div>
       )}
     </div>
+  );
+}
+
+/** House marker (see house.ts), drawn in screen pixels around the origin. */
+function HousePin({ member, old = false }: { member: MemberWithAvatar; old?: boolean }) {
+  const { cx, cy, r } = HOUSE_WINDOW;
+  return (
+    <g filter={old ? undefined : "url(#stamp-shadow)"}>
+      {old ? (
+        <path
+          d={HOUSE_PATH}
+          fill="#fffdf7"
+          fillOpacity={0.92}
+          stroke={member.color}
+          strokeWidth={1.6}
+          strokeDasharray="2.2 1.6"
+          strokeLinejoin="round"
+        />
+      ) : (
+        <path d={HOUSE_PATH} fill={member.color} stroke="#fff" strokeWidth={1.8} strokeLinejoin="round" />
+      )}
+      {!old && member.avatar_url ? (
+        <>
+          <circle cx={cx} cy={cy} r={r + 0.6} fill="#fff" />
+          <image
+            href={member.avatar_url}
+            x={cx - r}
+            y={cy - r}
+            width={r * 2}
+            height={r * 2}
+            preserveAspectRatio="xMidYMid slice"
+            clipPath={`url(#home-window-${member.id})`}
+          />
+        </>
+      ) : (
+        <text
+          x={cx}
+          y={cy + 2.4}
+          textAnchor="middle"
+          fontSize={6.8}
+          fontWeight={700}
+          fill={old ? member.color : "#fff"}
+          className="select-none"
+        >
+          {initialOf(member)}
+        </text>
+      )}
+    </g>
   );
 }
 

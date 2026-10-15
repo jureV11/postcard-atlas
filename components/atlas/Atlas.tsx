@@ -97,6 +97,8 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
     cities: atlas.cities,
     sentFrom: atlas.sentFrom,
     homes: atlas.homes,
+    oldHomes: atlas.oldHomes,
+    oldHomeCountries: atlas.oldHomeCountries,
     // Pulsing "on its way" rings only in the replay (history) — never live, no spoilers.
     awaiting: replay.active ? atlas.awaiting : undefined,
     members,
@@ -253,6 +255,20 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
           </span>
           Home countries
         </span>
+        {atlas.oldHomes.length > 0 && (
+          <span className="flex items-center gap-1.5">
+            <span
+              className="h-3 w-4 rounded-sm border border-ink/25"
+              style={{
+                background:
+                  view === "flat"
+                    ? "repeating-linear-gradient(45deg, #2a262299 0 1.5px, transparent 1.5px 4px)"
+                    : "#2a262233",
+              }}
+            />
+            Old addresses
+          </span>
+        )}
         {replay.active && (
           <span className="flex items-center gap-1.5">
             <svg width="14" height="14" aria-hidden="true">

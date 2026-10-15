@@ -4,12 +4,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Globe, { type GlobeMethods } from "react-globe.gl";
 import { MeshPhongMaterial } from "three";
-import type { CityGroup, LocatedMapCard, RouteRole, Selection } from "@/lib/atlas";
+import type { CityGroup, LocatedMapCard, OldHome, RouteRole, Selection } from "@/lib/atlas";
 import { countryKeyFromFeature } from "@/lib/countries";
 import { PLAIN, type MapStyle } from "@/lib/mapStyle";
 import { destinationOf, type MemberWithAvatar } from "@/lib/types";
 import { escapeHtml } from "@/lib/utils";
 import { loadWorld, type Country } from "@/lib/world";
+import { houseSvg } from "./house";
 
 const OCEAN = "#dde6e8";
 const LAND = "#e9e0cd";
@@ -30,13 +31,16 @@ type ArcDatum = {
 
 type PointDatum =
   | { kind: "city"; lat: number; lng: number; city: CityGroup; dim: boolean }
-  | { kind: "home"; lat: number; lng: number; member: MemberWithAvatar; dim: boolean };
+  | { kind: "home"; lat: number; lng: number; member: MemberWithAvatar; dim: boolean }
+  | { kind: "old"; lat: number; lng: number; old: OldHome; member: MemberWithAvatar; dim: boolean };
 
 export default function GlobeView({
   cards,
   cities,
   sentFrom,
   homes,
+  oldHomes = [],
+  oldHomeCountries,
   members,
   membersById,
   filterId,
@@ -59,6 +63,8 @@ export default function GlobeView({
   cities: CityGroup[];
   sentFrom: Set<string>;
   homes: Map<string, MemberWithAvatar>;
+  oldHomes?: OldHome[];
+  oldHomeCountries?: Map<string, MemberWithAvatar>;
   members: MemberWithAvatar[];
   membersById: Map<string, MemberWithAvatar>;
   filterId: string | null;
@@ -151,8 +157,16 @@ export default function GlobeView({
         member,
         dim: !!filterId && !involved.has(member.id),
       })),
+      ...oldHomes.map((old) => ({
+        kind: "old" as const,
+        lat: old.lat,
+        lng: old.lng,
+        old,
+        member: old.member,
+        dim: !!filterId && !involved.has(old.member.id),
+      })),
     ],
-    [cities, members, filterId, involved, focusCities],
+    [cities, members, oldHomes, filterId, involved, focusCities],
   );
 
   // Pulsing rings at the homes of people with a card on its way.
@@ -220,6 +234,9 @@ export default function GlobeView({
             const key = countryKeyFromFeature(d as Country);
             const home = key ? homes.get(key) : undefined;
             if (home) return withAlpha(home.color, filterId && !involved.has(home.id) ? 0.35 : 0.85);
+            // An old address's country: a lighter wash of their colour (the flat map stripes it).
+            const old = key ? oldHomeCountries?.get(key) : undefined;
+            if (old) return withAlpha(old.color, filterId && !involved.has(old.id) ? 0.15 : 0.38);
             if (key && sentFrom.has(key)) return mapStyle === PLAIN ? SENT_FROM : mapStyle.sentFrom;
             return mapStyle === PLAIN ? LAND : mapStyle.land((d as Country).properties.colorIndex);
           }}
@@ -228,6 +245,7 @@ export default function GlobeView({
           polygonAltitude={(d) => {
             const key = countryKeyFromFeature(d as Country);
             if (key && homes.has(key)) return 0.012;
+            if (key && oldHomeCountries?.has(key)) return 0.009;
             return key && sentFrom.has(key) ? 0.009 : 0.005;
           }}
           polygonsTransitionDuration={400}
@@ -279,7 +297,7 @@ export default function GlobeView({
           htmlElementsData={points}
           htmlLat="lat"
           htmlLng="lng"
-          htmlAltitude={(d) => ((d as PointDatum).kind === "home" ? 0.015 : 0.01)}
+          htmlAltitude={(d) => ((d as PointDatum).kind === "city" ? 0.01 : 0.015)}
           htmlElement={makePin}
           htmlElementVisibilityModifier={(el, visible) => {
             // Hide (and make unclickable) pins on the far side of the globe
@@ -304,14 +322,15 @@ export default function GlobeView({
 
 /** A pin dot with a name label (labels show via the `globe-labels` class when zoomed in). */
 function pinElement(p: PointDatum, onSelect: (s: Selection) => void): HTMLElement {
-  const isHome = p.kind === "home";
-  const size = isHome ? 13 : 19;
+  const isHome = p.kind !== "city";
+  const size = p.kind === "home" ? 28 : 24;
 
   const wrap = document.createElement("div");
   Object.assign(wrap.style, {
     position: "relative",
     width: `${size}px`,
     height: `${isHome ? size : 16}px`, // stamps are landscape
+    transform: isHome ? "translateY(-2px)" : "",
     transition: "opacity 150ms",
   } satisfies Partial<CSSStyleDeclaration>);
   if (p.dim) wrap.dataset.dim = "1";
@@ -319,17 +338,18 @@ function pinElement(p: PointDatum, onSelect: (s: Selection) => void): HTMLElemen
   const dot = document.createElement("button");
   dot.type = "button";
   if (isHome) {
+    // A little house with their photo or initial; an old address is hollow and dashed.
     Object.assign(dot.style, {
       display: "block",
       width: "100%",
       height: "100%",
-      borderRadius: "9999px",
-      background: p.member.color,
-      border: "2.5px solid #fff",
-      boxShadow: "0 1px 3px rgba(42,38,34,.35)",
+      background: "none",
+      border: "0",
       cursor: "pointer",
       padding: "0",
+      filter: p.kind === "home" ? "drop-shadow(0 1px 1.5px rgba(42,38,34,.4))" : "",
     } satisfies Partial<CSSStyleDeclaration>);
+    dot.innerHTML = houseSvg(p.member, p.kind === "old");
   } else {
     // Postage stamp: flag on paper with a perforated edge, same as the flat map.
     Object.assign(dot.style, {
@@ -347,11 +367,19 @@ function pinElement(p: PointDatum, onSelect: (s: Selection) => void): HTMLElemen
 
   const label = document.createElement("span");
   label.className = "globe-pin-label";
-  label.textContent = isHome ? `${p.member.display_name} · ${p.member.home_city}` : p.city.name;
-  if (isHome) label.style.fontWeight = "600";
+  label.textContent =
+    p.kind === "home"
+      ? `${p.member.display_name} · ${p.member.home_city}`
+      : p.kind === "old"
+        ? `${p.member.display_name} · ${p.old.city} (before)`
+        : p.city.name;
+  if (p.kind === "home") label.style.fontWeight = "600";
 
-  if (isHome) {
+  if (p.kind === "home") {
     dot.title = `${p.member.display_name} · home in ${p.member.home_city}`;
+  } else if (p.kind === "old") {
+    const n = p.old.cards;
+    dot.title = `${p.member.display_name} · used to live in ${p.old.city} · ${n} ${n === 1 ? "card" : "cards"} sent there`;
   } else {
     const n = p.city.cards.length;
     dot.title = `${p.city.name}, ${p.city.country} · ${n} ${n === 1 ? "card" : "cards"}`;

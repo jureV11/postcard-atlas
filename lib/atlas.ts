@@ -16,6 +16,17 @@ export type CityGroup = {
   cards: LocatedMapCard[];
 };
 
+/** An address someone used to live at, shown because a delivered card went there. */
+export type OldHome = {
+  key: string;
+  member: MemberWithAvatar;
+  city: string;
+  countryCode: string;
+  lat: number;
+  lng: number;
+  cards: number;
+};
+
 export type Selection =
   | { kind: "card"; id: string }
   | { kind: "city"; key: string }
@@ -112,6 +123,35 @@ export function deriveAtlas(
     if (k && !homes.has(k)) homes.set(k, m);
   }
 
+  // Old addresses that a delivered card went to (current addresses are the homes above).
+  const membersById = new Map(members.map((m) => [m.id, m]));
+  const oldHomeMap = new Map<string, OldHome>();
+  for (const c of located) {
+    if (c.status !== "received" || c.to_lat == null || c.to_lng == null || !c.to_country_code) continue;
+    const m = membersById.get(c.recipient_id);
+    if (!m || (Math.abs(c.to_lat - m.home_lat) < 1e-6 && Math.abs(c.to_lng - m.home_lng) < 1e-6)) continue;
+    const key = `${m.id}|${c.to_lat.toFixed(4)}|${c.to_lng.toFixed(4)}`;
+    const old = oldHomeMap.get(key);
+    if (old) old.cards++;
+    else
+      oldHomeMap.set(key, {
+        key,
+        member: m,
+        city: c.to_city ?? "",
+        countryCode: c.to_country_code,
+        lat: c.to_lat,
+        lng: c.to_lng,
+        cards: 1,
+      });
+  }
+  const oldHomes = [...oldHomeMap.values()];
+  // Striped countries: an old address's country, unless it's someone's current home country.
+  const oldHomeCountries = new Map<string, MemberWithAvatar>();
+  for (const o of oldHomes) {
+    const k = countryKeyFromAlpha2(o.countryCode);
+    if (k && !homes.has(k) && !oldHomeCountries.has(k)) oldHomeCountries.set(k, o.member);
+  }
+
   // Members with something on its way to them (pulsing rings).
   const awaiting = new Set(brewing.map((c) => c.recipient_id));
 
@@ -128,6 +168,8 @@ export function deriveAtlas(
     cities: [...cityMap.values()],
     sentFrom,
     homes,
+    oldHomes,
+    oldHomeCountries,
     countryCount: arrivedCountries.size,
   };
 }
