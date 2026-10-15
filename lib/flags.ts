@@ -19,7 +19,15 @@ const PRIDE =
 export const flagUrl = (countryCode: string) =>
   `https://flagcdn.com/w40/${countryCode.toLowerCase().replace(/[^a-z]/g, "")}.png`;
 
-/** The profile flag: their home country's, or a special flag for configured names. */
+/**
+ * The profile flag: their home country's, or a pride flag if their name contains
+ * one of the PRIDE_FLAG_NAMES set on the server (comma-separated, any case).
+ * Server-only: the names never reach the browser.
+ */
 export function profileFlag(name: string, countryCode: string): string {
-  return flagUrl(countryCode);
+  const names = (process.env.PRIDE_FLAG_NAMES ?? "")
+    .split(",")
+    .map((n) => n.trim().toLowerCase())
+    .filter(Boolean);
+  return names.some((n) => name.toLowerCase().includes(n)) ? PRIDE : flagUrl(countryCode);
 }

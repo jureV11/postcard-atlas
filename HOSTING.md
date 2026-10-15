@@ -16,7 +16,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_...
 ```
 
-(`.env.local.example` shows the format.) The key is Supabase's *public* key — it's
+(`.env.local.example` shows the format, plus an optional extra setting.) The key is Supabase's *public* key — it's
 safe in the browser; the database's own security rules protect the data.
 
 ## 2. Start it
