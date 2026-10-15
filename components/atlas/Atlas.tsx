@@ -110,7 +110,25 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
     // Routes show when ticked, during the replay, and whenever a person is selected.
     showArcs: showRoutes || replay.active || filterId !== null,
     mapStyle: colourful ? COLOURFUL : PLAIN,
+    // Replay: how far along its route each card is, so routes grow in real travel time.
+    progress: replay.active ? replay.progress : undefined,
   };
+
+  // The replay runs on the flat map (routes grow far more smoothly there);
+  // Done puts back whichever view you had.
+  const [viewBeforeReplay, setViewBeforeReplay] = useState<View | null>(null);
+  function startReplay() {
+    setSelection(null);
+    setViewBeforeReplay(view);
+    setView("flat"); // not saved as your preference
+    replay.start();
+  }
+  function stopReplay() {
+    replay.stop();
+    if (viewBeforeReplay) setView(viewBeforeReplay);
+    setViewBeforeReplay(null);
+  }
+  const replayBar = { ...replay, stop: stopReplay };
 
   return (
     <div className="space-y-3">
@@ -154,11 +172,8 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
             {replay.available && !replay.active && (
               <button
                 type="button"
-                onClick={() => {
-                  setSelection(null);
-                  replay.start();
-                }}
-                title="Replay the year's postcards"
+                onClick={startReplay}
+                title="Replay every postcard's journey, in real travel time"
                 className="flex items-center gap-1.5 rounded-full border border-ink/10 bg-white/90 py-1.5 pl-2.5 pr-3 text-sm font-medium shadow-sm backdrop-blur transition hover:bg-white"
               >
                 <svg viewBox="0 0 24 24" className="size-3.5" fill="currentColor" aria-hidden="true">
@@ -175,7 +190,11 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
         )}
         {replay.active && <ReplayDate date={replay.date} />}
 
-        <div className="absolute bottom-3 left-3 z-[5] flex rounded-full border border-ink/10 bg-white/90 p-0.5 text-sm font-medium shadow-sm backdrop-blur">
+        <div
+          className={`absolute bottom-3 left-3 z-[5] flex rounded-full border border-ink/10 bg-white/90 p-0.5 text-sm font-medium shadow-sm backdrop-blur ${
+            replay.active ? "hidden" : ""
+          }`}
+        >
           {(["globe", "flat"] as const).map((v) => (
             <button
               key={v}
@@ -203,7 +222,7 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
 
       {replay.active && (
         <ReplayBar
-          replay={replay}
+          replay={replayBar}
           postcards={atlas.visibleCards.filter((c) => c.status === "received").length}
           countries={atlas.countryCount}
         />

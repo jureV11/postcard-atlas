@@ -35,7 +35,10 @@ export function FlatMap({
   roles,
   involvedMembers,
   focusCities,
+  progress,
 }: {
+  /** Replay: how far along its route each card is (0–1). Routes are drawn that far. */
+  progress?: Map<string, number>;
   mapStyle?: MapStyle;
   /** With a person selected: which cards they sent ("out"), received ("in"), or neither ("other"). */
   roles?: Map<string, RouteRole>;
@@ -176,6 +179,7 @@ export function FlatMap({
           card: c,
           color: sender?.color ?? INK,
           d: `M${x1},${y1} Q${cx},${cy} ${x2},${y2}`,
+          curve: { x1, y1, cx, cy, x2, y2 },
           end: [x2, y2] as const,
           angle: (Math.atan2(y2 - cy, x2 - cx) * 180) / Math.PI,
           duration,
@@ -366,6 +370,32 @@ export function FlatMap({
               const faded = role === "other";
               const highlighted = role === "out" || role === "in";
               const opacity = faded ? 0.14 : selectedCardId && !selected ? 0.45 : 0.95;
+
+              // Replay: a card still in the post is drawn only as far as it has travelled,
+              // with its bird at the tip.
+              const p = progress?.get(a.card.id);
+              if (p !== undefined && p < 1) {
+                const part = partialCurve(a.curve, p);
+                return (
+                  <g key={a.card.id} pointerEvents="none">
+                    <path
+                      d={part.d}
+                      fill="none"
+                      stroke={a.color}
+                      strokeWidth={highlighted ? 3 : faded ? 1.5 : 2.5}
+                      strokeLinecap="round"
+                      strokeOpacity={opacity}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                    {!faded && (
+                      <g transform={`translate(${part.x},${part.y}) rotate(${part.angle}) scale(${1.5 / k})`}>
+                        <Bird color={a.color} />
+                      </g>
+                    )}
+                  </g>
+                );
+              }
+
               return (
                 <g key={a.card.id}>
                   <path
@@ -406,8 +436,8 @@ export function FlatMap({
                       {transit ? " (in transit)" : ""}
                     </title>
                   </path>
-                  {/* A little bird carrying the postcard along its route */}
-                  {!reducedMotion && !faded && (
+                  {/* A little bird carrying the postcard along its route (not in the replay: it's landed) */}
+                  {!reducedMotion && !faded && !progress && (
                     <g pointerEvents="none">
                       <animateMotion
                         dur={`${a.duration}s`}
@@ -576,6 +606,27 @@ function StampPin({
       )}
     </g>
   );
+}
+
+/** The first `t` (0–1) of a quadratic curve, plus the point and heading at its tip. */
+function partialCurve(
+  c: { x1: number; y1: number; cx: number; cy: number; x2: number; y2: number },
+  t: number,
+) {
+  const s = Math.max(0.001, Math.min(1, t));
+  const lerp = (a: number, b: number) => a + (b - a) * s;
+  const q0x = lerp(c.x1, c.cx);
+  const q0y = lerp(c.y1, c.cy);
+  const q1x = lerp(c.cx, c.x2);
+  const q1y = lerp(c.cy, c.y2);
+  const x = q0x + (q1x - q0x) * s;
+  const y = q0y + (q1y - q0y) * s;
+  return {
+    d: `M${c.x1},${c.y1} Q${q0x},${q0y} ${x},${y}`,
+    x,
+    y,
+    angle: (Math.atan2(q1y - q0y, q1x - q0x) * 180) / Math.PI,
+  };
 }
 
 /** Top-down bird flying along +x, wings flapping. ~18px wingspan before scaling. */
