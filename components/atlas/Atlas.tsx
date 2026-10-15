@@ -7,6 +7,7 @@ import { FlatMap } from "@/components/atlas/FlatMap";
 import { MemberFilter } from "@/components/atlas/MemberFilter";
 import { ReplayBar, ReplayDate, useReplay } from "@/components/atlas/Replay";
 import { deriveAtlas, type MapCard, type Selection } from "@/lib/atlas";
+import { useFlagColors } from "@/lib/flagColors";
 import { COLOURFUL, PLAIN } from "@/lib/mapStyle";
 import type { MemberWithAvatar } from "@/lib/types";
 
@@ -23,6 +24,7 @@ type View = "flat" | "globe";
 const VIEW_KEY = "atlas-view-v2";
 const ROUTES_KEY = "atlas-routes";
 const COLOUR_KEY = "atlas-colour";
+const FLAG_ROUTES_KEY = "atlas-flag-routes";
 
 function readPref(key: string): string | null {
   try {
@@ -41,6 +43,7 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
   const [view, setView] = useState<View | null>(null); // null until the saved choice is read
   const [showRoutes, setShowRoutes] = useState(false);
   const [colourful, setColourful] = useState(true);
+  const [flagRoutes, setFlagRoutes] = useState(true); // routes in the origin flag's colours
   const [filterId, setFilterId] = useState<string | null>(null);
   // With a person selected: show the cards they sent, received, or both.
   const [directions, setDirections] = useState({ sent: true, received: true });
@@ -51,6 +54,7 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
     setView(readPref(VIEW_KEY) === "flat" ? "flat" : "globe");
     setShowRoutes(readPref(ROUTES_KEY) === "1");
     setColourful(readPref(COLOUR_KEY) !== "0");
+    setFlagRoutes(readPref(FLAG_ROUTES_KEY) !== "0");
   }, []);
   function changeView(v: View) {
     setView(v);
@@ -61,6 +65,11 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
     setShowRoutes(next);
     savePref(ROUTES_KEY, next ? "1" : "0");
     if (!next && selection?.kind === "card") setSelection(null); // its route just disappeared
+  }
+  function toggleFlagRoutes() {
+    const next = !flagRoutes;
+    setFlagRoutes(next);
+    savePref(FLAG_ROUTES_KEY, next ? "1" : "0");
   }
   function toggleColour() {
     const next = !colourful;
@@ -91,6 +100,10 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
     setSelection(null);
   }
   const person = filterId ? membersById.get(filterId) : undefined;
+  const routeColors = useFlagColors(
+    atlas.located.map((c) => c.from_country_code),
+    flagRoutes,
+  );
 
   const layerProps = {
     cards: atlas.located,
@@ -112,6 +125,7 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
     // Routes show when ticked, during the replay, and whenever a person is selected.
     showArcs: showRoutes || replay.active || filterId !== null,
     mapStyle: colourful ? COLOURFUL : PLAIN,
+    routeColors: flagRoutes ? routeColors : undefined,
     // Replay: how far along its route each card is, so routes grow in real travel time.
     progress: replay.active ? replay.progress : undefined,
   };
@@ -186,6 +200,14 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
             )}
             {!replay.active && (
               <Toggle checked={showRoutes} onChange={toggleRoutes} label="Routes" hint="Show where postcards flew from" />
+            )}
+            {(showRoutes || replay.active || filterId !== null) && (
+              <Toggle
+                checked={flagRoutes}
+                onChange={toggleFlagRoutes}
+                label="Flags"
+                hint="Colour each route like the flag of the country it was sent from"
+              />
             )}
             <Toggle checked={colourful} onChange={toggleColour} label="Colour" hint="Colourful atlas style" />
           </div>

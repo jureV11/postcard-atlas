@@ -52,7 +52,10 @@ export default function GlobeView({
   roles,
   involvedMembers,
   focusCities,
+  routeColors,
 }: {
+  /** Flag routes: colours of each origin country's flag (lower-case code → colours). */
+  routeColors?: Map<string, string[]>;
   roles?: Map<string, RouteRole>;
   involvedMembers?: Set<string>;
   focusCities?: Set<string>;
@@ -255,7 +258,11 @@ export default function GlobeView({
           arcColor={(d: object) => {
             const a = d as ArcDatum;
             if (a.kind === "comet") return ["rgba(255,255,255,0)", "rgba(255,255,255,0.95)"];
-            return a.role === "other" ? withAlpha(a.color, 0.15) : a.color;
+            const alpha = a.role === "other" ? 0.15 : 1;
+            // Flag routes: the origin flag's colours blend along the arc.
+            const flag = routeColors?.get(a.card.from_country_code.toLowerCase());
+            if (flag) return flag.length === 1 ? withAlpha(flag[0], alpha) : flag.map((c) => withAlpha(c, alpha));
+            return withAlpha(a.color, alpha);
           }}
           arcStroke={(d) => {
             const a = d as ArcDatum;

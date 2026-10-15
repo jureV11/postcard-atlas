@@ -39,7 +39,10 @@ export function FlatMap({
   involvedMembers,
   focusCities,
   progress,
+  routeColors,
 }: {
+  /** Flag routes: colours of each origin country's flag (lower-case code → colours). */
+  routeColors?: Map<string, string[]>;
   /** Replay: how far along its route each card is (0–1). Routes are drawn that far. */
   progress?: Map<string, number>;
   mapStyle?: MapStyle;
@@ -405,6 +408,7 @@ export function FlatMap({
               const faded = role === "other";
               const highlighted = role === "out" || role === "in";
               const opacity = faded ? 0.14 : selectedCardId && !selected ? 0.45 : 0.95;
+              const flag = routeColors?.get(a.card.from_country_code.toLowerCase());
 
               // Replay: a card still in the post is drawn only as far as it has travelled,
               // with its bird at the tip.
@@ -413,10 +417,12 @@ export function FlatMap({
                 const part = partialCurve(a.curve, p);
                 return (
                   <g key={a.card.id} pointerEvents="none">
+                    {flag && <FlagGradient id={`route-${a.card.id}`} colours={flag} curve={a.curve} />}
+                    {flag && <RouteCasing d={part.d} width={highlighted ? 3 : faded ? 1.5 : 2.5} opacity={opacity} />}
                     <path
                       d={part.d}
                       fill="none"
-                      stroke={a.color}
+                      stroke={flag ? `url(#route-${a.card.id})` : a.color}
                       strokeWidth={highlighted ? 3 : faded ? 1.5 : 2.5}
                       strokeLinecap="round"
                       strokeOpacity={opacity}
@@ -433,10 +439,14 @@ export function FlatMap({
 
               return (
                 <g key={a.card.id}>
+                  {flag && <FlagGradient id={`route-${a.card.id}`} colours={flag} curve={a.curve} />}
+                  {flag && role !== "in" && (
+                    <RouteCasing d={a.d} width={selected ? 3.5 : highlighted ? 3 : faded ? 1.5 : 2} opacity={opacity} />
+                  )}
                   <path
                     d={a.d}
                     fill="none"
-                    stroke={a.color}
+                    stroke={flag ? `url(#route-${a.card.id})` : a.color}
                     strokeWidth={selected ? 3.5 : highlighted ? 3 : faded ? 1.5 : 2}
                     strokeLinecap="round"
                     strokeOpacity={opacity}
@@ -447,7 +457,10 @@ export function FlatMap({
                   />
                   <path
                     d="M0,0 L-7,-3.5 L-7,3.5 Z"
-                    fill={a.color}
+                    fill={flag ? flag[flag.length - 1] : a.color}
+                    stroke={flag ? INK : undefined}
+                    strokeOpacity={0.35}
+                    strokeWidth={0.6}
                     fillOpacity={faded ? 0.14 : selectedCardId && !selected ? 0.45 : 1}
                     transform={`translate(${a.end[0]},${a.end[1]}) rotate(${a.angle}) translate(${-(HOME_R + 1.5) / k},0) scale(${1 / k})`}
                     pointerEvents="none"
@@ -595,6 +608,49 @@ export function FlatMap({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Flag routes: the origin flag's colours laid along the route, start to end,
+ * with softened joins. Positioned in map space so it follows the route.
+ */
+function FlagGradient({
+  id,
+  colours,
+  curve,
+}: {
+  id: string;
+  colours: string[];
+  curve: { x1: number; y1: number; x2: number; y2: number };
+}) {
+  const n = colours.length;
+  const soft = n > 1 ? 0.04 : 0;
+  return (
+    <defs>
+      <linearGradient id={id} gradientUnits="userSpaceOnUse" x1={curve.x1} y1={curve.y1} x2={curve.x2} y2={curve.y2}>
+        {colours.flatMap((c, i) => [
+          <stop key={`${i}a`} offset={i === 0 ? 0 : i / n + soft} stopColor={c} />,
+          <stop key={`${i}b`} offset={i === n - 1 ? 1 : (i + 1) / n - soft} stopColor={c} />,
+        ])}
+      </linearGradient>
+    </defs>
+  );
+}
+
+/** A thin dark edge under a flag route, so white and pale stripes stay visible. */
+function RouteCasing({ d, width, opacity }: { d: string; width: number; opacity: number }) {
+  return (
+    <path
+      d={d}
+      fill="none"
+      stroke={INK}
+      strokeOpacity={0.4 * opacity}
+      strokeWidth={width + 1.6}
+      strokeLinecap="round"
+      vectorEffect="non-scaling-stroke"
+      pointerEvents="none"
+    />
   );
 }
 
