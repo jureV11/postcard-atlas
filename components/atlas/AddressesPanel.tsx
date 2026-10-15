@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import {
   addAddress,
   deleteAddress,
+  retireAddress,
   searchAddress,
   setCurrentAddress,
+  unretireAddress,
   updateAddress,
   type FoundAddress,
 } from "@/app/(app)/address-actions";
@@ -24,10 +26,13 @@ export function AddressesPanel({
   members,
   addresses,
   meId,
+  inUse = [],
 }: {
   members: MemberWithAvatar[];
   addresses: Address[];
   meId: string;
+  /** Your own addresses that postcards were sent to: retire instead of delete. */
+  inUse?: string[];
 }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -84,13 +89,28 @@ export function AddressesPanel({
           member={m}
           isMe={m.id === meId}
           addresses={addresses.filter((a) => a.member_id === m.id)}
+          inUse={inUse}
         />
       ))}
     </section>
   );
 }
 
-function MemberAddresses({ member, isMe, addresses }: { member: MemberWithAvatar; isMe: boolean; addresses: Address[] }) {
+function MemberAddresses({
+  member,
+  isMe,
+  addresses: all,
+  inUse,
+}: {
+  member: MemberWithAvatar;
+  isMe: boolean;
+  addresses: Address[];
+  inUse: string[];
+}) {
+  // Retired ones are history only: hidden, except in your own "Retired" list.
+  const addresses = all.filter((a) => !a.retired_at);
+  const retired = all.filter((a) => a.retired_at);
+  const used = (a: Address) => inUse.includes(a.id);
   const router = useRouter();
   const [mode, setMode] = useState<{ kind: "add" } | { kind: "edit"; id: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -127,6 +147,11 @@ function MemberAddresses({ member, isMe, addresses }: { member: MemberWithAvatar
             <li key={a.id}>
               <AddressForm
                 initial={a.address_line}
+                note={
+                  used(a)
+                    ? "Postcards were sent here, so you can only correct it nearby. Moved? Add a new address instead."
+                    : undefined
+                }
                 onCancel={() => setMode(null)}
                 onSave={async (input) => {
                   const r = await updateAddress(a.id, input);
@@ -172,7 +197,7 @@ function MemberAddresses({ member, isMe, addresses }: { member: MemberWithAvatar
                     Edit
                   </button>
                 )}
-                {isMe && !a.is_current && (
+                {isMe && !a.is_current && !used(a) && (
                   <button
                     type="button"
                     disabled={busy !== null}
@@ -184,11 +209,50 @@ function MemberAddresses({ member, isMe, addresses }: { member: MemberWithAvatar
                     {busy === `del-${a.id}` ? "Deleting…" : "Delete"}
                   </button>
                 )}
+                {isMe && !a.is_current && used(a) && (
+                  <button
+                    type="button"
+                    disabled={busy !== null}
+                    title="Hide it from your list and free up a slot. Postcards sent here stay on the map."
+                    onClick={() => run(`ret-${a.id}`, () => retireAddress(a.id))}
+                    className="font-medium text-ink-soft hover:text-ink"
+                  >
+                    {busy === `ret-${a.id}` ? "Retiring…" : "Retire"}
+                  </button>
+                )}
+                {isMe && used(a) && <span className="text-ink-soft">· postcards sent here</span>}
               </div>
             </li>
           ),
         )}
       </ul>
+
+      {isMe && retired.length > 0 && (
+        <details className="text-xs">
+          <summary className="cursor-pointer text-ink-soft hover:text-ink">Retired ({retired.length})</summary>
+          <ul className="mt-1.5 space-y-1.5">
+            {retired.map((a) => (
+              <li key={a.id} className="rounded-xl border border-dashed border-ink/15 px-3 py-2">
+                <p className="flex items-start gap-1.5 text-ink-soft">
+                  <span className="mt-0.5">
+                    <Flag code={a.country_code} size={12} />
+                  </span>
+                  <span className="min-w-0">{a.address_line}</span>
+                </p>
+                <button
+                  type="button"
+                  disabled={busy !== null}
+                  onClick={() => run(`unret-${a.id}`, () => unretireAddress(a.id))}
+                  className="mt-1 font-medium text-stamp hover:underline disabled:opacity-50"
+                >
+                  {busy === `unret-${a.id}` ? "Bringing back…" : "Bring back"}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1.5 text-ink-soft">Retired addresses stay on the map for the postcards sent there.</p>
+        </details>
+      )}
 
       {error && <p className="error text-xs">{error}</p>}
 
@@ -215,7 +279,9 @@ function MemberAddresses({ member, isMe, addresses }: { member: MemberWithAvatar
             ＋ Add an address
           </button>
         ) : (
-          <p className="text-xs text-ink-soft">That&apos;s the maximum of 3 — delete an old one to add another.</p>
+          <p className="text-xs text-ink-soft">
+            That&apos;s the maximum of 3 — delete or retire an old one to add another.
+          </p>
         ))}
     </div>
   );
@@ -224,11 +290,14 @@ function MemberAddresses({ member, isMe, addresses }: { member: MemberWithAvatar
 /** Type a full address → "Find" (OpenStreetMap) → pick the right match → save. */
 function AddressForm({
   initial = "",
+  note,
   allowMakeCurrent = false,
   onSave,
   onCancel,
 }: {
   initial?: string;
+  /** Shown above the field, e.g. why only small corrections are allowed. */
+  note?: string;
   allowMakeCurrent?: boolean;
   onSave: (input: { addressLine: string; found: FoundAddress }, makeCurrent: boolean) => Promise<{ error?: string }>;
   onCancel: () => void;
@@ -266,6 +335,7 @@ function AddressForm({
 
   return (
     <div className="space-y-2 rounded-xl border border-ink/15 bg-white p-3">
+      {note && <p className="text-[11px] text-ink-soft">{note}</p>}
       <label className="label !mb-1 text-xs" htmlFor="addr">
         Full address
       </label>

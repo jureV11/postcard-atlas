@@ -83,6 +83,8 @@ export type Address = {
   lng: number;
   is_current: boolean;
   created_at: string;
+  /** Retired: hidden from lists and pickers, kept for the history of cards sent there (migration 0013). */
+  retired_at?: string | null;
 };
 
 /** Where a card ended up: the address it was sent to, falling back to the recipient's home. */

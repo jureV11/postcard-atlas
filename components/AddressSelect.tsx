@@ -14,13 +14,16 @@ export function AddressSelect({
   value: string | null;
   onChange: (addressId: string) => void;
 }) {
-  const sorted = [...addresses].sort((a, b) => Number(b.is_current) - Number(a.is_current));
+  // Retired addresses stay hidden, unless this card already went to one.
+  const sorted = addresses
+    .filter((a) => !a.retired_at || a.id === value)
+    .sort((a, b) => Number(b.is_current) - Number(a.is_current));
   if (sorted.length === 0) return null;
   return (
     <select id={id} className="input" value={value ?? ""} onChange={(e) => onChange(e.target.value)}>
       {sorted.map((a) => (
         <option key={a.id} value={a.id}>
-          {a.is_current ? "Current — " : "Previous — "}
+          {a.is_current ? "Current — " : a.retired_at ? "Retired — " : "Previous — "}
           {a.address_line}
         </option>
       ))}

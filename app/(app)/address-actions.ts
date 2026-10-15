@@ -100,6 +100,23 @@ export async function updateAddress(id: string, input: AddressInput): Promise<Re
   return {};
 }
 
+/** Hide an old address that postcards were sent to (it stays as their history). */
+export async function retireAddress(id: string): Promise<Result> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("retire_address", { p_id: id });
+  if (error) return { error: error.message };
+  revalidatePath("/", "layout");
+  return {};
+}
+
+export async function unretireAddress(id: string): Promise<Result> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("unretire_address", { p_id: id });
+  if (error) return { error: error.message };
+  revalidatePath("/", "layout");
+  return {};
+}
+
 export async function setCurrentAddress(id: string): Promise<Result> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("set_current_address", { p_id: id });
