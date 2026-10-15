@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
 import { Flag } from "@/components/Flag";
+import { formatCount, NicheRow } from "@/components/NicheBreakdown";
 import { formatKm } from "@/lib/geo";
 import { nicheLeaders, nicheScores, type NicheScore } from "@/lib/niche";
+import { NICHE } from "@/lib/niche.config";
 import { loadGroupData } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
 import { computeStats, rankMembers } from "@/lib/stats";
@@ -16,7 +18,7 @@ export default async function LeaderboardPage() {
   const { postcards, members } = await loadGroupData(supabase, me);
   const stats = computeStats(members, postcards);
   const ranking = rankMembers(members, stats);
-  const niche = nicheLeaders(members, await nicheScores(postcards, members));
+  const niche = nicheLeaders(members, await nicheScores(postcards));
 
   const byKm = [...ranking].sort((a, b) => b.stats.postcardKm - a.stats.postcardKm);
   const nicheByMember = new Map(niche.map((n) => [n.member.id, n.best]));
@@ -136,15 +138,18 @@ export default async function LeaderboardPage() {
       <section className="space-y-3">
         <SectionTitle
           title="Most niche postcard"
-          subtitle="Everyone's single most off-the-beaten-path card, scored out of 100."
+          subtitle="Everyone's single most off-the-beaten-path card, scored out of 100. Tap a score to see why."
         />
         <ol className="space-y-2">
           {niche.map(({ member: m, best }, i) => (
             <li key={m.id}>
               {best ? (
-                <Link
+                <NicheRow
                   href={`/postcards/${best.card.id}`}
-                  className="flex items-center gap-3 rounded-2xl border border-ink/10 bg-white/75 px-4 py-3 transition hover:bg-white"
+                  score={best.score!}
+                  factors={best.factors}
+                  facts={best.facts}
+                  country={best.card.from_country}
                 >
                   <RankBadge rank={i + 1} small />
                   <Avatar name={m.display_name} color={m.color} url={m.avatar_url} size={32} />
@@ -155,8 +160,7 @@ export default async function LeaderboardPage() {
                     </span>
                     <span className="block truncate text-xs text-ink-soft">{m.display_name} · {nicheReason(best)}</span>
                   </span>
-                  <NicheBadge score={best.score} />
-                </Link>
+                </NicheRow>
               ) : (
                 <div className="flex items-center gap-3 rounded-2xl border border-dashed border-ink/15 px-4 py-3 text-ink-soft">
                   <RankBadge rank={0} small />
@@ -169,20 +173,30 @@ export default async function LeaderboardPage() {
         </ol>
         <details className="rounded-xl bg-paper-deep/60 px-4 py-3 text-sm text-ink-soft">
           <summary className="cursor-pointer font-medium text-ink">How is nicheness scored?</summary>
+          <p className="mt-2">It&apos;s all about the town the card came from — sending lots from one country costs nothing.</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>
-              <strong className="text-ink">Small place — up to 40.</strong> Villages beat capitals: a town of ~10,000 scores
-              about 24, a city of a million about 8.
+              <strong className="text-ink">Small place — up to {NICHE.weights.population}.</strong> Fewer people, more points;
+              {" "}{NICHE.population.full.toLocaleString("en")} or fewer scores full, so a tiny village counts the same as a
+              small town. (GeoNames)
             </li>
             <li>
-              <strong className="text-ink">Rare country — up to 30.</strong> Full points if it&apos;s the group&apos;s only card
-              from that country, half if there are two, and so on.
+              <strong className="text-ink">Far from an airport — up to {NICHE.weights.remoteness}.</strong> Distance to the
+              nearest airport with scheduled flights; {NICHE.remoteness.full} km or more scores full. (OurAirports)
             </li>
             <li>
-              <strong className="text-ink">Far from home — up to 30.</strong> Distance to the nearest member&apos;s home city;
-              8,000 km or more scores full.
+              <strong className="text-ink">Few tourists — up to {NICHE.weights.tourism}.</strong> Tourist arrivals per
+              resident for the whole country — the only part that&apos;s about the country. (World Bank)
+            </li>
+            <li>
+              <strong className="text-ink">Little-known — up to {NICHE.weights.obscurity}.</strong> How often the town&apos;s
+              English Wikipedia article is read; fewer views, more points.
             </li>
           </ul>
+          <p className="mt-2">
+            If something can&apos;t be found, it&apos;s left out and the other parts share its points — no number is ever
+            guessed.
+          </p>
         </details>
       </section>
     </div>
@@ -191,16 +205,10 @@ export default async function LeaderboardPage() {
 
 function nicheReason(s: NicheScore): string {
   const bits: string[] = [];
-  if (s.population !== null) bits.push(`~${formatPopulation(s.population)} people`);
-  bits.push(s.countryCards === 1 ? `only card from ${s.card.from_country}` : `${s.countryCards} cards from ${s.card.from_country}`);
-  bits.push(`${formatKm(s.nearestHomeKm)} from the nearest home`);
+  if (s.facts.population !== null) bits.push(`~${formatCount(s.facts.population)} people`);
+  if (s.facts.airportKm !== null) bits.push(`${formatKm(s.facts.airportKm)} from an airport`);
+  if (s.facts.wikiMonthlyViews !== null) bits.push(`${formatCount(Math.round(s.facts.wikiMonthlyViews))} Wikipedia views/month`);
   return bits.join(" · ");
-}
-
-function formatPopulation(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`;
-  if (n >= 1_000) return `${Math.round(n / 1_000)}k`;
-  return String(n);
 }
 
 function SectionTitle({ title, subtitle }: { title: string; subtitle: string }) {
@@ -231,15 +239,6 @@ function MiniStat({ label, value }: { label: string; value: string }) {
     <span>
       <span className="block font-semibold tabular-nums">{value}</span>
       <span className="block text-[11px] text-ink-soft">{label}</span>
-    </span>
-  );
-}
-
-function NicheBadge({ score }: { score: number }) {
-  return (
-    <span className="flex shrink-0 flex-col items-center rounded-xl bg-ink px-2.5 py-1 text-paper">
-      <span className="font-display text-lg font-semibold leading-tight tabular-nums">{score}</span>
-      <span className="text-[10px] leading-tight text-paper/70">/ 100</span>
     </span>
   );
 }

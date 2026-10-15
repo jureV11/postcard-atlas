@@ -1,71 +1,114 @@
 import { cityKey } from "@/lib/atlas";
-import { haversineKm } from "@/lib/geo";
+import { NICHE, type NicheFactor } from "@/lib/niche.config";
+import { nearestAirportKm, touristsPerResident, wikipediaViews } from "@/lib/placeFacts";
 import { cityPopulation } from "@/lib/population";
 import { isLocated, type LocatedPostcard, type Member, type Postcard } from "@/lib/types";
 
 /**
- * Nicheness: how off-the-beaten-path a postcard's origin is, out of 100.
- *
- *   Small place      up to 40  — a village beats a capital (by population)
- *   Rare country     up to 30  — the group's only card from that country scores full
- *   Far from home    up to 30  — distance to the nearest member's home city
+ * Nicheness: how off-the-beaten-path the town a postcard came from is, out of 100.
+ * Four factors (weights in lib/niche.config.ts): small place, far from a
+ * scheduled airport, few tourists in the country, little-read Wikipedia page.
+ * Missing data is never guessed: that factor is dropped and the rest reweighted.
+ * Depends only on the place, so sending several cards from one country costs nothing.
  */
-export type NicheScore = {
-  card: LocatedPostcard;
-  score: number;
+export type NicheFacts = {
   population: number | null;
-  countryCards: number; // arrived cards from this country, group-wide
-  nearestHomeKm: number;
-  parts: { place: number; rarity: number; remote: number };
+  airportKm: number | null;
+  touristsPerResident: number | null;
+  tourismYear: number | null;
+  wikiTitle: string | null;
+  wikiMonthlyViews: number | null;
 };
 
-const MAX_PLACE = 40;
-const MAX_RARITY = 30;
-const MAX_REMOTE = 30;
-const REMOTE_FULL_KM = 8000;
+export type NicheFactorResult = {
+  factor: NicheFactor;
+  /** 0–1, how niche this factor says the place is (null = no data). */
+  value: number | null;
+  /** Points earned after reweighting (0 when there's no data). */
+  points: number;
+  /** Out of how many points, after reweighting. */
+  max: number;
+};
 
-/** Unknown population counts as middling rather than penalising the card. */
-function placePoints(population: number | null): number {
-  if (population === null) return MAX_PLACE / 2;
-  // ~100 people → 40, ~10k → 24, ~1M → 8, ≥10M → 0
-  const t = (7 - Math.log10(Math.max(population, 1))) / 5;
-  return MAX_PLACE * Math.min(1, Math.max(0, t));
+export type NicheScore = {
+  card: LocatedPostcard;
+  /** Out of 100; null when no factor had data. */
+  score: number | null;
+  facts: NicheFacts;
+  factors: NicheFactorResult[];
+};
+
+const LOOKUPS_AT_ONCE = 3;
+const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
+
+/** 1 at `full` or beyond, 0 at `zero` or beyond, log scale in between. */
+function logScale(v: number, full: number, zero: number): number {
+  const lv = Math.log(Math.max(v, 1e-9));
+  return clamp01((Math.log(zero) - lv) / (Math.log(zero) - Math.log(full)));
 }
 
-export async function nicheScores(cards: Postcard[], members: Member[]): Promise<NicheScore[]> {
+export function scoreFacts(facts: NicheFacts): Pick<NicheScore, "score" | "factors"> {
+  const values: Record<NicheFactor, number | null> = {
+    population: facts.population === null ? null : logScale(facts.population, NICHE.population.full, NICHE.population.zero),
+    remoteness:
+      facts.airportKm === null
+        ? null
+        : clamp01((facts.airportKm - NICHE.remoteness.zero) / (NICHE.remoteness.full - NICHE.remoteness.zero)),
+    tourism:
+      facts.touristsPerResident === null
+        ? null
+        : logScale(facts.touristsPerResident, NICHE.tourism.full, NICHE.tourism.zero),
+    obscurity:
+      facts.wikiMonthlyViews === null ? null : logScale(facts.wikiMonthlyViews, NICHE.obscurity.full, NICHE.obscurity.zero),
+  };
+
+  const order = Object.keys(NICHE.weights) as NicheFactor[];
+  const available = order.filter((f) => values[f] !== null).reduce((t, f) => t + NICHE.weights[f], 0);
+  const factors = order.map((factor) => {
+    const value = values[factor];
+    const max = value === null || !available ? 0 : (NICHE.weights[factor] * 100) / available;
+    return { factor, value, max, points: value === null ? 0 : value * max };
+  });
+  return {
+    score: available ? Math.round(factors.reduce((t, f) => t + f.points, 0)) : null,
+    factors,
+  };
+}
+
+async function placeFacts(c: LocatedPostcard): Promise<NicheFacts> {
+  const [population, wiki] = await Promise.all([
+    cityPopulation(c.from_city, c.from_lat, c.from_lng),
+    wikipediaViews(c.from_city, c.from_country, c.from_lat, c.from_lng),
+  ]);
+  const tourism = touristsPerResident(c.from_country_code);
+  return {
+    population,
+    airportKm: nearestAirportKm(c.from_lat, c.from_lng),
+    touristsPerResident: tourism?.perResident ?? null,
+    tourismYear: tourism?.year ?? null,
+    wikiTitle: wiki?.title ?? null,
+    wikiMonthlyViews: wiki?.monthly ?? null,
+  };
+}
+
+export async function nicheScores(cards: Postcard[]): Promise<NicheScore[]> {
   const arrived = cards.filter((c) => c.status === "received" && c.is_public).filter(isLocated);
 
-  const perCountry = new Map<string, number>();
-  for (const c of arrived) perCountry.set(c.from_country_code, (perCountry.get(c.from_country_code) ?? 0) + 1);
-
-  // One population lookup per distinct city, in parallel.
-  const cities = new Map<string, LocatedPostcard>();
-  for (const c of arrived) if (!cities.has(cityKey(c))) cities.set(cityKey(c), c);
-  const pops = new Map(
-    await Promise.all(
-      [...cities.entries()].map(async ([key, c]) => [key, await cityPopulation(c.from_city, c.from_lat, c.from_lng)] as const),
-    ),
-  );
+  // One set of lookups per distinct town (each cached on the server), a few towns
+  // at a time so the free APIs don't rate-limit us.
+  const towns = new Map<string, LocatedPostcard>();
+  for (const c of arrived) if (!towns.has(cityKey(c))) towns.set(cityKey(c), c);
+  const facts = new Map<string, NicheFacts>();
+  const queue = [...towns.entries()];
+  for (let i = 0; i < queue.length; i += LOOKUPS_AT_ONCE) {
+    const batch = queue.slice(i, i + LOOKUPS_AT_ONCE);
+    for (const [key, f] of await Promise.all(batch.map(async ([key, c]) => [key, await placeFacts(c)] as const)))
+      facts.set(key, f);
+  }
 
   return arrived.map((card) => {
-    const population = pops.get(cityKey(card)) ?? null;
-    const countryCards = perCountry.get(card.from_country_code) ?? 1;
-    const nearestHomeKm = Math.min(
-      ...members.map((m) => haversineKm(card.from_lat, card.from_lng, m.home_lat, m.home_lng)),
-    );
-    const parts = {
-      place: placePoints(population),
-      rarity: MAX_RARITY / countryCards,
-      remote: MAX_REMOTE * Math.min(1, nearestHomeKm / REMOTE_FULL_KM),
-    };
-    return {
-      card,
-      score: Math.round(parts.place + parts.rarity + parts.remote),
-      population,
-      countryCards,
-      nearestHomeKm,
-      parts,
-    };
+    const f = facts.get(cityKey(card))!;
+    return { card, facts: f, ...scoreFacts(f) };
   });
 }
 
@@ -73,8 +116,14 @@ export async function nicheScores(cards: Postcard[], members: Member[]): Promise
 export function nicheLeaders<T extends Member>(members: T[], scores: NicheScore[]) {
   return members
     .map((m) => {
-      const mine = scores.filter((s) => s.card.sender_id === m.id).sort((a, b) => b.score - a.score);
-      return { member: m, best: mine[0] ?? null, average: mine.length ? mine.reduce((t, s) => t + s.score, 0) / mine.length : 0 };
+      const mine = scores
+        .filter((s) => s.card.sender_id === m.id && s.score !== null)
+        .sort((a, b) => b.score! - a.score!);
+      return {
+        member: m,
+        best: mine[0] ?? null,
+        average: mine.length ? mine.reduce((t, s) => t + s.score!, 0) / mine.length : 0,
+      };
     })
     .sort((a, b) => (b.best?.score ?? -1) - (a.best?.score ?? -1) || b.average - a.average);
 }
