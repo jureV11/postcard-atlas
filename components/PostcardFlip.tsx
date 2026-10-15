@@ -42,22 +42,32 @@ export function PostcardFlip({
 
   return (
     <div className="space-y-2">
-      <button
-        type="button"
+      {/* Not a <button>: Firefox flattens 3D transforms inside buttons, which breaks the flip. */}
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setFlipped((f) => !f)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setFlipped((f) => !f);
+          }
+        }}
         aria-label={flipped ? "Turn to the front" : "Turn over to the back"}
         aria-pressed={flipped}
-        className="card-bump block w-full [perspective:1800px] focus-visible:outline-none"
+        className="card-bump block w-full cursor-pointer select-none rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink/40"
       >
-        <div
-          className={`relative aspect-[3/2] w-full transition-transform duration-700 ease-[cubic-bezier(.3,.7,.2,1)] [transform-style:preserve-3d] motion-reduce:duration-0 ${
-            flipped ? "[transform:rotateY(180deg)]" : ""
-          }`}
-        >
-          <Face url={frontUrl} alt={`${alt} — front`} label="Front" size={size} postmark={postmark} />
-          <Face url={backUrl} alt={`${alt} — back`} label="Back" size={size} back />
+        <div className="[perspective:1800px]">
+          <div
+            className={`relative aspect-[3/2] w-full transition-transform duration-700 ease-[cubic-bezier(.3,.7,.2,1)] [transform-style:preserve-3d] motion-reduce:duration-0 ${
+              flipped ? "[transform:rotateY(180deg)]" : "[transform:rotateY(0deg)]"
+            }`}
+          >
+            <Face url={frontUrl} alt={`${alt} — front`} label="Front" size={size} postmark={postmark} />
+            <Face url={backUrl} alt={`${alt} — back`} label="Back" size={size} back />
+          </div>
         </div>
-      </button>
+      </div>
       <p className="text-center text-xs text-ink-soft">
         Tap the card to turn it over <span aria-hidden="true">↻</span>
       </p>

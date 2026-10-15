@@ -55,9 +55,9 @@ export function AddressesPanel({
         type="button"
         onClick={toggle}
         aria-expanded="false"
-        className="flex w-full items-center justify-between gap-2 rounded-2xl border border-ink/10 bg-white/75 px-4 py-3 text-sm font-medium transition hover:bg-white lg:h-full lg:w-11 lg:flex-col lg:justify-start lg:px-0 lg:py-4"
+        className="flex w-full items-center justify-between gap-2 rounded-2xl border border-ink/10 bg-white/75 px-4 py-3 text-sm font-medium whitespace-nowrap transition hover:bg-white lg:w-auto"
       >
-        <span className="lg:[writing-mode:vertical-rl] lg:rotate-180">Addresses</span>
+        <span>Addresses</span>
         <span aria-hidden="true" className="text-ink-soft">
           <span className="lg:hidden">▾</span>
           <span className="hidden lg:inline">›</span>
