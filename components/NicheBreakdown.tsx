@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import type { NicheFacts, NicheFactorResult } from "@/lib/niche";
 import type { NicheFactor } from "@/lib/niche.config";
+import { formatCount } from "@/lib/utils";
 
 const LABELS: Record<NicheFactor, string> = {
   population: "Small place",
@@ -104,13 +105,6 @@ function describe(factor: NicheFactor, f: NicheFacts, country: string): ReactNod
         </>
       );
   }
-}
-
-export function formatCount(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`;
-  if (n >= 10_000) return `${Math.round(n / 1_000)}k`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-  return String(n);
 }
 
 function formatRatio(r: number): string {

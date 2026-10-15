@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
 import { Flag } from "@/components/Flag";
-import { formatCount, NicheRow } from "@/components/NicheBreakdown";
+import { NicheRow } from "@/components/NicheBreakdown";
 import { formatKm } from "@/lib/geo";
 import { nicheLeaders, nicheScores, type NicheScore } from "@/lib/niche";
 import { NICHE } from "@/lib/niche.config";
@@ -9,6 +9,7 @@ import { loadGroupData } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
 import { computeStats, rankMembers } from "@/lib/stats";
 import type { MemberWithAvatar } from "@/lib/types";
+import { formatCount } from "@/lib/utils";
 
 const MEDALS: Record<number, string> = { 1: "#d4a017", 2: "#9aa3a8", 3: "#b07a4a" };
 const MAX_FLAGS = 10;

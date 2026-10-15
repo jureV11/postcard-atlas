@@ -13,3 +13,11 @@ export function errorMessage(err: unknown): string {
   if (err && typeof err === "object" && "message" in err) return String(err.message);
   return "Something went wrong";
 }
+
+/** 1234 → "1.2k", 56789 → "57k", 2100000 → "2.1M". */
+export function formatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`;
+  if (n >= 10_000) return `${Math.round(n / 1_000)}k`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return String(n);
+}
