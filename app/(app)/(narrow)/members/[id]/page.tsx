@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProfileMap } from "@/components/atlas/ProfileMap";
 import { Avatar } from "@/components/Avatar";
+import { FlagBurst, profileFlag } from "@/components/Confetti";
 import { Flag } from "@/components/Flag";
 import { Passport } from "@/components/Passport";
 import { PostcardTile } from "@/components/PostcardTile";
@@ -43,7 +44,9 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
     <div className="space-y-8">
       {/* Header */}
       <section className="flex items-center gap-4">
-        <Avatar name={person.display_name} color={person.color} url={person.avatar_url} size={72} />
+        <FlagBurst flag={profileFlag(person.display_name, person.home_country_code)} label="Throw some flags">
+          <Avatar name={person.display_name} color={person.color} url={person.avatar_url} size={72} />
+        </FlagBurst>
         <div className="min-w-0 flex-1">
           <h1 className="truncate font-display text-3xl font-semibold tracking-tight">{person.display_name}</h1>
           <p className="flex items-center gap-1.5 text-ink-soft">

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { setPostcardAddress } from "@/app/(app)/address-actions";
 import { AddressSelect, currentAddressId } from "@/components/AddressSelect";
 import { CitySearch } from "@/components/CitySearch";
+import { confetti, flagUrl } from "@/components/Confetti";
 import { MemberPicker } from "@/components/MemberPicker";
 import { todayLocal } from "@/lib/dates";
 import type { City } from "@/lib/geo";
@@ -61,6 +62,8 @@ export function NewPostcardForm({ recipients, addresses }: { recipients: MemberW
         }
       }
     }
+    // Celebrate: paper confetti plus the flag of where it was sent from (keeps going on the next page).
+    confetti({ flags: [flagUrl(from.countryCode)], flagCount: 10, paperCount: 70 });
     router.push(ids.length === 1 ? `/postcards/${ids[0]}` : "/postcards");
   }
 
