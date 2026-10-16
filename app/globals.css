@@ -10,6 +10,7 @@
   --font-display: var(--font-fraunces), Georgia, serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  --font-hand: var(--font-caveat), "Segoe Print", cursive;
 }
 
 html {
@@ -129,4 +130,57 @@ body {
   .error {
     @apply rounded-xl border border-stamp/25 bg-stamp/8 px-3.5 py-2.5 text-sm text-stamp;
   }
+}
+
+/* ── Postal touches (Postcards tab) ─────────────────────────────────────── */
+
+/* Airmail envelope edge: red / blue diagonal stripes around the paper */
+.airmail {
+  padding: 7px;
+  border-radius: 14px;
+  background: repeating-linear-gradient(
+    -45deg,
+    #c2503a 0 14px,
+    #fffdf7 14px 22px,
+    #2e5aa8 22px 36px,
+    #fffdf7 36px 44px
+  );
+  box-shadow:
+    0 1px 2px rgb(42 38 34 / 0.08),
+    0 18px 40px -22px rgb(42 38 34 / 0.45);
+}
+.airmail > .paper {
+  border-radius: 9px;
+}
+
+/* Card stock: warm paper with a faint grain */
+.paper {
+  background-color: #fffdf7;
+  background-image:
+    radial-gradient(rgb(42 38 34 / 0.035) 1px, transparent 1px),
+    radial-gradient(rgb(42 38 34 / 0.025) 1px, transparent 1px);
+  background-size: 7px 7px, 11px 11px;
+  background-position: 0 0, 3px 5px;
+}
+
+/* Ruled writing lines behind handwritten text */
+.ruled {
+  background-image: linear-gradient(transparent calc(100% - 1px), rgb(46 90 168 / 0.22) 0);
+  background-size: 100% 2.1rem;
+  line-height: 2.1rem;
+}
+
+/* Rubber date stamp */
+.date-stamp {
+  display: inline-block;
+  border: 2px solid currentColor;
+  border-radius: 6px;
+  padding: 0.15rem 0.6rem;
+  font: 600 0.8rem/1.4 var(--font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-stamp);
+  transform: rotate(-2deg);
+  opacity: 0.9;
+  mask-image: radial-gradient(circle at 30% 40%, #000 60%, rgb(0 0 0 / 0.75) 100%);
 }

@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { Flag } from "@/components/Flag";
 import { GroupStats } from "@/components/GroupStats";
-import { PostcardTile } from "@/components/PostcardTile";
-import { formatDate } from "@/lib/dates";
+import { PostcardsBrowser, type BrowserGroup } from "@/components/PostcardsBrowser";
+import { formatDate, monthName } from "@/lib/dates";
 import { groupByMonth, loadGroupData, type SortOrder } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
-import { groupStats } from "@/lib/stats";
+import { groupCountries, groupStats } from "@/lib/stats";
 import { signPaths } from "@/lib/storage";
+import { fold } from "@/lib/utils";
 
 export default async function PostcardsPage({ searchParams }: { searchParams: Promise<{ sort?: string }> }) {
   const sort: SortOrder = (await searchParams).sort === "oldest" ? "oldest" : "newest";
@@ -19,6 +20,34 @@ export default async function PostcardsPage({ searchParams }: { searchParams: Pr
   const received = postcards.filter((c) => c.status === "received");
   const fronts = await signPaths(supabase, "postcards", received.map((c) => c.front_path));
   const months = groupByMonth(received, sort);
+  // Everything a card can be searched by — only what this viewer can already see.
+  const groups: BrowserGroup[] = months.map((g) => ({
+    key: g.key,
+    items: g.cards.map((c) => {
+      const sender = membersById.get(c.sender_id ?? "");
+      const recipient = membersById.get(c.recipient_id);
+      return {
+        card: c,
+        frontUrl: c.front_path ? (fronts.get(c.front_path) ?? null) : null,
+        sender,
+        recipient,
+        search: fold(
+          [
+            c.from_city,
+            c.from_country,
+            c.from_country_code,
+            sender?.display_name,
+            recipient?.display_name,
+            monthName(c.sent_on),
+            c.sent_on.slice(0, 4),
+            c.message,
+          ]
+            .filter(Boolean)
+            .join(" "),
+        ),
+      };
+    }),
+  }));
 
   return (
     <div className="space-y-8">
@@ -37,7 +66,7 @@ export default async function PostcardsPage({ searchParams }: { searchParams: Pr
         </div>
       </div>
 
-      <GroupStats stats={stats} membersById={membersById} />
+      <GroupStats stats={stats} countries={groupCountries(postcards).length} membersById={membersById} />
 
       {myOnTheWay.length > 0 && (
         <section className="space-y-3">
@@ -45,7 +74,8 @@ export default async function PostcardsPage({ searchParams }: { searchParams: Pr
             <h2 className="font-display text-xl font-semibold">Your postcards on the way</h2>
             <p className="text-sm text-ink-soft">Only you can see these — nobody else knows they&apos;re coming.</p>
           </div>
-          <ul className="divide-y divide-ink/10 overflow-hidden rounded-2xl border border-ink/10 bg-white/75">
+          <div className="airmail">
+          <ul className="paper divide-y divide-ink/10 overflow-hidden">
             {myOnTheWay.map((c) => {
               const recipient = membersById.get(c.recipient_id);
               return (
@@ -53,7 +83,7 @@ export default async function PostcardsPage({ searchParams }: { searchParams: Pr
                   <Link href={`/postcards/${c.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-paper/60">
                     {c.from_country_code && <Flag code={c.from_country_code} size={20} />}
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">
+                      <span className="block truncate font-hand text-xl leading-tight">
                         To <span style={{ color: recipient?.color }}>{recipient?.display_name}</span>
                       </span>
                       <span className="block truncate text-xs text-ink-soft">
@@ -66,6 +96,7 @@ export default async function PostcardsPage({ searchParams }: { searchParams: Pr
               );
             })}
           </ul>
+          </div>
         </section>
       )}
 
@@ -98,27 +129,7 @@ export default async function PostcardsPage({ searchParams }: { searchParams: Pr
             </p>
           </div>
         ) : (
-          months.map((g) => (
-            <div key={g.key} className="space-y-3">
-              <h3 className="flex items-baseline gap-2 border-b border-ink/10 pb-1.5 font-display text-lg font-semibold">
-                {g.label}
-                <span className="font-sans text-xs font-normal text-ink-soft">
-                  {g.cards.length} {g.cards.length === 1 ? "postcard" : "postcards"} sent
-                </span>
-              </h3>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {g.cards.map((c) => (
-                  <PostcardTile
-                    key={c.id}
-                    card={c}
-                    frontUrl={c.front_path ? (fronts.get(c.front_path) ?? null) : null}
-                    sender={membersById.get(c.sender_id ?? "")}
-                    recipient={membersById.get(c.recipient_id)}
-                  />
-                ))}
-              </div>
-            </div>
-          ))
+          <PostcardsBrowser groups={groups} total={received.length} />
         )}
       </section>
     </div>

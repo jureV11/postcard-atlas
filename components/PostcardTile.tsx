@@ -1,10 +1,18 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { Flag } from "@/components/Flag";
 import { MysteryGlobe } from "@/components/Mystery";
 import { formatDate } from "@/lib/dates";
 import type { MemberWithAvatar, Postcard } from "@/lib/types";
 
-/** Grid tile for a postcard: front image, a placeholder, or a sealed mystery card. */
+/** A small, steady tilt per card (from its id), so the grid looks like prints laid on a table. */
+function tiltOf(id: string): number {
+  let h = 0;
+  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) | 0;
+  return ((Math.abs(h) % 7) - 3) * 0.6; // -1.8° … 1.8°
+}
+
+/** A postcard as a photo print: white border, a flag stamp in the corner, a handwritten caption. */
 export function PostcardTile({
   card,
   frontUrl,
@@ -20,17 +28,26 @@ export function PostcardTile({
   return (
     <Link
       href={`/postcards/${card.id}`}
-      className="group block overflow-hidden rounded-xl border border-ink/10 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+      style={{ "--tilt": `${tiltOf(card.id)}deg` } as CSSProperties}
+      className="group block rotate-[var(--tilt)] rounded-[3px] bg-white p-1.5 pb-0 shadow-[0_1px_2px_rgb(42_38_34/0.12),0_10px_24px_-14px_rgb(42_38_34/0.45)] transition duration-200 hover:z-10 hover:-translate-y-1 hover:rotate-0 hover:shadow-[0_2px_4px_rgb(42_38_34/0.12),0_18px_32px_-14px_rgb(42_38_34/0.5)] focus-visible:rotate-0"
     >
-      <div className="relative aspect-[3/2] bg-paper-deep">
+      <div className="relative aspect-[3/2] overflow-hidden rounded-[2px] bg-paper-deep">
         {frontUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={frontUrl} alt={`Postcard from ${card.from_city}`} className="size-full object-cover" loading="lazy" />
         ) : (
-          <div className="flex size-full flex-col items-center justify-center gap-1 text-ink-soft">
+          <div className="paper flex size-full flex-col items-center justify-center gap-1 text-ink-soft">
             {cc ? <Flag code={cc} size={28} /> : <MysteryGlobe size={30} />}
-            <span className="text-xs">{card.revealed ? "No photo yet" : "Sealed until it arrives"}</span>
+            <span className="font-hand text-lg leading-none">
+              {card.revealed ? "photo coming soon" : "sealed until it arrives"}
+            </span>
           </div>
+        )}
+        {cc && frontUrl && (
+          // The country as a tiny perforated stamp in the corner
+          <span className="absolute right-1.5 top-1.5 rotate-6 rounded-[1px] bg-white p-[3px] shadow-[0_1px_2px_rgb(0_0_0/0.3)] outline outline-1 outline-dashed outline-offset-[-2px] outline-ink/20">
+            <Flag code={cc} size={18} />
+          </span>
         )}
         {card.status === "in_transit" && (
           <span className="absolute left-2 top-2 rounded-full bg-ink/75 px-2 py-0.5 text-[11px] font-medium text-paper">
@@ -46,12 +63,12 @@ export function PostcardTile({
           </span>
         )}
       </div>
-      <div className="space-y-0.5 p-2.5">
-        <p className="flex items-center gap-1.5 truncate text-sm font-medium">
-          {cc ? <Flag code={cc} size={14} /> : <MysteryGlobe size={14} />}
+      <div className="px-1 pb-2 pt-1.5">
+        <p className="flex items-center gap-1.5 truncate font-hand text-[1.3rem] leading-tight">
+          {!frontUrl && (cc ? <Flag code={cc} size={13} /> : <MysteryGlobe size={13} />)}
           {card.from_city ?? "Somewhere in the world"}
         </p>
-        <p className="truncate text-xs text-ink-soft">
+        <p className="truncate text-[11px] text-ink-soft">
           <span style={{ color: sender?.color }}>{sender?.display_name ?? "?"}</span>
           {" → "}
           <span style={{ color: recipient?.color }}>{recipient?.display_name ?? "?"}</span>
