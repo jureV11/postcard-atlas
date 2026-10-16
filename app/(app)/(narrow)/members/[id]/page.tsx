@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProfileMap } from "@/components/atlas/ProfileMap";
+import { Achievements } from "@/components/Achievements";
 import { Avatar } from "@/components/Avatar";
 import { FlagBurst } from "@/components/Confetti";
 import { profileFlag } from "@/lib/flags";
@@ -8,6 +9,7 @@ import { Flag } from "@/components/Flag";
 import { Passport } from "@/components/Passport";
 import { PostcardTile } from "@/components/PostcardTile";
 import { StatTile } from "@/components/StatTile";
+import { achievementsFor } from "@/lib/achievements";
 import type { MapCard } from "@/lib/atlas";
 import { formatDate } from "@/lib/dates";
 import { formatKm } from "@/lib/geo";
@@ -100,6 +102,11 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
           )}
         </section>
       )}
+
+      <Achievements
+        title={isMe ? "Your achievements" : `${firstName}'s achievements`}
+        items={achievementsFor(person, stats, postcards, membersById)}
+      />
 
       {/* Passport: one ink stamp per country */}
       <section className="space-y-3">
