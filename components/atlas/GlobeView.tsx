@@ -31,8 +31,8 @@ type ArcDatum = {
 
 type PointDatum =
   | { kind: "city"; lat: number; lng: number; city: CityGroup; dim: boolean }
-  | { kind: "home"; lat: number; lng: number; member: MemberWithAvatar; dim: boolean }
-  | { kind: "old"; lat: number; lng: number; old: OldHome; member: MemberWithAvatar; dim: boolean };
+  | { kind: "home"; lat: number; lng: number; member: MemberWithAvatar; dim: boolean; style: "house" | "dot" }
+  | { kind: "old"; lat: number; lng: number; old: OldHome; member: MemberWithAvatar; dim: boolean; style: "house" | "dot" };
 
 export default function GlobeView({
   cards,
@@ -53,7 +53,10 @@ export default function GlobeView({
   involvedMembers,
   focusCities,
   routeColors,
+  homeStyle = "house",
 }: {
+  /** Home markers: little houses with their photo, or the classic round dots. */
+  homeStyle?: "house" | "dot";
   /** Flag routes: colours of each origin country's flag (lower-case code → colours). */
   routeColors?: Map<string, string[]>;
   roles?: Map<string, RouteRole>;
@@ -159,6 +162,7 @@ export default function GlobeView({
         lng: member.home_lng,
         member,
         dim: !!filterId && !involved.has(member.id),
+        style: homeStyle,
       })),
       ...oldHomes.map((old) => ({
         kind: "old" as const,
@@ -167,9 +171,10 @@ export default function GlobeView({
         old,
         member: old.member,
         dim: !!filterId && !involved.has(old.member.id),
+        style: homeStyle,
       })),
     ],
-    [cities, members, oldHomes, filterId, involved, focusCities],
+    [cities, members, oldHomes, filterId, involved, focusCities, homeStyle],
   );
 
   // Pulsing rings at the homes of people with a card on its way.
@@ -330,21 +335,35 @@ export default function GlobeView({
 /** A pin dot with a name label (labels show via the `globe-labels` class when zoomed in). */
 function pinElement(p: PointDatum, onSelect: (s: Selection) => void): HTMLElement {
   const isHome = p.kind !== "city";
-  const size = p.kind === "home" ? 28 : 24;
+  const dotStyle = isHome && p.style === "dot";
+  const size = p.kind === "city" ? 19 : dotStyle ? (p.kind === "home" ? 13 : 10) : p.kind === "home" ? 21 : 17;
 
   const wrap = document.createElement("div");
   Object.assign(wrap.style, {
     position: "relative",
     width: `${size}px`,
     height: `${isHome ? size : 16}px`, // stamps are landscape
-    transform: isHome ? "translateY(-2px)" : "",
+    transform: isHome && !dotStyle ? "translateY(-2px)" : "",
     transition: "opacity 150ms",
   } satisfies Partial<CSSStyleDeclaration>);
   if (p.dim) wrap.dataset.dim = "1";
 
   const dot = document.createElement("button");
   dot.type = "button";
-  if (isHome) {
+  if (dotStyle) {
+    // Classic round dot; an old address is a dashed ring.
+    Object.assign(dot.style, {
+      display: "block",
+      width: "100%",
+      height: "100%",
+      borderRadius: "9999px",
+      background: p.kind === "home" ? p.member.color : "#fffdf7",
+      border: p.kind === "home" ? "2.5px solid #fff" : `1.5px dashed ${p.member.color}`,
+      boxShadow: p.kind === "home" ? "0 1px 3px rgba(42,38,34,.35)" : "",
+      cursor: "pointer",
+      padding: "0",
+    } satisfies Partial<CSSStyleDeclaration>);
+  } else if (isHome) {
     // A little house with their photo or initial; an old address is hollow and dashed.
     Object.assign(dot.style, {
       display: "block",

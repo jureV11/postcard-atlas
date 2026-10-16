@@ -25,6 +25,7 @@ const VIEW_KEY = "atlas-view-v2";
 const ROUTES_KEY = "atlas-routes";
 const COLOUR_KEY = "atlas-colour";
 const FLAG_ROUTES_KEY = "atlas-flag-routes";
+const HOUSES_KEY = "atlas-houses";
 
 function readPref(key: string): string | null {
   try {
@@ -44,6 +45,7 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
   const [showRoutes, setShowRoutes] = useState(false);
   const [colourful, setColourful] = useState(true);
   const [flagRoutes, setFlagRoutes] = useState(true); // routes in the origin flag's colours
+  const [houses, setHouses] = useState(true); // home markers as houses (or classic dots)
   const [filterId, setFilterId] = useState<string | null>(null);
   // With a person selected: show the cards they sent, received, or both.
   const [directions, setDirections] = useState({ sent: true, received: true });
@@ -55,6 +57,7 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
     setShowRoutes(readPref(ROUTES_KEY) === "1");
     setColourful(readPref(COLOUR_KEY) !== "0");
     setFlagRoutes(readPref(FLAG_ROUTES_KEY) !== "0");
+    setHouses(readPref(HOUSES_KEY) !== "0");
   }, []);
   function changeView(v: View) {
     setView(v);
@@ -65,6 +68,11 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
     setShowRoutes(next);
     savePref(ROUTES_KEY, next ? "1" : "0");
     if (!next && selection?.kind === "card") setSelection(null); // its route just disappeared
+  }
+  function toggleHouses() {
+    const next = !houses;
+    setHouses(next);
+    savePref(HOUSES_KEY, next ? "1" : "0");
   }
   function toggleFlagRoutes() {
     const next = !flagRoutes;
@@ -126,6 +134,7 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
     showArcs: showRoutes || replay.active || filterId !== null,
     mapStyle: colourful ? COLOURFUL : PLAIN,
     routeColors: flagRoutes ? routeColors : undefined,
+    homeStyle: houses ? ("house" as const) : ("dot" as const),
     // Replay: how far along its route each card is, so routes grow in real travel time.
     progress: replay.active ? replay.progress : undefined,
   };
@@ -209,6 +218,12 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
                 hint="Colour each route like the flag of the country it was sent from"
               />
             )}
+            <Toggle
+              checked={houses}
+              onChange={toggleHouses}
+              label="Houses"
+              hint="Show homes as little houses with photos, or as plain dots"
+            />
             <Toggle checked={colourful} onChange={toggleColour} label="Colour" hint="Colourful atlas style" />
           </div>
         )}

@@ -15,7 +15,8 @@ import { HOUSE_PATH, HOUSE_WINDOW, initialOf } from "./house";
 
 const LABEL_HALO = "#fbf8f2";
 const INK = "#2a2622";
-const HOME_R = 12; // screen px, roughly the house's half-height
+const HOME_R = 9; // screen px, roughly a home marker's half-height
+const HOUSE_SCALE = 0.95; // house marker size (1 = 22px tall)
 const CITY_R = 3.5;
 const LABEL_ZOOM = 3; // show city/member names from this zoom level
 const SMALL_COUNTRY_PX2 = 60; // countries smaller than this on screen get a highlight circle
@@ -40,7 +41,10 @@ export function FlatMap({
   focusCities,
   progress,
   routeColors,
+  homeStyle = "house",
 }: {
+  /** Home markers: little houses with their photo, or the classic round dots. */
+  homeStyle?: "house" | "dot";
   /** Flag routes: colours of each origin country's flag (lower-case code → colours). */
   routeColors?: Map<string, string[]>;
   /** Replay: how far along its route each card is (0–1). Routes are drawn that far. */
@@ -539,13 +543,25 @@ export function FlatMap({
                     onSelect({ kind: "member", id: o.member.id });
                   }}
                 >
-                  <g transform={`translate(${p[0]},${p[1]}) scale(${1.1 / k})`}>
-                    <HousePin member={o.member} old />
-                  </g>
+                  {homeStyle === "house" ? (
+                    <g transform={`translate(${p[0]},${p[1]}) scale(${(HOUSE_SCALE * 0.8) / k})`}>
+                      <HousePin member={o.member} old />
+                    </g>
+                  ) : (
+                    <circle
+                      cx={p[0]}
+                      cy={p[1]}
+                      r={4 / k}
+                      fill="#fffdf7"
+                      stroke={o.member.color}
+                      strokeWidth={1.6 / k}
+                      strokeDasharray={`${2 / k} ${1.5 / k}`}
+                    />
+                  )}
                   <title>
                     {o.member.display_name} · used to live in {o.city} · {o.cards} {o.cards === 1 ? "card" : "cards"} sent there
                   </title>
-                  {showLabels && label(p[0], p[1], `${o.member.display_name} · ${o.city} (before)`, { dx: 14 })}
+                  {showLabels && label(p[0], p[1], `${o.member.display_name} · ${o.city} (before)`, { dx: homeStyle === "house" ? 11 : 8 })}
                 </g>
               );
             })}
@@ -555,7 +571,7 @@ export function FlatMap({
               if (!p) return null;
               const dim = !!filterId && !involved.has(m.id);
               const selected = m.id === selectedMember;
-              const r = HOME_R / k;
+              const r = (homeStyle === "house" ? HOME_R : selected ? 7 : 5.5) / k;
               return (
                 <g
                   key={m.id}
@@ -573,13 +589,20 @@ export function FlatMap({
                       <animate attributeName="stroke-opacity" values="0.9;0" dur="1.8s" repeatCount="indefinite" />
                     </circle>
                   )}
-                  <g transform={`translate(${p[0]},${p[1]}) scale(${(selected ? 1.6 : 1.3) / k})`}>
-                    <HousePin member={m} />
-                  </g>
+                  {homeStyle === "house" ? (
+                    <g transform={`translate(${p[0]},${p[1]}) scale(${(HOUSE_SCALE * (selected ? 1.25 : 1)) / k})`}>
+                      <HousePin member={m} />
+                    </g>
+                  ) : (
+                    <>
+                      <circle cx={p[0]} cy={p[1]} r={r} fill={m.color} stroke="#fff" strokeWidth={2 / k} />
+                      <circle cx={p[0]} cy={p[1]} r={r * 0.32} fill="#fff" />
+                    </>
+                  )}
                   <title>
                     {m.display_name} · home in {m.home_city}
                   </title>
-                  {(showLabels || selected) && label(p[0], p[1], `${m.display_name} · ${m.home_city}`, { bold: true, dx: 16 })}
+                  {(showLabels || selected) && label(p[0], p[1], `${m.display_name} · ${m.home_city}`, { bold: true, dx: homeStyle === "house" ? 13 : 9.5 })}
                 </g>
               );
             })}
