@@ -14,6 +14,7 @@ import { visibleTo } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
 import { signAvatarUrls, signPaths } from "@/lib/storage";
 import { destinationOf, isLocated, type Member, type Postcard } from "@/lib/types";
+import { LostButton } from "./LostButton";
 import { PhotosEditor } from "./PhotosEditor";
 
 export default async function PostcardPage({
@@ -44,6 +45,8 @@ export default async function PostcardPage({
   const isSender = card.sender_id === member.id;
   const isRecipient = card.recipient_id === member.id;
   const inTransit = card.status === "in_transit";
+  const lost = card.status === "lost";
+  const arrived = card.status === "received";
   const today = todayLocal();
 
   // Anyone who can see a card (visibleTo above) sees all of it.
@@ -54,7 +57,7 @@ export default async function PostcardPage({
   const to = destinationOf(card, recipient);
   const distance = to ? haversineKm(card.from_lat, card.from_lng, to.lat, to.lng) : null;
   const travelDays = card.received_on ? daysBetween(card.sent_on, card.received_on) : daysBetween(card.sent_on, today);
-  const canEditPhotos = isRecipient && !inTransit; // photos are the recipient's job
+  const canEditPhotos = isRecipient && arrived; // photos are the recipient's job
   // Nicheness: only for delivered, public cards — the same ones the leaderboard scores.
   const [niche] = await nicheScores([card]);
 
@@ -64,7 +67,7 @@ export default async function PostcardPage({
         <Link href="/postcards" className="text-sm text-ink-soft hover:text-ink">
           ← Postcards
         </Link>
-        {(isSender || (isRecipient && !inTransit)) && (
+        {(isSender || (isRecipient && arrived)) && (
           <Link href={`/postcards/${card.id}/edit`} className="btn-ghost min-h-9 px-4">
             ✎ Edit
           </Link>
@@ -95,14 +98,29 @@ export default async function PostcardPage({
         />
       </div>
 
+      {lost && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border-2 border-dashed border-stamp/50 bg-stamp/5 px-4 py-3 text-sm">
+          <span className="date-stamp !text-xs">Lost</span>
+          <p className="min-w-0 flex-1">
+            <strong>Lost in the post.</strong> Sent {formatDate(card.sent_on)}
+            {card.lost_on && <>, given up on {formatDate(card.lost_on)}</>}. It never reached {recipient?.display_name}.
+            {isRecipient && " If it turns up after all, use “A postcard arrived!” as usual."}
+          </p>
+          {isSender && <LostButton id={card.id} lost />}
+        </div>
+      )}
+
       {inTransit && isSender && (
         <p className="rounded-xl bg-paper-deep px-4 py-3 text-sm">
           <strong>In transit.</strong> Only you can see this — nobody else knows it&apos;s coming, not even{" "}
           {recipient?.display_name}. When it lands, {recipient?.display_name} photographs the front and back.
+          <span className="mt-2 block">
+            <LostButton id={card.id} lost={false} />
+          </span>
         </p>
       )}
 
-      {!inTransit && !card.is_public && (
+      {arrived && !card.is_public && (
         <p className="rounded-xl bg-paper-deep px-4 py-3 text-sm">
           <strong>Only {isSender ? `you and ${recipient?.display_name}` : `you and ${sender?.display_name}`} can see this for now.</strong>{" "}
           {isSender ? "Your" : `${sender?.display_name}'s`} other postcards from the same trip haven&apos;t all arrived yet — the
@@ -120,7 +138,7 @@ export default async function PostcardPage({
           />
         </div>
       ) : (
-        !inTransit &&
+        arrived &&
         !isRecipient && (
           <div className="mx-auto flex aspect-[3/2] max-w-2xl flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-ink/15 text-ink-soft">
             <Flag code={card.from_country_code} size={36} />
@@ -152,14 +170,16 @@ export default async function PostcardPage({
           </div>
           <div>
             <dt className="text-ink-soft">{card.received_on ? "Received" : "Status"}</dt>
-            <dd className="font-medium">{card.received_on ? formatDate(card.received_on) : "In transit"}</dd>
+            <dd className="font-medium">
+              {card.received_on ? formatDate(card.received_on) : lost ? "Lost" : "In transit"}
+            </dd>
           </div>
           <div>
             <dt className="text-ink-soft">Distance</dt>
             <dd className="font-medium">{distance !== null ? formatKm(distance) : "—"}</dd>
           </div>
         </dl>
-        {travelDays > 0 && (
+        {travelDays > 0 && !lost && (
           <p className="text-sm text-ink-soft sm:col-span-2">
             {card.received_on ? `Took ${travelDays} days to arrive.` : `${travelDays} days in transit so far.`}
           </p>

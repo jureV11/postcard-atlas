@@ -27,7 +27,7 @@ export type Member = {
 
 export type MemberWithAvatar = Member & { avatar_url: string | null };
 
-export type PostcardStatus = "in_transit" | "received";
+export type PostcardStatus = "in_transit" | "received" | "lost";
 
 /**
  * A row of the `postcard_feed` view. While a card is in transit, who sent it
@@ -68,6 +68,8 @@ export type Postcard = {
   to_country_code?: string | null;
   to_lat?: number | null;
   to_lng?: number | null;
+  /** When the sender gave up on it (status "lost", migration 0015). */
+  lost_on?: string | null;
 };
 
 /** One of a member's addresses (up to 5 active; exactly one is current). */

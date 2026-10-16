@@ -11,6 +11,7 @@ import { countryKeyFromFeature } from "@/lib/countries";
 import { PLAIN, type MapStyle } from "@/lib/mapStyle";
 import { destinationOf, type MemberWithAvatar } from "@/lib/types";
 import { loadWorld, type Country } from "@/lib/world";
+import { BIRD, isWater, LOST_AT, lostMarkup } from "./bird";
 import { HOUSE_PATH, HOUSE_WINDOW, initialOf } from "./house";
 
 const LABEL_HALO = "#fbf8f2";
@@ -187,12 +188,20 @@ export function FlatMap({
       const cy = (y1 + y2) / 2 + ny * bend;
       // Bird flight time: longer routes take longer, within reason.
       const duration = Math.min(9, Math.max(3, len / 70));
+      // Lost in the post: drawn part-way, ending where it went missing (sea or land).
+      let lost: { d: string; x: number; y: number; water: boolean } | null = null;
+      if (c.status === "lost") {
+        const part = partialCurve({ x1, y1, cx, cy, x2, y2 }, LOST_AT);
+        const at = projection?.invert?.([part.x, part.y]);
+        lost = { d: part.d, x: part.x, y: part.y, water: !!at && isWater(world, at as [number, number]) };
+      }
       return [
         {
           card: c,
           color: sender?.color ?? INK,
           d: `M${x1},${y1} Q${cx},${cy} ${x2},${y2}`,
           curve: { x1, y1, cx, cy, x2, y2 },
+          lost,
           end: [x2, y2] as const,
           angle: (Math.atan2(y2 - cy, x2 - cx) * 180) / Math.PI,
           duration,
@@ -200,7 +209,7 @@ export function FlatMap({
         },
       ];
     });
-  }, [cards, membersById, project, showArcs, roles]);
+  }, [cards, membersById, project, showArcs, roles, projection, world]);
 
   // ─── Zoom & pan ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -413,6 +422,48 @@ export function FlatMap({
               const highlighted = role === "out" || role === "in";
               const opacity = faded ? 0.14 : selectedCardId && !selected ? 0.45 : 0.95;
               const flag = routeColors?.get(a.card.from_country_code.toLowerCase());
+
+              if (a.lost) {
+                return (
+                  <g key={a.card.id}>
+                    <path
+                      d={a.lost.d}
+                      fill="none"
+                      stroke={INK}
+                      strokeOpacity={faded ? 0.12 : 0.45}
+                      strokeWidth={selected ? 2.5 : 1.6}
+                      strokeDasharray="2 5"
+                      strokeLinecap="round"
+                      vectorEffect="non-scaling-stroke"
+                      pointerEvents="none"
+                    />
+                    <g
+                      transform={`translate(${a.lost.x},${a.lost.y}) scale(${(selected ? 2 : 1.7) / k})`}
+                      opacity={faded ? 0.3 : 1}
+                      pointerEvents="none"
+                      dangerouslySetInnerHTML={{ __html: lostMarkup(a.color, a.lost.water) }}
+                    />
+                    <path
+                      d={a.lost.d}
+                      fill="none"
+                      stroke="transparent"
+                      strokeWidth={16}
+                      vectorEffect="non-scaling-stroke"
+                      pointerEvents="stroke"
+                      className="cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelect({ kind: "card", id: a.card.id });
+                      }}
+                    >
+                      <title>
+                        {membersById.get(a.card.sender_id)?.display_name} → {membersById.get(a.card.recipient_id)?.display_name}{" "}
+                        (lost {a.lost.water ? "at sea" : "on the way"})
+                      </title>
+                    </path>
+                  </g>
+                );
+              }
 
               // Replay: a card still in the post is drawn only as far as it has travelled,
               // with its bird at the tip.
@@ -817,23 +868,24 @@ function partialCurve(
   };
 }
 
-/** Top-down bird flying along +x, wings flapping. ~18px wingspan before scaling. */
+/**
+ * A swallow seen from above, flying along +x: swept wings with feather tips
+ * (flapping), a slim body, forked tail, eyes and a little beak. ~22px wingspan
+ * before scaling; white edges keep it readable over any colour.
+ */
 function Bird({ color }: { color: string }) {
   return (
-    <g>
+    <g strokeLinejoin="round">
       <g>
-        <animateTransform attributeName="transform" type="scale" values="1 1;1 0.3;1 1" dur="0.42s" repeatCount="indefinite" />
-        <path
-          d="M1,0 C0,-3 -3,-7 -7,-9 C-5,-5 -4.5,-2.5 -3,0 C-4.5,2.5 -5,5 -7,9 C-3,7 0,3 1,0 Z"
-          fill={color}
-          stroke="#fff"
-          strokeWidth="0.9"
-          strokeLinejoin="round"
-        />
+        <animateTransform attributeName="transform" type="scale" values="1 1;1 0.35;1 1" dur="0.42s" repeatCount="indefinite" />
+        <path d={BIRD.wing} fill={color} stroke="#fff" strokeWidth="0.8" />
+        <path d={BIRD.wing} transform="scale(1,-1)" fill={color} stroke="#fff" strokeWidth="0.8" />
       </g>
-      <path d="M-6,0 L-9.5,-2.2 L-8.5,0 L-9.5,2.2 Z" fill={color} stroke="#fff" strokeWidth="0.7" strokeLinejoin="round" />
-      <ellipse cx="-1.5" cy="0" rx="4.5" ry="1.8" fill={color} stroke="#fff" strokeWidth="0.9" />
-      <circle cx="2.6" cy="0" r="1.6" fill={color} stroke="#fff" strokeWidth="0.7" />
+      <path d={BIRD.tail} fill={color} stroke="#fff" strokeWidth="0.7" />
+      <path d={BIRD.body} fill={color} stroke="#fff" strokeWidth="0.8" />
+      <path d={BIRD.beak} fill="#e8a33d" />
+      <circle cx="3.3" cy="-0.95" r="0.45" fill="#fff" />
+      <circle cx="3.3" cy="0.95" r="0.45" fill="#fff" />
     </g>
   );
 }

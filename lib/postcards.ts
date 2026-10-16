@@ -30,13 +30,14 @@ export function groupByMonth<T extends Postcard>(cards: T[], sort: SortOrder) {
  * nothing leaks to the browser even if a migration is missing):
  *   - its sender, always;
  *   - its recipient, once they've received it;
- *   - everyone, once it's public (it and the rest of its trip have all arrived).
+ *   - everyone, once it's public (it and the rest of its trip have all arrived,
+ *     or it was given up as lost).
  * Nobody else learns that a card in transit even exists.
  */
 export function visibleTo(card: Postcard, viewerId: string): boolean {
   if (card.sender_id === viewerId) return true;
-  if (card.status !== "received") return false;
-  if (card.recipient_id === viewerId) return true;
+  if (card.status === "in_transit") return false;
+  if (card.status === "received" && card.recipient_id === viewerId) return true;
   return card.is_public === true;
 }
 

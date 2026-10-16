@@ -122,6 +122,24 @@ export async function setPostcardPhotos(id: string, frontPath: string | null, ba
   return {};
 }
 
+/** Sender only: it never arrived. Goes public like an arrived card (same trip rule). */
+export async function markLost(id: string): Promise<Result> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("mark_lost", { p_id: id });
+  if (error) return { error: error.message };
+  revalidatePath("/", "layout");
+  return {};
+}
+
+/** Sender only: it's still on its way after all. */
+export async function unmarkLost(id: string): Promise<Result> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("unmark_lost", { p_id: id });
+  if (error) return { error: error.message };
+  revalidatePath("/", "layout");
+  return {};
+}
+
 export async function markReceived(id: string, receivedOn: string, message: string): Promise<Result> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("mark_received", {

@@ -10,6 +10,7 @@ import { PLAIN, type MapStyle } from "@/lib/mapStyle";
 import { destinationOf, type MemberWithAvatar } from "@/lib/types";
 import { escapeHtml } from "@/lib/utils";
 import { loadWorld, type Country } from "@/lib/world";
+import { isWater, lostPoint, lostSvg } from "./bird";
 import { houseSvg } from "./house";
 
 const OCEAN = "#dde6e8";
@@ -19,6 +20,8 @@ const INK = "#2a2622";
 
 type ArcDatum = {
   kind: "line" | "comet";
+  /** Lost in the post: drawn only as far as where it went missing. */
+  lost?: boolean;
   role: RouteRole | null; // with a person selected: "out" solid, "in" dotted, "other" faded
   card: LocatedMapCard;
   color: string;
@@ -29,7 +32,10 @@ type ArcDatum = {
   offset: number;
 };
 
+type LostDatum = { kind: "lost"; lat: number; lng: number; card: LocatedMapCard; color: string; water: boolean; dim: boolean };
+
 type PointDatum =
+  | LostDatum
   | { kind: "city"; lat: number; lng: number; city: CityGroup; dim: boolean }
   | { kind: "home"; lat: number; lng: number; member: MemberWithAvatar; dim: boolean; style: "house" | "dot" }
   | { kind: "old"; lat: number; lng: number; old: OldHome; member: MemberWithAvatar; dim: boolean; style: "house" | "dot" };
@@ -127,15 +133,20 @@ export default function GlobeView({
         const r = membersById.get(card.recipient_id);
         if (!r) return [];
         const role = roles?.get(card.id) ?? null;
+        const to = destinationOf(card, r)!; // the address it was sent to
         const base = {
           card,
           role,
           color: membersById.get(card.sender_id)?.color ?? INK,
           startLat: card.from_lat,
           startLng: card.from_lng,
-          endLat: destinationOf(card, r)!.lat, // the address it was sent to
-          endLng: destinationOf(card, r)!.lng,
+          endLat: to.lat,
+          endLng: to.lng,
         };
+        if (card.status === "lost") {
+          const [lng, lat] = lostPoint([card.from_lng, card.from_lat], [to.lng, to.lat]);
+          return [{ ...base, endLat: lat, endLng: lng, kind: "line" as const, lost: true }];
+        }
         return card.status === "received" && role !== "other"
           ? [
               { ...base, kind: "line" as const },
@@ -173,8 +184,20 @@ export default function GlobeView({
         dim: !!filterId && !involved.has(old.member.id),
         style: homeStyle,
       })),
+      // Where lost cards went missing
+      ...(showArcs ? arcs : [])
+        .filter((a) => a.lost)
+        .map((a) => ({
+          kind: "lost" as const,
+          lat: a.endLat,
+          lng: a.endLng,
+          card: a.card,
+          color: a.color,
+          water: isWater(world, [a.endLng, a.endLat]),
+          dim: a.role === "other",
+        })),
     ],
-    [cities, members, oldHomes, filterId, involved, focusCities, homeStyle],
+    [cities, members, oldHomes, filterId, involved, focusCities, homeStyle, arcs, world, showArcs],
   );
 
   // Pulsing rings at the homes of people with a card on its way.
@@ -228,7 +251,13 @@ export default function GlobeView({
   }
 
   // Stable so the globe doesn't rebuild every pin on each render.
-  const makePin = useCallback((d: object) => pinElement(d as PointDatum, onSelect), [onSelect]);
+  const makePin = useCallback(
+    (d: object) => {
+      const p = d as PointDatum;
+      return p.kind === "lost" ? lostPinElement(p, onSelect) : pinElement(p, onSelect);
+    },
+    [onSelect],
+  );
 
   const selectedCardId = selection?.kind === "card" ? selection.id : null;
 
@@ -277,6 +306,7 @@ export default function GlobeView({
           arcColor={(d: object) => {
             const a = d as ArcDatum;
             if (a.kind === "comet") return ["rgba(255,255,255,0)", "rgba(255,255,255,0.95)"];
+            if (a.lost) return withAlpha(INK, a.role === "other" ? 0.12 : 0.5);
             const alpha = a.role === "other" ? 0.15 : 1;
             // Flag routes: the origin flag's colours blend along the arc.
             const flag = routeColors?.get(a.card.from_country_code.toLowerCase());
@@ -295,20 +325,20 @@ export default function GlobeView({
           arcDashLength={(d) => {
             const a = d as ArcDatum;
             if (a.kind === "comet") return 0.2;
-            if (a.role === "in") return 0.012;
+            if (a.role === "in" || a.lost) return 0.012;
             return a.card.status === "in_transit" ? 0.05 : 1;
           }}
           arcDashGap={(d) => {
             const a = d as ArcDatum;
             if (a.kind === "comet") return 1.4;
-            if (a.role === "in") return 0.018;
+            if (a.role === "in" || a.lost) return 0.03;
             return a.card.status === "in_transit" ? 0.035 : 0;
           }}
           arcDashInitialGap={(d) => ((d as ArcDatum).kind === "comet" ? (d as ArcDatum).offset : 0)}
           arcDashAnimateTime={(d) => {
             const a = d as ArcDatum;
             if (a.kind === "comet") return 3200;
-            if (a.role === "in") return 0;
+            if (a.role === "in" || a.lost) return 0;
             return a.card.status === "in_transit" ? 5000 : 0;
           }}
           arcsTransitionDuration={600}
@@ -316,7 +346,7 @@ export default function GlobeView({
             const a = d as ArcDatum;
             const s = membersById.get(a.card.sender_id)?.display_name ?? "?";
             const r = membersById.get(a.card.recipient_id)?.display_name ?? "?";
-            return tooltip(`${escapeHtml(s)} → ${escapeHtml(r)}${a.card.status === "in_transit" ? " · in transit" : ""}`);
+            return tooltip(`${escapeHtml(s)} → ${escapeHtml(r)}${a.card.status === "in_transit" ? " · in transit" : a.lost ? " · lost in the post" : ""}`);
           }}
           onArcClick={(d) => onSelect({ kind: "card", id: (d as ArcDatum).card.id })}
           // Pins: HTML markers keep a constant, tappable size at any zoom
@@ -376,7 +406,38 @@ export default function GlobeView({
 }
 
 /** A pin dot with a name label (labels show via the `globe-labels` class when zoomed in). */
-function pinElement(p: PointDatum, onSelect: (s: Selection) => void): HTMLElement {
+/** Where a lost card went missing: the bird sinking (sea) or puzzled (land). Opens the card. */
+function lostPinElement(p: LostDatum, onSelect: (s: Selection) => void): HTMLElement {
+  const wrap = document.createElement("div");
+  Object.assign(wrap.style, { width: "36px", height: "36px", transition: "opacity 150ms" } satisfies Partial<CSSStyleDeclaration>);
+  if (p.dim) wrap.dataset.dim = "1";
+  const dot = document.createElement("button");
+  dot.type = "button";
+  Object.assign(dot.style, {
+    display: "block",
+    width: "100%",
+    height: "100%",
+    background: "none",
+    border: "0",
+    padding: "0",
+    cursor: "pointer",
+    filter: "drop-shadow(0 1px 1.5px rgba(42,38,34,.35))",
+  } satisfies Partial<CSSStyleDeclaration>);
+  dot.innerHTML = lostSvg(p.color, p.water);
+  dot.title = `Lost ${p.water ? "at sea" : "on the way"}: ${p.card.from_city} → ?`;
+  dot.setAttribute("aria-label", dot.title);
+  for (const type of ["pointerdown", "pointerup", "mousedown", "mouseup", "touchstart", "touchend"]) {
+    dot.addEventListener(type, (e) => e.stopPropagation());
+  }
+  dot.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onSelect({ kind: "card", id: p.card.id });
+  });
+  wrap.append(dot);
+  return wrap;
+}
+
+function pinElement(p: Exclude<PointDatum, LostDatum>, onSelect: (s: Selection) => void): HTMLElement {
   const isHome = p.kind !== "city";
   const dotStyle = isHome && p.style === "dot";
   const size = p.kind === "city" ? 19 : dotStyle ? (p.kind === "home" ? 13 : 10) : p.kind === "home" ? 21 : 17;

@@ -132,7 +132,7 @@ function CardList({
                   <span style={{ color: r?.color }}>{r?.display_name}</span>
                 </span>
                 <span className="block truncate text-xs text-ink-soft">
-                  {c.from_city} · {c.status === "in_transit" ? "in transit" : formatDate(c.sent_on)}
+                  {c.from_city} · {c.status === "in_transit" ? "in transit" : c.status === "lost" ? "lost in the post" : formatDate(c.sent_on)}
                 </span>
               </span>
             </button>
@@ -192,7 +192,7 @@ function CardDetails({
         </div>
         <div>
           <dt className="text-ink-soft">{card.received_on ? "Received" : "Status"}</dt>
-          <dd>{card.received_on ? formatDate(card.received_on) : "In transit"}</dd>
+          <dd>{card.received_on ? formatDate(card.received_on) : card.status === "lost" ? "Lost in the post" : "In transit"}</dd>
         </div>
         {distance !== null && (
           <div>

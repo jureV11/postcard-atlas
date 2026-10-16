@@ -11,7 +11,7 @@ import { MemberPicker } from "@/components/MemberPicker";
 import { todayLocal } from "@/lib/dates";
 import type { City } from "@/lib/geo";
 import type { Address, MemberWithAvatar } from "@/lib/types";
-import { logPostcard } from "../actions";
+import { logPostcard, markLost } from "../actions";
 
 // No photos here on purpose: the recipient photographs the card when it arrives.
 export function NewPostcardForm({ recipients, addresses }: { recipients: MemberWithAvatar[]; addresses: Address[] }) {
@@ -26,6 +26,7 @@ export function NewPostcardForm({ recipients, addresses }: { recipients: MemberW
   const [sentOn, setSentOn] = useState("");
   const [message, setMessage] = useState("");
   const [note, setNote] = useState("");
+  const [neverArrived, setNeverArrived] = useState(false); // logging an old card that got lost
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,6 +54,13 @@ export function NewPostcardForm({ recipients, addresses }: { recipients: MemberW
         return setError((error ?? "Couldn't save the postcard") + saved);
       }
       ids.push(id);
+      if (neverArrived) {
+        const r = await markLost(id);
+        if (r.error) {
+          setStatus(null);
+          return setError(`Saved, but couldn't mark it as lost: ${r.error} — you can do that on the postcard.`);
+        }
+      }
       // New cards go to the recipient's current address automatically; only an older one needs saving.
       const addressId = addressFor(recipientId);
       if (addressId && addressId !== currentAddressId(addressesOf(recipientId))) {
@@ -64,7 +72,7 @@ export function NewPostcardForm({ recipients, addresses }: { recipients: MemberW
       }
     }
     // Celebrate: paper confetti plus the flag of where it was sent from (keeps going on the next page).
-    confetti({ flags: [flagUrl(from.countryCode)], flagCount: 10, paperCount: 70 });
+    if (!neverArrived) confetti({ flags: [flagUrl(from.countryCode)], flagCount: 10, paperCount: 70 });
     router.push(ids.length === 1 ? `/postcards/${ids[0]}` : "/postcards");
   }
 
@@ -170,10 +178,25 @@ export function NewPostcardForm({ recipients, addresses }: { recipients: MemberW
         No photos needed — the recipient snaps the front and back when it lands in their mailbox.
       </p>
 
+      <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-dashed border-ink/20 px-4 py-3 text-sm">
+        <input
+          type="checkbox"
+          className="mt-0.5"
+          checked={neverArrived}
+          onChange={(e) => setNeverArrived(e.target.checked)}
+        />
+        <span>
+          <span className="font-medium">It never arrived</span> — log it as lost in the post.
+          <span className="block text-xs text-ink-soft">
+            For an older card that got lost. Everyone will see it on the map as lost (it&apos;s no longer a surprise).
+          </span>
+        </span>
+      </label>
+
       {error && <p className="error">{error}</p>}
 
       <button className="btn w-full" disabled={busy}>
-        {status ?? "Send it off"}
+        {status ?? (neverArrived ? "Log it as lost" : "Send it off")}
       </button>
     </form>
   );

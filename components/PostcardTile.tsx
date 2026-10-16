@@ -34,12 +34,17 @@ export function PostcardTile({
       <div className="relative aspect-[3/2] overflow-hidden rounded-[2px] bg-paper-deep">
         {frontUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={frontUrl} alt={`Postcard from ${card.from_city}`} className="size-full object-cover" loading="lazy" />
+          <img
+            src={frontUrl}
+            alt={`Postcard from ${card.from_city}`}
+            className={`size-full object-cover ${card.status === "lost" ? "grayscale" : ""}`}
+            loading="lazy"
+          />
         ) : (
           <div className="paper flex size-full flex-col items-center justify-center gap-1 text-ink-soft">
             {cc ? <Flag code={cc} size={28} /> : <MysteryGlobe size={30} />}
             <span className="font-hand text-lg leading-none">
-              {card.revealed ? "photo coming soon" : "sealed until it arrives"}
+              {card.status === "lost" ? "never arrived" : card.revealed ? "photo coming soon" : "sealed until it arrives"}
             </span>
           </div>
         )}
@@ -47,6 +52,11 @@ export function PostcardTile({
           // The country as a tiny perforated stamp in the corner
           <span className="absolute right-1.5 top-1.5 rotate-6 rounded-[1px] bg-white p-[3px] shadow-[0_1px_2px_rgb(0_0_0/0.3)] outline outline-1 outline-dashed outline-offset-[-2px] outline-ink/20">
             <Flag code={cc} size={18} />
+          </span>
+        )}
+        {card.status === "lost" && (
+          <span className="absolute inset-0 flex items-center justify-center bg-paper/55">
+            <span className="date-stamp bg-white/70 !text-sm">Lost</span>
           </span>
         )}
         {card.status === "in_transit" && (
