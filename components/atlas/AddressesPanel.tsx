@@ -6,15 +6,16 @@ import {
   addAddress,
   deleteAddress,
   retireAddress,
-  searchAddress,
   setCurrentAddress,
   unretireAddress,
   updateAddress,
-  type FoundAddress,
+  type AddressInput,
 } from "@/app/(app)/address-actions";
 import { Avatar } from "@/components/Avatar";
+import { CitySearch } from "@/components/CitySearch";
 import { Flag } from "@/components/Flag";
 import { isFormer } from "@/lib/members";
+import type { City } from "@/lib/geo";
 import type { Address, MemberWithAvatar } from "@/lib/types";
 import { errorMessage } from "@/lib/utils";
 
@@ -146,7 +147,7 @@ function MemberAddresses({
           mode?.kind === "edit" && mode.id === a.id ? (
             <li key={a.id}>
               <AddressForm
-                initial={a.address_line}
+                initial={a}
                 note={
                   used(a)
                     ? "Postcards were sent here, so you can only correct it nearby. Moved? Add a new address instead."
@@ -169,7 +170,7 @@ function MemberAddresses({
                 <span className="mt-0.5">
                   <Flag code={a.country_code} size={14} />
                 </span>
-                <span className="min-w-0">{a.address_line}</span>
+                <span className="min-w-0 whitespace-pre-line">{a.address_line}</span>
               </p>
               <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                 {a.is_current ? (
@@ -237,7 +238,7 @@ function MemberAddresses({
                   <span className="mt-0.5">
                     <Flag code={a.country_code} size={12} />
                   </span>
-                  <span className="min-w-0">{a.address_line}</span>
+                  <span className="min-w-0 whitespace-pre-line">{a.address_line}</span>
                 </p>
                 <button
                   type="button"
@@ -287,48 +288,40 @@ function MemberAddresses({
   );
 }
 
-/** Type a full address → "Find" (OpenStreetMap) → pick the right match → save. */
+/**
+ * The address exactly as you'd write it on a postcard (free text, any lines),
+ * plus the town it's in — the town is all the map needs.
+ */
 function AddressForm({
-  initial = "",
+  initial,
   note,
   allowMakeCurrent = false,
   onSave,
   onCancel,
 }: {
-  initial?: string;
-  /** Shown above the field, e.g. why only small corrections are allowed. */
+  initial?: Address;
+  /** Shown above the fields, e.g. why only small corrections are allowed. */
   note?: string;
   allowMakeCurrent?: boolean;
-  onSave: (input: { addressLine: string; found: FoundAddress }, makeCurrent: boolean) => Promise<{ error?: string }>;
+  onSave: (input: AddressInput, makeCurrent: boolean) => Promise<{ error?: string }>;
   onCancel: () => void;
 }) {
-  const [query, setQuery] = useState(initial);
-  const [results, setResults] = useState<FoundAddress[] | null>(null);
-  const [chosen, setChosen] = useState<FoundAddress | null>(null);
+  const [line, setLine] = useState(initial?.address_line ?? "");
+  const [town, setTown] = useState<City | null>(
+    initial
+      ? { name: initial.city, country: initial.country, countryCode: initial.country_code, lat: initial.lat, lng: initial.lng }
+      : null,
+  );
   const [makeCurrent, setMakeCurrent] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function find() {
-    setBusy(true);
-    setError(null);
-    setChosen(null);
-    const r = await searchAddress(query);
-    setBusy(false);
-    if (r.error) {
-      setResults(null);
-      setError(r.error);
-      return;
-    }
-    setResults(r.results ?? []);
-    if (r.results?.length === 1) setChosen(r.results[0]);
-  }
-
   async function save() {
-    if (!chosen) return setError("Pick the matching address from the list.");
+    if (!line.trim()) return setError("Write the address.");
+    if (!town) return setError("Pick the town it's in, for the map.");
     setBusy(true);
     setError(null);
-    const r = await onSave({ addressLine: query.trim(), found: chosen }, makeCurrent);
+    const r = await onSave({ addressLine: line.trim(), town }, makeCurrent);
     setBusy(false);
     if (r.error) setError(r.error);
   }
@@ -336,45 +329,27 @@ function AddressForm({
   return (
     <div className="space-y-2 rounded-xl border border-ink/15 bg-white p-3">
       {note && <p className="text-[11px] text-ink-soft">{note}</p>}
-      <label className="label !mb-1 text-xs" htmlFor="addr">
-        Full address
-      </label>
-      <div className="flex gap-2">
-        <input
-          id="addr"
-          className="input min-h-10 py-2 text-sm"
-          placeholder="Corso Novara, 135, 10153 Torino TO, Italy"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setResults(null);
-            setChosen(null);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              find();
-            }
-          }}
+      <div>
+        <label className="label !mb-1 text-xs" htmlFor="addr-line">
+          Address
+        </label>
+        <textarea
+          id="addr-line"
+          rows={3}
+          maxLength={300}
+          className="input py-2 text-sm"
+          placeholder={"Corso Novara 135\n10153 Torino TO\nItaly"}
+          value={line}
+          onChange={(e) => setLine(e.target.value)}
         />
-        <button type="button" onClick={find} disabled={busy} className="btn-ghost min-h-10 shrink-0 px-3">
-          {busy && !results ? "…" : "Find"}
-        </button>
+        <p className="hint !mt-1 text-[11px]">Exactly as you&apos;d write it on a postcard.</p>
       </div>
-
-      {results && results.length > 0 && (
-        <fieldset className="space-y-1">
-          <legend className="text-xs text-ink-soft">Which one is it?</legend>
-          {results.map((r, i) => (
-            <label key={i} className="flex cursor-pointer items-start gap-2 rounded-lg p-1.5 text-xs hover:bg-paper">
-              <input type="radio" name="addr-match" checked={chosen === r} onChange={() => setChosen(r)} className="mt-0.5" />
-              <span>
-                <Flag code={r.countryCode} size={12} /> {r.label}
-              </span>
-            </label>
-          ))}
-        </fieldset>
-      )}
+      <div>
+        <label className="label !mb-1 text-xs" htmlFor="addr-town">
+          Town, for the map
+        </label>
+        <CitySearch id="addr-town" value={town} onChange={setTown} placeholder="Which town is it in?" />
+      </div>
 
       {allowMakeCurrent && (
         <label className="flex items-center gap-2 text-xs">
@@ -386,14 +361,13 @@ function AddressForm({
       {error && <p className="error text-xs">{error}</p>}
 
       <div className="flex gap-2">
-        <button type="button" onClick={save} disabled={busy || !chosen} className="btn min-h-9 px-4">
-          {busy && results ? "Saving…" : "Save"}
+        <button type="button" onClick={save} disabled={busy} className="btn min-h-9 px-4">
+          {busy ? "Saving…" : "Save"}
         </button>
         <button type="button" onClick={onCancel} className="btn-ghost min-h-9 px-4">
           Cancel
         </button>
       </div>
-      <p className="text-[11px] text-ink-soft">Address lookup by OpenStreetMap.</p>
     </div>
   );
 }

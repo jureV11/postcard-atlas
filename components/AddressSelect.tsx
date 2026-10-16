@@ -24,7 +24,7 @@ export function AddressSelect({
       {sorted.map((a) => (
         <option key={a.id} value={a.id}>
           {a.is_current ? "Current — " : a.retired_at ? "Retired — " : "Previous — "}
-          {a.address_line}
+          {a.address_line.replace(/\s*\n\s*/g, ", ")}
         </option>
       ))}
     </select>
