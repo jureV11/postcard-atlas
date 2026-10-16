@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Flag } from "@/components/Flag";
 import { GroupStats } from "@/components/GroupStats";
+import { PostcardTile } from "@/components/PostcardTile";
 import { PostcardsBrowser, type BrowserGroup } from "@/components/PostcardsBrowser";
 import { formatDate, monthName } from "@/lib/dates";
 import { groupByMonth, loadGroupData, type SortOrder } from "@/lib/postcards";
@@ -18,6 +19,7 @@ export default async function PostcardsPage({ searchParams }: { searchParams: Pr
   // In transit: only ever your own (nobody else learns a card is coming).
   const myOnTheWay = postcards.filter((c) => c.status === "in_transit" && c.sender_id === member.id);
   const received = postcards.filter((c) => c.status === "received");
+  const lostCards = postcards.filter((c) => c.status === "lost");
   const fronts = await signPaths(supabase, "postcards", received.map((c) => c.front_path));
   const months = groupByMonth(received, sort);
   // Everything a card can be searched by — only what this viewer can already see.
@@ -56,14 +58,34 @@ export default async function PostcardsPage({ searchParams }: { searchParams: Pr
           <h1 className="font-display text-3xl font-semibold tracking-tight">Postcards</h1>
           <p className="mt-1 text-ink-soft">{received.filter((c) => c.is_public).length} delivered and revealed</p>
         </div>
-        <div className="flex gap-2">
-          <Link href="/postcards/arrived" className="btn-ghost shrink-0">
-            ✉ A postcard arrived!
-          </Link>
-          <Link href="/postcards/new" className="btn shrink-0">
-            <span aria-hidden="true">＋</span> Log a postcard
-          </Link>
-        </div>
+      </div>
+
+      {/* The two things you come here to do: big and side by side */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Link
+          href="/postcards/new"
+          className="group flex items-center gap-4 rounded-2xl bg-ink px-5 py-4 text-paper shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+        >
+          <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-paper/15 text-2xl" aria-hidden="true">
+            ＋
+          </span>
+          <span>
+            <span className="block font-display text-xl font-semibold">Log a postcard</span>
+            <span className="block text-sm text-paper/70">Sent one? Note where from — it stays a surprise.</span>
+          </span>
+        </Link>
+        <Link
+          href="/postcards/arrived"
+          className="group flex items-center gap-4 rounded-2xl border-2 border-ink/80 bg-white/80 px-5 py-4 shadow-sm transition hover:-translate-y-0.5 hover:bg-white hover:shadow-md"
+        >
+          <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-stamp/12 text-2xl" aria-hidden="true">
+            ✉
+          </span>
+          <span>
+            <span className="block font-display text-xl font-semibold">A postcard arrived!</span>
+            <span className="block text-sm text-ink-soft">Got one? Match it and add the photos.</span>
+          </span>
+        </Link>
       </div>
 
       <GroupStats stats={stats} countries={groupCountries(postcards).length} membersById={membersById} />
@@ -132,6 +154,29 @@ export default async function PostcardsPage({ searchParams }: { searchParams: Pr
           <PostcardsBrowser groups={groups} total={received.length} />
         )}
       </section>
+
+      {lostCards.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center gap-3">
+            <h2 className="font-display text-xl font-semibold">Lost in the post</h2>
+            <span className="font-hand text-xl text-ink-soft">
+              {lostCards.length} {lostCards.length === 1 ? "card" : "cards"} that never made it
+            </span>
+            <span className="h-px flex-1 bg-ink/10" aria-hidden="true" />
+          </div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3">
+            {lostCards.map((c) => (
+              <PostcardTile
+                key={c.id}
+                card={c}
+                frontUrl={null}
+                sender={membersById.get(c.sender_id ?? "")}
+                recipient={membersById.get(c.recipient_id)}
+              />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
