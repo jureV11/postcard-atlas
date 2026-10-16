@@ -4,10 +4,12 @@ import { Avatar } from "@/components/Avatar";
 import { CountryOutline } from "@/components/CountryOutline";
 import { Flag } from "@/components/Flag";
 import { MysteryGlobe } from "@/components/Mystery";
+import { NicheCard } from "@/components/NicheBreakdown";
 import { PostcardFlip } from "@/components/PostcardFlip";
 import { daysBetween, formatDate, todayLocal } from "@/lib/dates";
 import { formatKm, haversineKm } from "@/lib/geo";
 import { withFormerLabel } from "@/lib/members";
+import { nicheScores } from "@/lib/niche";
 import { visibleTo } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
 import { signAvatarUrls, signPaths } from "@/lib/storage";
@@ -53,6 +55,8 @@ export default async function PostcardPage({
   const distance = to ? haversineKm(card.from_lat, card.from_lng, to.lat, to.lng) : null;
   const travelDays = card.received_on ? daysBetween(card.sent_on, card.received_on) : daysBetween(card.sent_on, today);
   const canEditPhotos = isRecipient && !inTransit; // photos are the recipient's job
+  // Nicheness: only for delivered, public cards — the same ones the leaderboard scores.
+  const [niche] = await nicheScores([card]);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -137,7 +141,7 @@ export default async function PostcardPage({
               {sender?.display_name} → {recipient?.display_name}
             </span>
             <span className="block truncate text-ink-soft">
-              to {card.to_address_line ?? `${recipient?.home_city}, ${recipient?.home_country}`}
+              to {card.to_address_line?.replace(/\s*\n\s*/g, ", ") ?? `${recipient?.home_city}, ${recipient?.home_country}`}
             </span>
           </span>
         </div>
@@ -161,6 +165,10 @@ export default async function PostcardPage({
           </p>
         )}
       </section>
+
+      {niche && niche.score !== null && (
+        <NicheCard score={niche.score} factors={niche.factors} facts={niche.facts} country={card.from_country} />
+      )}
 
       {(card.message || card.note) && (
         <section className="card space-y-4">
