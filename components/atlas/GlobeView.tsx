@@ -200,18 +200,32 @@ export default function GlobeView({
     return () => controls.removeEventListener("start", stop);
   }, [ready]);
 
-  // Face the postcards: on load and whenever the filter changes.
-  useEffect(() => {
+  /** Turn to face the postcards (the selected person's, if any). */
+  const faceCards = useCallback(() => {
     const g = globeRef.current;
-    if (!ready || !g) return;
+    if (!g) return;
     const pts = [
       ...cities.filter((c) => !filterId || !focusCities || focusCities.has(c.key)).map((c) => [c.lat, c.lng]),
       ...members.filter((m) => !filterId || involved.has(m.id)).map((m) => [m.home_lat, m.home_lng]),
     ];
     if (!pts.length) return;
     g.pointOfView({ ...centroid(pts), altitude: pts.length > 1 ? 1.7 : 1.4 }, 1000);
+  }, [cities, members, filterId, focusCities, involved]);
+
+  // On load and whenever the filter changes.
+  useEffect(() => {
+    if (ready) faceCards();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, filterId]);
+
+  /** Zoom buttons: move the camera closer or further, keeping the same spot in view. */
+  function zoomBy(factor: number) {
+    const g = globeRef.current;
+    if (!g) return;
+    g.controls().autoRotate = false;
+    const pov = g.pointOfView();
+    g.pointOfView({ ...pov, altitude: Math.min(4, Math.max(0.12, pov.altitude * factor)) }, 300);
+  }
 
   // Stable so the globe doesn't rebuild every pin on each render.
   const makePin = useCallback((d: object) => pinElement(d as PointDatum, onSelect), [onSelect]);
@@ -327,6 +341,35 @@ export default function GlobeView({
           ringPropagationSpeed={1.6}
           ringRepeatPeriod={1400}
         />
+      )}
+
+      {ready && (
+        <div className="absolute left-3 top-3 z-[5] flex flex-col overflow-hidden rounded-xl border border-ink/10 bg-white/90 shadow-sm backdrop-blur">
+          {[
+            { label: "Zoom in", text: "+", fn: () => zoomBy(0.55) },
+            { label: "Zoom out", text: "−", fn: () => zoomBy(1.8) },
+            {
+              label: "Fit postcards",
+              text: "⤢",
+              fn: () => {
+                const g = globeRef.current;
+                if (g) g.controls().autoRotate = false;
+                faceCards();
+              },
+            },
+          ].map((b) => (
+            <button
+              key={b.label}
+              type="button"
+              aria-label={b.label}
+              title={b.label}
+              onClick={b.fn}
+              className="flex size-9 items-center justify-center border-b border-ink/10 text-lg last:border-b-0 hover:bg-paper"
+            >
+              {b.text}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
