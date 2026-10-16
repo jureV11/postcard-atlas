@@ -19,7 +19,7 @@ import type { City } from "@/lib/geo";
 import type { Address, MemberWithAvatar } from "@/lib/types";
 import { errorMessage } from "@/lib/utils";
 
-const MAX_ADDRESSES = 3;
+const MAX_ADDRESSES = 5; // matches address_limit() in migration 0014
 const OPEN_KEY = "atlas-addresses-open";
 
 /** Collapsible list of everyone's addresses. You can manage only your own. */
@@ -281,7 +281,7 @@ function MemberAddresses({
           </button>
         ) : (
           <p className="text-xs text-ink-soft">
-            That&apos;s the maximum of 3 — delete or retire an old one to add another.
+            That&apos;s the maximum of {MAX_ADDRESSES} — delete or retire an old one to add another.
           </p>
         ))}
     </div>

@@ -70,7 +70,7 @@ export type Postcard = {
   to_lng?: number | null;
 };
 
-/** One of a member's addresses (up to 3; exactly one is current). */
+/** One of a member's addresses (up to 5 active; exactly one is current). */
 export type Address = {
   id: string;
   member_id: string;

@@ -11,7 +11,7 @@ It's built for one small group, but anyone can run their own copy. Ideas, bug re
 - **Replay.** Watch the group's whole postcard history play out in real travel time: 1 day, 1 week or 1 month per second, with a timeline you can drag.
 - **Leaderboard.** Most countries, most kilometres travelled, and a *nicheness* score for the most off-the-beaten-path card. Tap a score to see how it was worked out.
 - **Photos.** The recipient photographs the front and back when a card arrives. Tap the card to flip it over.
-- **Addresses.** Up to 3 per person. Each card is linked to the address it was actually sent to, so moving doesn't rewrite history.
+- **Addresses.** Up to 5 per person. Each card is linked to the address it was actually sent to, so moving doesn't rewrite history.
 - **Leaving a group keeps your cards.** They stay on the map as a "former member", and rejoining with the invite code brings everything back.
 
 ## How it's built
