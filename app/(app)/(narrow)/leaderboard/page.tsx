@@ -2,9 +2,11 @@ import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
 import { Flag } from "@/components/Flag";
 import { NicheRow } from "@/components/NicheBreakdown";
+import { GroupPassport } from "@/components/passport/GroupPassport";
 import { formatKm } from "@/lib/geo";
 import { nicheLeaders, nicheScores, type NicheScore } from "@/lib/niche";
 import { NICHE } from "@/lib/niche.config";
+import { groupPassport } from "@/lib/passport";
 import { loadGroupData } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
 import { computeStats, rankMembers } from "@/lib/stats";
@@ -16,7 +18,8 @@ const MAX_FLAGS = 10;
 
 export default async function LeaderboardPage() {
   const { supabase, member: me } = await requireMember();
-  const { postcards, members } = await loadGroupData(supabase, me);
+  const { postcards, members, membersById } = await loadGroupData(supabase, me);
+  const passport = groupPassport(postcards, members);
   const stats = computeStats(members, postcards);
   const ranking = rankMembers(members, stats);
   const niche = nicheLeaders(members, await nicheScores(postcards));
@@ -34,6 +37,8 @@ export default async function LeaderboardPage() {
         <h1 className="font-display text-3xl font-semibold tracking-tight">Leaderboard</h1>
         <p className="mt-1 text-ink-soft">Three ways to win. Cards only count once they&apos;ve arrived.</p>
       </div>
+
+      <GroupPassport passport={passport} membersById={membersById} />
 
       {/* Category winners */}
       <section className="grid gap-3 sm:grid-cols-3">
