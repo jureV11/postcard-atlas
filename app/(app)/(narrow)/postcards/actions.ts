@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { notifyCardArrived } from "@/lib/push";
 import { createClient } from "@/lib/supabase/server";
 import type { City } from "@/lib/geo";
 
@@ -151,6 +153,8 @@ export async function markReceived(id: string, receivedOn: string | null, messag
   });
   if (error) return { error: error.message };
   revalidatePath("/", "layout");
+  // Phone notifications go out after the response, so receiving never waits on them.
+  after(() => notifyCardArrived(supabase, id));
   return {};
 }
 

@@ -12,3 +12,6 @@ next-env.d.ts
 *.zip
 # Stray empty repo folder created inside the project — not part of the site
 /Atlas Postcard Site/
+
+# One-off setup SQL with secrets (scripts/push-keys.mjs)
+*.local.sql

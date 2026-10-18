@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { NotificationsSettings } from "@/components/NotificationsSettings";
+import { pushPublicKey } from "@/lib/push";
 import { requireMember } from "@/lib/session";
 import { signAvatarUrls } from "@/lib/storage";
 import { PasswordForm } from "./PasswordForm";
@@ -23,6 +25,10 @@ export default async function SettingsPage() {
           avatarUrl={me.avatar_url}
           takenColors={(others ?? []).map((o) => o.color as string)}
         />
+      </section>
+
+      <section className="card">
+        <NotificationsSettings publicKey={pushPublicKey()} />
       </section>
 
       <section className="card">

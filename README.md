@@ -12,6 +12,9 @@ It's built for one small group, but anyone can run their own copy. Ideas, bug re
 - **Leaderboard.** Most countries, most kilometres travelled, and a *nicheness* score for the most off-the-beaten-path card. Tap a score to see how it was worked out.
 - **Photos.** The recipient photographs the front and back when a card arrives. Tap the card to flip it over.
 - **Addresses.** Up to 5 per person. Each card is linked to the address it was actually sent to, so moving doesn't rewrite history.
+- **Lost in the post.** The sender can mark a card that never arrived as lost: its route stops part-way, with the bird sinking at sea or lost over land.
+- **Achievements** on every profile, from countries and continents to a 60-day slow boat.
+- **Phone app and notifications.** Add it to your Home Screen like an app, and get a ping when your card arrives or a new one is revealed (never about cards still on their way).
 - **Leaving a group keeps your cards.** They stay on the map as a "former member", and rejoining with the invite code brings everything back.
 
 ## How it's built
@@ -46,7 +49,8 @@ You'll need **Node.js 20+** and a free **Supabase** project.
    npm run dev
    ```
    Then open http://localhost:3000, create an account and start a group.
-4. **Set up sign-in links.** In Supabase → Authentication → URL Configuration, add your site's address so password-reset and sign-up emails link back correctly.
+4. **Optional: notifications.** Run `node scripts/push-keys.mjs http://localhost:3000 --env .env.local --sql push-setup.local.sql`, run the SQL file in Supabase, and restart. See [HOSTING.md](HOSTING.md).
+5. **Set up sign-in links.** In Supabase → Authentication → URL Configuration, add your site's address so password-reset and sign-up emails link back correctly.
 
 To host it, there's a ready Docker setup. See [HOSTING.md](HOSTING.md).
 

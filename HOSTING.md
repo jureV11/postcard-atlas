@@ -61,6 +61,36 @@ same command again:
 docker compose --env-file .env.local up --build -d
 ```
 
+## Phone app and notifications (optional)
+
+The site can be installed on phones: **Add to Home Screen** (iPhone: Share button in
+Safari; Android: Chrome menu). That needs nothing on the server.
+
+Phone notifications ("your postcard arrived", "a new card is on the map") need a
+one-time setup, because they use keys only this server knows:
+
+1. Make the keys. In this folder, with Node installed:
+
+   ```bash
+   node scripts/push-keys.mjs https://postcards.example.com --env .env --sql push-setup.local.sql
+   ```
+
+   No Node on the server? The same through Docker:
+
+   ```bash
+   docker run --rm -v "$PWD":/app -w /app node:22-alpine node scripts/push-keys.mjs https://postcards.example.com --env .env --sql push-setup.local.sql
+   ```
+
+   Use your real site address, and your settings file's name (`.env` or `.env.local`).
+   This adds four lines to that file and writes `push-setup.local.sql`. Nothing secret
+   is printed; keep both files out of git and chat.
+2. Run `push-setup.local.sql` in **Supabase → SQL Editor** (after migration 0017), then delete the file.
+3. Restart with the usual `docker compose … up --build -d`.
+
+Then everyone can switch notifications on under **Profile → Notifications**. Android
+works in Chrome straight away; on iPhone (iOS 16.4+) the site must be added to the
+Home Screen and opened from there first.
+
 ## Useful commands
 
 ```bash
