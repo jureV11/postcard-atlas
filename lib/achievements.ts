@@ -5,7 +5,6 @@ import type { Member, Postcard } from "@/lib/types";
 
 export type Achievement = {
   id: string;
-  icon: string;
   name: string;
   description: string;
   earned: boolean;
@@ -47,9 +46,8 @@ export function achievementsFor(
   const receivedPublic = cards.filter((c) => c.recipient_id === member.id && c.status === "received" && c.is_public).length;
   const lostOne = cards.some((c) => c.sender_id === member.id && c.status === "lost");
 
-  const count = (id: string, icon: string, name: string, description: string, have: number, need: number): Achievement => ({
+  const count = (id: string, name: string, description: string, have: number, need: number): Achievement => ({
     id,
-    icon,
     name,
     description,
     earned: have >= need,
@@ -57,13 +55,12 @@ export function achievementsFor(
   });
 
   return [
-    count("first", "📮", "First stamp", "Send your first postcard that arrives", sent.length, 1),
-    count("countries-5", "🌍", "Globetrotter", "Postcards from 5 countries", countries.length, 5),
-    count("countries-15", "✈️", "Jet-setter", "Postcards from 15 countries", countries.length, 15),
-    count("continents-3", "🧭", "Continental", "Postcards from 3 continents", continents.size, 3),
+    count("first", "First stamp", "Send your first postcard that arrives", sent.length, 1),
+    count("countries-5", "Globetrotter", "Postcards from 5 countries", countries.length, 5),
+    count("countries-15", "Jet-setter", "Postcards from 15 countries", countries.length, 15),
+    count("continents-3", "Continental", "Postcards from 3 continents", continents.size, 3),
     {
       id: "continent-half",
-      icon: "🗺️",
       name: "Half a continent",
       description: bestContinent?.visited
         ? `Half the countries of one continent — best so far: ${bestContinent.name} ${bestContinent.visited}/${bestContinent.total}`
@@ -73,20 +70,18 @@ export function achievementsFor(
         ? { have: Math.min(bestContinent.visited, Math.ceil(bestContinent.total / 2)), need: Math.ceil(bestContinent.total / 2) }
         : undefined,
     },
-    count("long-haul", "🛫", "Long haul", "A postcard that travelled 10,000 km", Math.round(longest), 10_000),
-    count("slow-boat", "🐢", "Slow boat", "A postcard that took 60 days or more", Math.max(0, ...days), 60),
+    count("long-haul", "Long haul", "A postcard that travelled 10,000 km", Math.round(longest), 10_000),
+    count("slow-boat", "Slow boat", "A postcard that took 60 days or more", Math.max(0, ...days), 60),
     {
       id: "express",
-      icon: "⚡",
       name: "Express",
       description: "A postcard that arrived within 3 days",
       earned: days.some((d) => d <= 3),
     },
-    count("pen-pal", "💌", "Pen pal", "5 postcards to the same friend", mostToOne, 5),
-    count("mailbox", "📬", "Full mailbox", "Receive 10 postcards", receivedPublic, 10),
+    count("pen-pal", "Pen pal", "5 postcards to the same friend", mostToOne, 5),
+    count("mailbox", "Full mailbox", "Receive 10 postcards", receivedPublic, 10),
     {
       id: "lost",
-      icon: "🌊",
       name: "Lost at sea",
       description: lostOne ? "Had a postcard go missing in the post" : "A secret one…",
       earned: lostOne,

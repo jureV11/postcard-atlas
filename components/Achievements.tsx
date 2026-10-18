@@ -1,4 +1,6 @@
+import { AchievementSeal } from "@/components/AchievementSeal";
 import type { Achievement } from "@/lib/achievements";
+import { formatCount } from "@/lib/utils";
 
 /** Profile badges: earned ones as inked seals, the rest greyed with how far along they are. */
 export function Achievements({ items, title }: { items: Achievement[]; title: string }) {
@@ -30,18 +32,9 @@ export function Achievements({ items, title }: { items: Achievement[]; title: st
               }`}
               title={a.description}
             >
-              <span
-                className={`flex size-11 shrink-0 items-center justify-center rounded-full text-2xl ${
-                  a.earned
-                    ? "bg-stamp/10 shadow-[inset_0_0_0_2px_rgb(194_80_58/0.55),inset_0_0_0_4px_#fff,inset_0_0_0_5px_rgb(194_80_58/0.3)]"
-                    : "bg-ink/5 opacity-50 grayscale"
-                }`}
-                aria-hidden="true"
-              >
-                {hidden ? "？" : a.icon}
-              </span>
+              <AchievementSeal id={a.id} earned={a.earned} hidden={hidden} />
               <span className="min-w-0 flex-1">
-                <span className={`block truncate text-sm font-semibold ${a.earned ? "" : "text-ink-soft"}`}>
+                <span className={`block text-sm font-semibold leading-tight ${a.earned ? "" : "text-ink-soft"}`}>
                   {hidden ? "???" : a.name}
                 </span>
                 <span className="block text-xs leading-snug text-ink-soft">{a.description}</span>
@@ -54,7 +47,7 @@ export function Achievements({ items, title }: { items: Achievement[]; title: st
                       />
                     </span>
                     <span className="shrink-0 font-mono text-[10px] text-ink-soft tabular-nums">
-                      {a.progress.have.toLocaleString("en")}/{a.progress.need.toLocaleString("en")}
+                      {formatCount(a.progress.have)}/{formatCount(a.progress.need)}
                     </span>
                   </span>
                 )}
