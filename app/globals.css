@@ -184,3 +184,39 @@ body {
   opacity: 0.9;
   mask-image: radial-gradient(circle at 30% 40%, #000 60%, rgb(0 0 0 / 0.75) 100%);
 }
+
+/* Sign-in "Greetings from…" cards: tilt towards the pointer, dealt in on load */
+.greet-card {
+  transform: translate3d(calc(var(--px) * 14px * var(--depth)), calc(var(--py) * 10px * var(--depth)), 0)
+    rotate(var(--rot)) rotateY(calc(var(--px) * 9deg)) rotateX(calc(var(--py) * -7deg));
+  transition: transform 400ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  animation: greet-in 650ms cubic-bezier(0.2, 0.8, 0.2, 1.15) both;
+}
+@keyframes greet-in {
+  from {
+    opacity: 0;
+    translate: 0 40px;
+    scale: 0.92;
+  }
+}
+
+/* Postcards grid: prints dealt onto the table one after another */
+.deal-in {
+  animation: deal-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1.12) both;
+  animation-delay: calc(min(var(--i, 0), 12) * 55ms);
+}
+@keyframes deal-in {
+  from {
+    opacity: 0;
+    translate: 0 18px;
+    scale: 0.94;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .greet-card,
+  .deal-in {
+    animation: none;
+    transition: none;
+  }
+}
