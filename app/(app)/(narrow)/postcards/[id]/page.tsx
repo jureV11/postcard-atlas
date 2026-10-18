@@ -106,7 +106,7 @@ export default async function PostcardPage({
             {card.lost_on && <>, given up on {formatDate(card.lost_on)}</>}. It never reached {recipient?.display_name}.
             {isRecipient && " If it turns up after all, use “A postcard arrived!” as usual."}
           </p>
-          {isSender && <LostButton id={card.id} lost />}
+          {isSender && <LostButton id={card.id} lost sentOn={card.sent_on} lostOn={card.lost_on} />}
         </div>
       )}
 
@@ -115,7 +115,7 @@ export default async function PostcardPage({
           <strong>In transit.</strong> Only you can see this — nobody else knows it&apos;s coming, not even{" "}
           {recipient?.display_name}. When it lands, {recipient?.display_name} photographs the front and back.
           <span className="mt-2 block">
-            <LostButton id={card.id} lost={false} />
+            <LostButton id={card.id} lost={false} sentOn={card.sent_on} />
           </span>
         </p>
       )}

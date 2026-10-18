@@ -11,6 +11,7 @@ import { MemberPicker } from "@/components/MemberPicker";
 import { todayLocal } from "@/lib/dates";
 import type { City } from "@/lib/geo";
 import type { Address, MemberWithAvatar } from "@/lib/types";
+import { LostDateField } from "@/components/LostDateField";
 import { logPostcard, markLost } from "../actions";
 
 // No photos here on purpose: the recipient photographs the card when it arrives.
@@ -27,6 +28,7 @@ export function NewPostcardForm({ recipients, addresses }: { recipients: MemberW
   const [message, setMessage] = useState("");
   const [note, setNote] = useState("");
   const [neverArrived, setNeverArrived] = useState(false); // logging an old card that got lost
+  const [lostOn, setLostOn] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,6 +45,7 @@ export function NewPostcardForm({ recipients, addresses }: { recipients: MemberW
     if (!recipientIds.length) return setError("Who is the postcard for?");
     if (!from) return setError("Pick the city you're sending it from.");
     if (!sentOn) return setError("When did you send it?");
+    if (neverArrived && lostOn && lostOn < sentOn) return setError("You can't give up on it before it was sent.");
 
     const ids: string[] = [];
     for (const [i, recipientId] of recipientIds.entries()) {
@@ -55,7 +58,7 @@ export function NewPostcardForm({ recipients, addresses }: { recipients: MemberW
       }
       ids.push(id);
       if (neverArrived) {
-        const r = await markLost(id);
+        const r = await markLost(id, lostOn || null);
         if (r.error) {
           setStatus(null);
           return setError(`Saved, but couldn't mark it as lost: ${r.error} — you can do that on the postcard.`);
@@ -183,7 +186,10 @@ export function NewPostcardForm({ recipients, addresses }: { recipients: MemberW
           type="checkbox"
           className="mt-0.5"
           checked={neverArrived}
-          onChange={(e) => setNeverArrived(e.target.checked)}
+          onChange={(e) => {
+            setNeverArrived(e.target.checked);
+            if (e.target.checked && !lostOn && today) setLostOn(today);
+          }}
         />
         <span>
           <span className="font-medium">It never arrived</span> — log it as lost in the post.
@@ -192,6 +198,11 @@ export function NewPostcardForm({ recipients, addresses }: { recipients: MemberW
           </span>
         </span>
       </label>
+      {neverArrived && today && sentOn && (
+        <div className="-mt-2 rounded-xl border border-dashed border-ink/20 px-4 py-3">
+          <LostDateField value={lostOn} onChange={setLostOn} sentOn={sentOn} today={today} />
+        </div>
+      )}
 
       {error && <p className="error">{error}</p>}
 

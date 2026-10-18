@@ -24,3 +24,9 @@ export function monthName(d: string): string {
 export function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);
 }
+
+/** A YYYY-MM-DD date plus a number of days. */
+export function addDays(d: string, days: number): string {
+  const [y, m, day] = d.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, day + days)).toISOString().slice(0, 10);
+}

@@ -126,9 +126,18 @@ export async function setPostcardPhotos(id: string, frontPath: string | null, ba
 }
 
 /** Sender only: it never arrived. Goes public like an arrived card (same trip rule). */
-export async function markLost(id: string): Promise<Result> {
+/** Also changes the "gave up on" date of a card that's already lost. */
+export async function markLost(id: string, lostOn?: string | null): Promise<Result> {
   const supabase = await createClient();
-  const { error } = await supabase.rpc("mark_lost", { p_id: id });
+  if (lostOn) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(lostOn)) return { error: "That date doesn't look right." };
+    const { data: card } = await supabase.from("postcard_feed").select("sent_on").eq("id", id).maybeSingle();
+    if (card && lostOn < card.sent_on) return { error: "You can't give up on it before it was sent." };
+    // A day of slack for timezones ahead of the server.
+    const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+    if (lostOn > tomorrow) return { error: "That date is in the future." };
+  }
+  const { error } = await supabase.rpc("mark_lost", { p_id: id, p_lost_on: lostOn ?? null });
   if (error) return { error: error.message };
   revalidatePath("/", "layout");
   return {};
