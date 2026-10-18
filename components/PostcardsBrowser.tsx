@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { PostcardTile } from "@/components/PostcardTile";
 import type { MemberWithAvatar, Postcard } from "@/lib/types";
 import { fold } from "@/lib/utils";
@@ -85,8 +85,11 @@ export function PostcardsBrowser({ groups, total }: { groups: BrowserGroup[]; to
               <span className="h-px flex-1 bg-ink/10" aria-hidden="true" />
             </div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3">
-              {g.items.map((i) => (
-                <PostcardTile key={i.card.id} card={i.card} frontUrl={i.frontUrl} sender={i.sender} recipient={i.recipient} />
+              {g.items.map((i, n) => (
+                // Dealt onto the table one after another (still under reduced motion)
+                <div key={i.card.id} className="deal-in" style={{ "--i": n } as CSSProperties}>
+                  <PostcardTile card={i.card} frontUrl={i.frontUrl} sender={i.sender} recipient={i.recipient} />
+                </div>
               ))}
             </div>
           </div>

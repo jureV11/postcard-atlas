@@ -34,21 +34,35 @@ export function TabBar() {
           return (
             <li key={t.href} className="flex">
               {t.primary ? (
-                <Link href={t.href} aria-label="Log a postcard" className="flex flex-1 items-center justify-center">
-                  <span className="-mt-5 flex size-14 items-center justify-center rounded-full bg-stamp text-3xl leading-none text-white shadow-lg ring-4 ring-paper">
-                    +
-                  </span>
+                <Link href={t.href} aria-label="Log a postcard" className="group flex flex-1 items-center justify-center">
+                  {/* A postage stamp: perforated edge from a dotted round-capped stroke in the paper colour */}
+                  <svg
+                    viewBox="0 0 64 64"
+                    className="-mt-6 size-16 -rotate-6 drop-shadow-[0_4px_6px_rgb(42_38_34/0.3)] transition-transform duration-200 group-active:rotate-0 group-active:scale-95"
+                    aria-hidden="true"
+                  >
+                    <rect x="8" y="8" width="48" height="48" fill="#c2503a" stroke="#f6f0e4" strokeWidth="5" strokeDasharray="0.01 6.4" strokeLinecap="round" />
+                    <rect x="13" y="13" width="38" height="38" fill="none" stroke="#f6f0e4" strokeOpacity="0.55" strokeWidth="1" />
+                    <path d="M32 22v20M22 32h20" stroke="#fff" strokeWidth="4" strokeLinecap="round" />
+                  </svg>
                 </Link>
               ) : (
                 <Link
                   href={t.href}
                   aria-current={active ? "page" : undefined}
-                  className={`flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${
+                  className={`relative flex flex-1 flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors ${
                     active ? "text-ink" : "text-ink-soft"
                   }`}
                 >
                   {t.icon}
                   {t.label}
+                  {/* Active tab: a short ink underline, like a pen stroke */}
+                  <span
+                    aria-hidden="true"
+                    className={`absolute bottom-1.5 h-[3px] w-6 rounded-full bg-stamp transition-all duration-200 ${
+                      active ? "opacity-100" : "scale-x-0 opacity-0"
+                    }`}
+                  />
                 </Link>
               )}
             </li>
