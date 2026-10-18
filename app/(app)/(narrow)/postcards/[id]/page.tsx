@@ -169,9 +169,9 @@ export default async function PostcardPage({
             <dd className="font-medium">{formatDate(card.sent_on)}</dd>
           </div>
           <div>
-            <dt className="text-ink-soft">{card.received_on ? "Received" : "Status"}</dt>
+            <dt className="text-ink-soft">{arrived ? "Received" : "Status"}</dt>
             <dd className="font-medium">
-              {card.received_on ? formatDate(card.received_on) : lost ? "Lost" : "In transit"}
+              {card.received_on ? formatDate(card.received_on) : arrived ? "Date unknown" : lost ? "Lost" : "In transit"}
             </dd>
           </div>
           <div>
@@ -179,7 +179,7 @@ export default async function PostcardPage({
             <dd className="font-medium">{distance !== null ? formatKm(distance) : "—"}</dd>
           </div>
         </dl>
-        {travelDays > 0 && !lost && (
+        {travelDays > 0 && !lost && (card.received_on || inTransit) && (
           <p className="text-sm text-ink-soft sm:col-span-2">
             {card.received_on ? `Took ${travelDays} days to arrive.` : `${travelDays} days in transit so far.`}
           </p>

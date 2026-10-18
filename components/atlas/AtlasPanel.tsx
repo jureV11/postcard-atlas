@@ -192,7 +192,15 @@ function CardDetails({
         </div>
         <div>
           <dt className="text-ink-soft">{card.received_on ? "Received" : "Status"}</dt>
-          <dd>{card.received_on ? formatDate(card.received_on) : card.status === "lost" ? "Lost in the post" : "In transit"}</dd>
+          <dd>
+            {card.received_on
+              ? formatDate(card.received_on)
+              : card.status === "received"
+                ? "Date unknown"
+                : card.status === "lost"
+                  ? "Lost in the post"
+                  : "In transit"}
+          </dd>
         </div>
         {distance !== null && (
           <div>

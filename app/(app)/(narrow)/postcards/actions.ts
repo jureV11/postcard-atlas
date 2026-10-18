@@ -57,7 +57,8 @@ export async function updatePostcard(input: {
   return {};
 }
 
-export async function updateReceived(id: string, receivedOn: string, message: string): Promise<Result> {
+/** receivedOn null = arrived, date unknown. */
+export async function updateReceived(id: string, receivedOn: string | null, message: string): Promise<Result> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("update_received", {
     p_id: id,
@@ -140,7 +141,8 @@ export async function unmarkLost(id: string): Promise<Result> {
   return {};
 }
 
-export async function markReceived(id: string, receivedOn: string, message: string): Promise<Result> {
+/** receivedOn null = arrived, date unknown. */
+export async function markReceived(id: string, receivedOn: string | null, message: string): Promise<Result> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("mark_received", {
     p_id: id,

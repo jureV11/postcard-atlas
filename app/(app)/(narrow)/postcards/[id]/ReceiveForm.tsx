@@ -7,6 +7,7 @@ import { todayLocal } from "@/lib/dates";
 import { createClient } from "@/lib/supabase/client";
 import { uploadPostcardPhoto } from "@/lib/upload";
 import { errorMessage } from "@/lib/utils";
+import { ArrivalDateField } from "@/components/ArrivalDateField";
 import { markReceived, setPostcardPhotos } from "../actions";
 
 export function ReceiveForm({
@@ -23,6 +24,7 @@ export function ReceiveForm({
   const router = useRouter();
   const [supabase] = useState(createClient);
   const [receivedOn, setReceivedOn] = useState("");
+  const [dateUnknown, setDateUnknown] = useState(false);
   const [today, setToday] = useState<string | undefined>(undefined);
   const [front, setFront] = useState<File | null>(null);
   const [back, setBack] = useState<File | null>(null);
@@ -38,7 +40,7 @@ export function ReceiveForm({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!receivedOn) return setError("When did it arrive?");
+    if (!receivedOn && !dateUnknown) return setError("When did it arrive? (Or tick “I don’t know”.)");
     if (!front && !back && !confirm("Reveal it without photos? You can still add them afterwards.")) return;
 
     try {
@@ -53,7 +55,7 @@ export function ReceiveForm({
       }
 
       setStatus("Revealing…");
-      const result = await markReceived(cardId, receivedOn, message);
+      const result = await markReceived(cardId, dateUnknown ? null : receivedOn, message);
       if (result.error) throw new Error(result.error);
       router.push(`/postcards/${cardId}`); // the big reveal
       router.refresh();
@@ -66,21 +68,14 @@ export function ReceiveForm({
 
   return (
     <form onSubmit={submit} className="space-y-5">
-      <div>
-        <label className="label" htmlFor="receivedOn">
-          Date received
-        </label>
-        <input
-          id="receivedOn"
-          type="date"
-          className="input"
-          min={sentOn}
-          max={today}
-          value={receivedOn}
-          onChange={(e) => setReceivedOn(e.target.value)}
-          required
-        />
-      </div>
+      <ArrivalDateField
+        value={receivedOn}
+        onChange={setReceivedOn}
+        unknown={dateUnknown}
+        onUnknownChange={setDateUnknown}
+        min={sentOn}
+        max={today}
+      />
 
       <div>
         <p className="label">Photos</p>

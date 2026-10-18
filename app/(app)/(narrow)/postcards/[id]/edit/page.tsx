@@ -86,6 +86,7 @@ export default async function EditPostcardPage({ params }: { params: Promise<{ i
         groupId={card.group_id}
         sentOn={card.sent_on}
         receivedOn={card.received_on ?? card.sent_on}
+        dateUnknown={card.status === "received" && !card.received_on}
         message={card.message ?? ""}
         addresses={addresses.filter((a) => a.member_id === member.id)}
         addressId={card.recipient_address_id ?? null}

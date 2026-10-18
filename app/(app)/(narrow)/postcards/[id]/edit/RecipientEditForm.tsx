@@ -6,6 +6,7 @@ import { setPostcardAddress } from "@/app/(app)/address-actions";
 import { AddressSelect } from "@/components/AddressSelect";
 import { todayLocal } from "@/lib/dates";
 import type { Address } from "@/lib/types";
+import { ArrivalDateField } from "@/components/ArrivalDateField";
 import { unmarkReceived, updateReceived } from "../../actions";
 
 export function RecipientEditForm({
@@ -13,6 +14,7 @@ export function RecipientEditForm({
   groupId,
   sentOn,
   receivedOn: initialReceivedOn,
+  dateUnknown: initialDateUnknown = false,
   message: initialMessage,
   addresses,
   addressId: initialAddressId,
@@ -21,12 +23,15 @@ export function RecipientEditForm({
   groupId: string;
   sentOn: string;
   receivedOn: string;
+  /** Arrived, but nobody knows when. */
+  dateUnknown?: boolean;
   message: string;
   addresses: Address[]; // your own addresses
   addressId: string | null;
 }) {
   const router = useRouter();
   const [receivedOn, setReceivedOn] = useState(initialReceivedOn);
+  const [dateUnknown, setDateUnknown] = useState(initialDateUnknown);
   const [message, setMessage] = useState(initialMessage);
   const [addressId, setAddressId] = useState<string | null>(initialAddressId);
   const [busy, setBusy] = useState<"save" | "undo" | null>(null);
@@ -39,7 +44,11 @@ export function RecipientEditForm({
     e.preventDefault();
     setError(null);
     setBusy("save");
-    const result = await updateReceived(cardId, receivedOn, message);
+    if (!receivedOn && !dateUnknown) {
+      setBusy(null);
+      return setError("When did it arrive? (Or tick “I don’t know”.)");
+    }
+    const result = await updateReceived(cardId, dateUnknown ? null : receivedOn, message);
     if (result.error) {
       setBusy(null);
       return setError(result.error);
@@ -76,21 +85,14 @@ export function RecipientEditForm({
   return (
     <div className="space-y-5">
       <form onSubmit={save} className="card space-y-5">
-        <div>
-          <label className="label" htmlFor="receivedOn">
-            Date received
-          </label>
-          <input
-            id="receivedOn"
-            type="date"
-            className="input"
-            min={sentOn}
-            max={today}
-            value={receivedOn}
-            onChange={(e) => setReceivedOn(e.target.value)}
-            required
-          />
-        </div>
+        <ArrivalDateField
+          value={receivedOn}
+          onChange={setReceivedOn}
+          unknown={dateUnknown}
+          onUnknownChange={setDateUnknown}
+          min={sentOn}
+          max={today}
+        />
         <div>
           <label className="label" htmlFor="message">
             Message <span className="font-normal text-ink-soft">(what&apos;s written on the card)</span>
