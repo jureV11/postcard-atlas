@@ -1,0 +1,33 @@
+# Checks every push and pull request: types, the server/client helper rule, and a production build.
+name: Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Type-check
+        run: npm run typecheck
+      - name: No helpers from "use client" files in server code
+        run: npm run check:client
+      - name: Production build
+        run: npm run build
+        env:
+          # Placeholders: the build only needs them to exist (no real project is contacted).
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-key
+          NEXT_TELEMETRY_DISABLED: 1
