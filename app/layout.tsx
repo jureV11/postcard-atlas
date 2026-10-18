@@ -10,6 +10,9 @@ const hand = Caveat({ subsets: ["latin", "latin-ext"], variable: "--font-caveat"
 export const metadata: Metadata = {
   title: "Postcard Atlas",
   description: "Every postcard our group sends, on one map.",
+  applicationName: "Postcard Atlas",
+  // "Add to Home Screen" on iPhone: full-screen, with a short name under the icon
+  appleWebApp: { capable: true, title: "Postcards", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
