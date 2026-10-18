@@ -8,7 +8,7 @@ Works on any machine with Docker + Docker Compose (Linux, macOS, Windows; x86 or
 
 ## 1. Add the settings file
 
-Create a file called **`.env.local`** in this folder (next to `docker-compose.yml`)
+Create a file called **`.env.local`** (or **`.env`** — either works) in this folder (next to `docker-compose.yml`)
 with the two values you were sent:
 
 ```
@@ -27,9 +27,11 @@ docker compose --env-file .env.local up --build -d
 
 First build takes a few minutes. The site is then on **port 3000**.
 
-- `--env-file .env.local` is required: these values are compiled into the site
+- Using `.env` instead? Then it's just `docker compose up --build -d` — Docker reads `.env` by itself.
+- With `.env.local`, `--env-file .env.local` is required: these values are compiled into the site
   at build time, and the build stops with a message if they're missing.
-- Port 3000 taken? Change `"3000:3000"` in `docker-compose.yml` to e.g. `"8080:3000"`.
+- Port 3000 taken? Add `HOST_PORT=8080` (or any free port) to your settings file — no need to edit
+  `docker-compose.yml`, so updates never clash with your setup.
 - It restarts by itself after a reboot (`restart: unless-stopped`).
 
 ## 3. Put it behind HTTPS
@@ -52,7 +54,7 @@ sign-in emails (password reset, new accounts) will link to the wrong place.
 
 ## Updating
 
-When you get a new version, replace the files (keep your `.env.local`) and run the
+When you get a new version, `git pull` (or replace the files, keeping your settings file) and run the
 same command again:
 
 ```bash

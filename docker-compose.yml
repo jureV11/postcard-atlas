@@ -1,22 +1,28 @@
 # Postcard Atlas
 #
-#   docker compose --env-file .env.local up --build -d
+#   docker compose --env-file .env.local up --build -d    (settings in .env.local)
+#   docker compose up --build -d                          (settings in .env)
 #
-# Then open http://localhost:3000 (or http://<this-PC's-IP>:3000 from a phone on
-# the same Wi-Fi). The database, sign-in and photo storage stay on Supabase.
+# Settings come from .env.local or .env next to this file, whichever you have.
+# Optional: HOST_PORT=3020 in that file to serve on another port.
+# Then open http://localhost:3000 (or your HOST_PORT). The database, sign-in and
+# photo storage stay on Supabase.
 
 services:
   web:
     build:
       context: .
       args:
-        # Baked into the browser code at build time — read from .env.local
-        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?Run with --env-file .env.local}
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:?Run with --env-file .env.local}
+        # Baked into the browser code at build time
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?Missing — run with --env-file .env.local, or put your settings in .env}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:?Missing — run with --env-file .env.local, or put your settings in .env}
     image: postcard-atlas:latest
     container_name: postcard-atlas
     env_file:
-      - .env
+      - path: .env.local
+        required: false
+      - path: .env
+        required: false
     ports:
-      - "3020:3000"
+      - "${HOST_PORT:-3000}:3000"
     restart: unless-stopped
