@@ -2,9 +2,10 @@ import { cityKey } from "@/lib/atlas";
 import { cardKm } from "@/lib/stats";
 import { isLocated, type LocatedPostcard, type Member, type Postcard } from "@/lib/types";
 
-/** Once around the Earth at the equator, and the average distance to the Moon. */
+/** Once around the Earth at the equator, and to the Moon and back (average distance, twice). */
 export const EARTH_KM = 40_075;
 export const MOON_KM = 384_400;
+export const MOON_AND_BACK_KM = 2 * MOON_KM;
 
 export type Journey = { card: LocatedPostcard; km: number; toCity: string };
 export type MonthBar = { key: string; label: string; year: number; count: number };

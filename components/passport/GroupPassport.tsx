@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Avatar } from "@/components/Avatar";
 import { Flag } from "@/components/Flag";
 import { formatKm } from "@/lib/geo";
-import { EARTH_KM, MOON_KM, type Journey, type Passport } from "@/lib/passport";
+import { EARTH_KM, MOON_AND_BACK_KM, type Journey, type Passport } from "@/lib/passport";
 import type { MemberWithAvatar } from "@/lib/types";
 import { MonthlyBars } from "./MonthlyBars";
 
@@ -12,7 +12,7 @@ const WORLD_COUNTRIES = 195;
 /** The group's stats as a passport: a stat grid, distance in space terms, months and pen pals. */
 export function GroupPassport({ passport: p, membersById }: { passport: Passport; membersById: Map<string, MemberWithAvatar> }) {
   const laps = p.totalKm / EARTH_KM;
-  const moon = p.totalKm / MOON_KM;
+  const moon = p.totalKm / MOON_AND_BACK_KM; // there and back (#9)
 
   return (
     <div className="space-y-4">
@@ -56,7 +56,7 @@ export function GroupPassport({ passport: p, membersById }: { passport: Passport
               <Ring progress={laps % 1 || (laps >= 1 ? 1 : 0)} badge={`${fmtTimes(laps)}×`} label="Around the Earth">
                 <Earth />
               </Ring>
-              <Ring progress={Math.min(1, moon)} badge={`${fmtTimes(moon)}×`} label="To the Moon">
+              <Ring progress={Math.min(1, moon)} badge={`${fmtTimes(moon)}×`} label="To the Moon & back">
                 <Moon />
               </Ring>
             </div>
