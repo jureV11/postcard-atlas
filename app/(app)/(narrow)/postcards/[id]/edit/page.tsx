@@ -4,9 +4,10 @@ import { loadAddresses } from "@/lib/addresses";
 import { withFormerLabel } from "@/lib/members";
 import { visibleTo } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
-import { signAvatarUrls } from "@/lib/storage";
+import { signAvatarUrls, signPaths } from "@/lib/storage";
 import { isLocated, type Member, type Postcard } from "@/lib/types";
 import { DeleteButton } from "../DeleteButton";
+import { PhotosEditor } from "../PhotosEditor";
 import { RecipientEditForm } from "./RecipientEditForm";
 import { SenderEditForm } from "./SenderEditForm";
 
@@ -45,6 +46,9 @@ export default async function EditPostcardPage({ params }: { params: Promise<{ i
       .or(`left_at.is.null,id.eq.${card.recipient_id}`)
       .order("display_name");
     const recipients = (await signAvatarUrls(supabase, (rows ?? []) as Member[])).map(withFormerLabel);
+    // A lost card never reaches its recipient, so its photos are the sender's to add.
+    const lost = card.status === "lost";
+    const urls = lost ? await signPaths(supabase, "postcards", [card.front_path, card.back_path]) : new Map<string, string>();
 
     return (
       <div className="mx-auto max-w-xl space-y-6">
@@ -54,10 +58,28 @@ export default async function EditPostcardPage({ params }: { params: Promise<{ i
           <p className="mt-1 text-ink-soft">
             {received
               ? "It's already arrived, so who it went to is set — but you can fix where and when it was sent."
-              : "Still in transit, so you can change anything — even who it's for."}
+              : lost
+                ? "Lost in the post — you can still fix the details, and add photos of the card if you have them."
+                : "Still in transit, so you can change anything — even who it's for."}
           </p>
         </div>
         <SenderEditForm card={card} recipients={recipients} recipientLocked={received} addresses={addresses} />
+        {lost && (
+          <section className="card space-y-3">
+            <div>
+              <h2 className="font-display text-lg font-semibold">Photos</h2>
+              <p className="text-sm text-ink-soft">
+                It never arrived, so nobody else can photograph it. Got a picture from before you posted it? Add it here.
+              </p>
+            </div>
+            <PhotosEditor
+              cardId={card.id}
+              groupId={card.group_id}
+              frontUrl={card.front_path ? (urls.get(card.front_path) ?? null) : null}
+              backUrl={card.back_path ? (urls.get(card.back_path) ?? null) : null}
+            />
+          </section>
+        )}
         {!received && (
           <section className="card flex items-center justify-between gap-4">
             <div>

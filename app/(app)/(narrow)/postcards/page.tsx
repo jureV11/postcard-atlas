@@ -20,7 +20,7 @@ export default async function PostcardsPage({ searchParams }: { searchParams: Pr
   const myOnTheWay = postcards.filter((c) => c.status === "in_transit" && c.sender_id === member.id);
   const received = postcards.filter((c) => c.status === "received");
   const lostCards = postcards.filter((c) => c.status === "lost");
-  const fronts = await signPaths(supabase, "postcards", received.map((c) => c.front_path));
+  const fronts = await signPaths(supabase, "postcards", [...received, ...lostCards].map((c) => c.front_path));
   const months = groupByMonth(received, sort);
   // Everything a card can be searched by — only what this viewer can already see.
   const groups: BrowserGroup[] = months.map((g) => ({
@@ -169,7 +169,7 @@ export default async function PostcardsPage({ searchParams }: { searchParams: Pr
               <PostcardTile
                 key={c.id}
                 card={c}
-                frontUrl={null}
+                frontUrl={c.front_path ? (fronts.get(c.front_path) ?? null) : null}
                 sender={membersById.get(c.sender_id ?? "")}
                 recipient={membersById.get(c.recipient_id)}
               />

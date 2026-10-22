@@ -57,7 +57,8 @@ export default async function PostcardPage({
   const to = destinationOf(card, recipient);
   const distance = to ? haversineKm(card.from_lat, card.from_lng, to.lat, to.lng) : null;
   const travelDays = card.received_on ? daysBetween(card.sent_on, card.received_on) : daysBetween(card.sent_on, today);
-  const canEditPhotos = isRecipient && arrived; // photos are the recipient's job
+  // Photos are the recipient's job — except for a lost card, which never reaches them.
+  const canEditPhotos = (isRecipient && arrived) || (isSender && lost);
   // Nicheness: only for delivered, public cards — the same ones the leaderboard scores.
   const [niche] = await nicheScores([card]);
 
