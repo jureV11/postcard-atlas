@@ -65,34 +65,34 @@ export function AddressesPanel({
       >
         <span>Addresses</span>
         <span aria-hidden="true" className="text-ink-soft">
-          ▾
+          <span className="lg:hidden">▾</span>
+          <span className="hidden lg:inline">›</span>
         </span>
       </button>
     );
   }
 
   return (
-    <section className="card space-y-4">
+    <section className="card space-y-4 lg:max-h-[calc(100dvh-10rem)] lg:w-[300px] lg:overflow-y-auto">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-lg font-semibold">Addresses</h2>
         <button type="button" onClick={toggle} aria-expanded="true" className="text-sm text-ink-soft hover:text-ink">
-          Hide ▴
+          <span className="lg:hidden">Hide ▴</span>
+          <span className="hidden lg:inline">‹ Hide</span>
         </button>
       </div>
       <p className="text-xs text-ink-soft">
         Only your group can see these. Postcards are drawn to the address they were sent to.
       </p>
-      <div className="grid gap-x-6 gap-y-4 md:grid-cols-2 lg:grid-cols-3">
-        {ordered.map((m) => (
-          <MemberAddresses
-            key={m.id}
-            member={m}
-            isMe={m.id === meId}
-            addresses={addresses.filter((a) => a.member_id === m.id)}
-            inUse={inUse}
-          />
-        ))}
-      </div>
+      {ordered.map((m) => (
+        <MemberAddresses
+          key={m.id}
+          member={m}
+          isMe={m.id === meId}
+          addresses={addresses.filter((a) => a.member_id === m.id)}
+          inUse={inUse}
+        />
+      ))}
     </section>
   );
 }
@@ -133,7 +133,7 @@ function MemberAddresses({
   }
 
   return (
-    <div className="space-y-2 border-t border-ink/10 pt-3">
+    <div className="space-y-2 border-t border-ink/10 pt-3 first-of-type:border-0 first-of-type:pt-0">
       <div className="flex items-center gap-2">
         <Avatar name={member.display_name} color={member.color} url={member.avatar_url} size={24} />
         <p className="min-w-0 truncate text-sm font-medium">

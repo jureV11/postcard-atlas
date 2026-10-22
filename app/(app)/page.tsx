@@ -49,11 +49,15 @@ export default async function MapPage() {
         </Link>
       </div>
 
-      {/* The map gets the whole width; everything else sits underneath */}
-      <Atlas cards={cards} members={members} />
+      {/* Addresses on the left, the map in the middle (it gets all the extra width), stats on the right */}
+      <div className="grid gap-6 lg:grid-cols-[auto_minmax(0,1fr)_280px]">
+        <div className="lg:pt-11">
+          <AddressesPanel members={members} addresses={addresses} meId={member.id} inUse={addressesInUse} />
+        </div>
 
-      <div className="space-y-4 pt-2">
-        <aside className="grid items-start gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Atlas cards={cards} members={members} />
+
+        <aside className="space-y-4 lg:pt-11">
           {/* Countries tracker */}
           <section className="card space-y-3">
             <div className="flex items-baseline justify-between">
@@ -153,8 +157,6 @@ export default async function MapPage() {
             </section>
           )}
         </aside>
-
-        <AddressesPanel members={members} addresses={addresses} meId={member.id} inUse={addressesInUse} />
       </div>
     </div>
   );
