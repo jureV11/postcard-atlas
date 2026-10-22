@@ -60,7 +60,10 @@ export default function GlobeView({
   focusCities,
   routeColors,
   homeStyle = "house",
+  showNames = false,
 }: {
+  /** Names next to pins (when zoomed in). Off by default: it gets crowded. */
+  showNames?: boolean;
   /** Home markers: little houses with their photo, or the classic round dots. */
   homeStyle?: "house" | "dot";
   /** Flag routes: colours of each origin country's flag (lower-case code → colours). */
@@ -262,7 +265,7 @@ export default function GlobeView({
   const selectedCardId = selection?.kind === "card" ? selection.id : null;
 
   return (
-    <div ref={containerRef} className={`absolute inset-0 ${zoomedIn ? "globe-labels" : ""}`}>
+    <div ref={containerRef} className={`absolute inset-0 ${showNames && zoomedIn ? "globe-labels" : ""}`}>
       {!ready && (
         <div className="absolute inset-0 flex items-center justify-center text-sm text-ink-soft">Spinning up the globe…</div>
       )}
@@ -284,7 +287,7 @@ export default function GlobeView({
           polygonCapColor={(d) => {
             const key = countryKeyFromFeature(d as Country);
             const home = key ? homes.get(key) : undefined;
-            if (home) return withAlpha(home.color, filterId && !involved.has(home.id) ? 0.35 : 0.85);
+            if (home) return withAlpha(home.color, filterId && !involved.has(home.id) ? 0.25 : 0.6);
             // An old address's country: a lighter wash of their colour (the flat map stripes it).
             const old = key ? oldHomeCountries?.get(key) : undefined;
             if (old) return withAlpha(old.color, filterId && !involved.has(old.id) ? 0.15 : 0.38);

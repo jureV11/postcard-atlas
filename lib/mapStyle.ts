@@ -18,7 +18,7 @@ export const PLAIN: MapStyle = {
   border: "#fbf8f2",
   sentFrom: "#efd5ab",
   sentFromEdge: "#c98d3c",
-  homeOpacity: 0.55,
+  homeOpacity: 0.4,
   graticule: "#2a2622",
   graticuleOpacity: 0.06,
 };
@@ -29,7 +29,7 @@ export const COLOURFUL: MapStyle = {
   border: "#ffffff",
   sentFrom: "#f0a945",
   sentFromEdge: "#9a5a12",
-  homeOpacity: 0.85,
+  homeOpacity: 0.55,
   graticule: "#ffffff",
   graticuleOpacity: 0.5,
 };

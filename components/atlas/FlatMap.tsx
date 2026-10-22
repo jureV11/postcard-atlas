@@ -19,7 +19,6 @@ const INK = "#2a2622";
 const HOME_R = 9; // screen px, roughly a home marker's half-height
 const HOUSE_SCALE = 0.95; // house marker size (1 = 22px tall)
 const CITY_R = 3.5;
-const LABEL_ZOOM = 3; // show city/member names from this zoom level
 const SMALL_COUNTRY_PX2 = 60; // countries smaller than this on screen get a highlight circle
 
 export function FlatMap({
@@ -43,7 +42,10 @@ export function FlatMap({
   progress,
   routeColors,
   homeStyle = "house",
+  showNames = false,
 }: {
+  /** Names next to pins. Off by default: the map gets crowded. Selected things are always named. */
+  showNames?: boolean;
   /** Home markers: little houses with their photo, or the classic round dots. */
   homeStyle?: "house" | "dot";
   /** Flag routes: colours of each origin country's flag (lower-case code → colours). */
@@ -284,7 +286,6 @@ export function FlatMap({
   }, [projection, filterId]);
 
   const k = t.k;
-  const showLabels = k >= LABEL_ZOOM;
   const selectedCardId = selection?.kind === "card" ? selection.id : null;
   const selectedCity = selection?.kind === "city" ? selection.key : null;
   const selectedMember = selection?.kind === "member" ? selection.id : null;
@@ -308,6 +309,54 @@ export function FlatMap({
     </text>
   );
 
+  // Names: everything that could have one, most important first. Each is placed
+  // only if it doesn't overlap a name already placed or another pin; selected
+  // things are always shown. Checked in screen pixels, so it works at any zoom.
+  type Candidate = { key: string; x: number; y: number; text: string; bold?: boolean; dx: number; rank: number; force: boolean };
+  const candidates: Candidate[] = [];
+  const pinBoxes: [number, number, number, number][] = []; // x0, y0, x1, y1 in screen px
+  const houseDx = homeStyle === "house" ? 13 : 9.5;
+  for (const m of members) {
+    const p = project(m.home_lng, m.home_lat);
+    if (!p) continue;
+    const sel = m.id === selectedMember;
+    const dim = !!filterId && !involved.has(m.id);
+    candidates.push({ key: `m-${m.id}`, x: p[0], y: p[1], text: `${m.display_name} · ${m.home_city}`, bold: true, dx: houseDx, rank: dim ? 5 : 1, force: sel });
+    pinBoxes.push([t.applyX(p[0]) - 10, t.applyY(p[1]) - 12, t.applyX(p[0]) + 10, t.applyY(p[1]) + 10]);
+  }
+  for (const c of cities) {
+    const p = project(c.lng, c.lat);
+    if (!p) continue;
+    const sel = c.key === selectedCity;
+    const faded = !!filterId && !!focusCities && !focusCities.has(c.key);
+    candidates.push({ key: `c-${c.key}`, x: p[0], y: p[1], text: c.name, dx: 13, rank: faded ? 6 : 2, force: sel });
+    pinBoxes.push([t.applyX(p[0]) - 9, t.applyY(p[1]) - 7, t.applyX(p[0]) + 9, t.applyY(p[1]) + 7]);
+  }
+  for (const o of oldHomes) {
+    const p = project(o.lng, o.lat);
+    if (!p) continue;
+    candidates.push({ key: `o-${o.key}`, x: p[0], y: p[1], text: `${o.member.display_name} · ${o.city} (before)`, dx: houseDx - 2, rank: 3, force: false });
+    pinBoxes.push([t.applyX(p[0]) - 8, t.applyY(p[1]) - 9, t.applyX(p[0]) + 8, t.applyY(p[1]) + 8]);
+  }
+  const placedNames: Candidate[] = [];
+  if (size) {
+    const taken: [number, number, number, number][] = [];
+    const hits = (b: [number, number, number, number]) => (o: [number, number, number, number]) =>
+      b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1];
+    for (const c of [...candidates].sort((a, b) => Number(b.force) - Number(a.force) || a.rank - b.rank)) {
+      if (!c.force && !showNames) continue;
+      const sx = t.applyX(c.x) + c.dx;
+      const sy = t.applyY(c.y);
+      const box: [number, number, number, number] = [sx - 2, sy - 8, sx + c.text.length * (c.bold ? 6.7 : 6.2) + 2, sy + 6];
+      if (box[2] < 0 || box[0] > size.w || box[3] < 0 || box[1] > size.h) continue; // off screen
+      const ownPin = pinBoxes.findIndex((b) => Math.abs((b[0] + b[2]) / 2 - t.applyX(c.x)) < 0.5 && Math.abs((b[1] + b[3]) / 2 - t.applyY(c.y)) < 3);
+      const blocked = taken.some(hits(box)) || pinBoxes.some((b, i) => i !== ownPin && hits(box)(b));
+      if (blocked && !c.force) continue;
+      taken.push(box);
+      placedNames.push(c);
+    }
+  }
+
   return (
     <div ref={containerRef} className="absolute inset-0">
       {!world && (
@@ -325,8 +374,9 @@ export function FlatMap({
             <filter id="stamp-shadow" x="-50%" y="-50%" width="200%" height="200%">
               <feDropShadow dx="0" dy="0.8" stdDeviation="0.7" floodColor="#2a2622" floodOpacity="0.4" />
             </filter>
-            <pattern id="hatch" patternUnits="userSpaceOnUse" width="3" height="3" patternTransform="rotate(45)">
-              <line x1="0" y1="0" x2="0" y2="3" stroke={INK} strokeOpacity="0.28" strokeWidth="0.9" />
+            {/* "Sent from" hatching: sized by the zoom so it stays fine and light on screen */}
+            <pattern id="hatch" patternUnits="userSpaceOnUse" width={4 / k} height={4 / k} patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2={4 / k} stroke={INK} strokeOpacity="0.16" strokeWidth={1 / k} />
             </pattern>
             {/* Old-address countries: stripes in that person's colour */}
             {members.map((m) => (
@@ -575,7 +625,6 @@ export function FlatMap({
                     onClick={() => onSelect({ kind: "city", key: c.key })}
                     title={`${c.name}, ${c.country} · ${c.cards.length} ${c.cards.length === 1 ? "card" : "cards"}`}
                   />
-                  {(showLabels || selected) && label(p[0], p[1], c.name, { dx: 13 })}
                 </g>
               );
             })}
@@ -612,7 +661,6 @@ export function FlatMap({
                   <title>
                     {o.member.display_name} · used to live in {o.city} · {o.cards} {o.cards === 1 ? "card" : "cards"} sent there
                   </title>
-                  {showLabels && label(p[0], p[1], `${o.member.display_name} · ${o.city} (before)`, { dx: homeStyle === "house" ? 11 : 8 })}
                 </g>
               );
             })}
@@ -653,10 +701,16 @@ export function FlatMap({
                   <title>
                     {m.display_name} · home in {m.home_city}
                   </title>
-                  {(showLabels || selected) && label(p[0], p[1], `${m.display_name} · ${m.home_city}`, { bold: true, dx: homeStyle === "house" ? 13 : 9.5 })}
                 </g>
               );
             })}
+
+            {/* Names that fit without overlapping (see placedNames) */}
+            <g>
+              {placedNames.map((n) => (
+                <g key={n.key}>{label(n.x, n.y, n.text, { bold: n.bold, dx: n.dx })}</g>
+              ))}
+            </g>
           </g>
         </svg>
       )}

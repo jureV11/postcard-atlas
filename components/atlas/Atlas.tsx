@@ -26,6 +26,7 @@ const ROUTES_KEY = "atlas-routes";
 const COLOUR_KEY = "atlas-colour";
 const FLAG_ROUTES_KEY = "atlas-flag-routes";
 const HOUSES_KEY = "atlas-houses";
+const NAMES_KEY = "atlas-names";
 
 function readPref(key: string): string | null {
   try {
@@ -46,6 +47,7 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
   const [colourful, setColourful] = useState(true);
   const [flagRoutes, setFlagRoutes] = useState(true); // routes in the origin flag's colours
   const [houses, setHouses] = useState(true); // home markers as houses (or classic dots)
+  const [names, setNames] = useState(false); // place names on the map: off by default, it gets crowded
   const [filterId, setFilterId] = useState<string | null>(null);
   // With a person selected: show the cards they sent, received, or both.
   const [directions, setDirections] = useState({ sent: true, received: true });
@@ -58,6 +60,7 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
     setColourful(readPref(COLOUR_KEY) !== "0");
     setFlagRoutes(readPref(FLAG_ROUTES_KEY) !== "0");
     setHouses(readPref(HOUSES_KEY) !== "0");
+    setNames(readPref(NAMES_KEY) === "1");
   }, []);
   function changeView(v: View) {
     setView(v);
@@ -68,6 +71,11 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
     setShowRoutes(next);
     savePref(ROUTES_KEY, next ? "1" : "0");
     if (!next && selection?.kind === "card") setSelection(null); // its route just disappeared
+  }
+  function toggleNames() {
+    const next = !names;
+    setNames(next);
+    savePref(NAMES_KEY, next ? "1" : "0");
   }
   function toggleHouses() {
     const next = !houses;
@@ -113,13 +121,18 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
     flagRoutes,
   );
 
+  const oldHomesShown = filterId ? atlas.oldHomes.filter((o) => o.member.id === filterId) : [];
+  const oldHomeCountriesShown = new Map([...atlas.oldHomeCountries].filter(([, m]) => m.id === filterId));
+
   const layerProps = {
     cards: atlas.located,
     cities: atlas.cities,
     sentFrom: atlas.sentFrom,
     homes: atlas.homes,
-    oldHomes: atlas.oldHomes,
-    oldHomeCountries: atlas.oldHomeCountries,
+    // Old addresses only for the person you've picked — otherwise they crowd the map.
+    oldHomes: oldHomesShown,
+    oldHomeCountries: oldHomeCountriesShown,
+    showNames: names,
     // Pulsing "on its way" rings only in the replay (history) — never live, no spoilers.
     awaiting: replay.active ? atlas.awaiting : undefined,
     members,
@@ -222,6 +235,7 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
                 hint="Colour each route like the flag of the country it was sent from"
               />
             )}
+            <Toggle checked={names} onChange={toggleNames} label="Names" hint="Show the names of places and people on the map" />
             <Toggle
               checked={houses}
               onChange={toggleHouses}
@@ -297,7 +311,7 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
           </span>
           Home countries
         </span>
-        {atlas.oldHomes.length > 0 && (
+        {oldHomesShown.length > 0 && (
           <span className="flex items-center gap-1.5">
             <span
               className="h-3 w-4 rounded-sm border border-ink/25"
@@ -327,7 +341,7 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
               : showRoutes
                 ? "Click a route to open its postcard"
                 : "Tick Routes, or pick a person above, to see routes"}{" "}
-            · zoom in for city names
+            · tick Names for place names
           </span>
         )}
       </div>
