@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Flag } from "@/components/Flag";
-import { GroupStats } from "@/components/GroupStats";
-import { PostcardTile } from "@/components/PostcardTile";
+import { PostcardsHero } from "@/components/PostcardsHero";
+import { WallPostcard } from "@/components/WallPostcard";
 import { PostcardsBrowser, type BrowserGroup } from "@/components/PostcardsBrowser";
 import { formatDate, monthName } from "@/lib/dates";
 import { groupByMonth, loadGroupData, type SortOrder } from "@/lib/postcards";
@@ -53,42 +53,7 @@ export default async function PostcardsPage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-display text-3xl font-semibold tracking-tight">Postcards</h1>
-          <p className="mt-1 text-ink-soft">{received.filter((c) => c.is_public).length} delivered and revealed</p>
-        </div>
-      </div>
-
-      {/* The two things you come here to do: big and side by side */}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Link
-          href="/postcards/new"
-          className="group flex items-center gap-4 rounded-2xl bg-ink px-5 py-4 text-paper shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-        >
-          <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-paper/15 text-2xl" aria-hidden="true">
-            ＋
-          </span>
-          <span>
-            <span className="block font-display text-xl font-semibold">Log a postcard</span>
-            <span className="block text-sm text-paper/70">Sent one? Note where from — it stays a surprise.</span>
-          </span>
-        </Link>
-        <Link
-          href="/postcards/arrived"
-          className="group flex items-center gap-4 rounded-2xl border-2 border-ink/80 bg-white/80 px-5 py-4 shadow-sm transition hover:-translate-y-0.5 hover:bg-white hover:shadow-md"
-        >
-          <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-stamp/12 text-2xl" aria-hidden="true">
-            ✉
-          </span>
-          <span>
-            <span className="block font-display text-xl font-semibold">A postcard arrived!</span>
-            <span className="block text-sm text-ink-soft">Got one? Match it and add the photos.</span>
-          </span>
-        </Link>
-      </div>
-
-      <GroupStats stats={stats} countries={groupCountries(postcards).length} membersById={membersById} />
+      <PostcardsHero stats={stats} countries={groupCountries(postcards).length} membersById={membersById} />
 
       {myOnTheWay.length > 0 && (
         <section className="space-y-3">
@@ -166,7 +131,7 @@ export default async function PostcardsPage({ searchParams }: { searchParams: Pr
           </div>
           <div className="grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3">
             {lostCards.map((c) => (
-              <PostcardTile
+              <WallPostcard
                 key={c.id}
                 card={c}
                 frontUrl={c.front_path ? (fronts.get(c.front_path) ?? null) : null}

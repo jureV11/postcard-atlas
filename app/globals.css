@@ -281,3 +281,18 @@ body {
   background-color: rgb(159 199 214 / 0.7);
 }
 
+
+/* Ticket stub: half-circle notches cut into both sides */
+.ticket {
+  border-radius: 6px;
+  mask:
+    radial-gradient(circle 9px at 0 50%, transparent 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle 9px at 100% 50%, transparent 98%, #000) right / 51% 100% no-repeat;
+}
+
+/* Luggage tag: the left end cut to a point */
+.luggage-tag {
+  border-radius: 0 6px 6px 0;
+  clip-path: polygon(22px 0, 100% 0, 100% 100%, 22px 100%, 0 calc(100% - 18px), 0 18px);
+  box-shadow: inset 0 0 0 1px rgb(42 38 34 / 0.08);
+}
