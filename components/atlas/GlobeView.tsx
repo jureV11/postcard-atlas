@@ -92,6 +92,10 @@ export default function GlobeView({
   const [world, setWorld] = useState<Country[]>([]);
   const [ready, setReady] = useState(false);
   const [zoomedIn, setZoomedIn] = useState(false); // show pin labels when close
+  // Routes are tubes with a fixed width on the globe, so they'd look fatter the
+  // closer you zoom. Shrink them with the camera height (in steps, so the arcs
+  // aren't rebuilt on every frame of a zoom).
+  const [strokeScale, setStrokeScale] = useState(1);
 
   useEffect(() => {
     loadWorld().then(setWorld);
@@ -280,7 +284,10 @@ export default function GlobeView({
           atmosphereColor="#e8d6b4"
           atmosphereAltitude={0.14}
           onGlobeReady={() => setReady(true)}
-          onZoom={(pov) => setZoomedIn(pov.altitude < 0.75)}
+          onZoom={(pov) => {
+            setZoomedIn(pov.altitude < 0.75);
+            setStrokeScale(Math.min(1, Math.max(0.15, Math.round((pov.altitude / 1.7) * 20) / 20)));
+          }}
           onGlobeClick={() => onSelect(null)}
           // Countries
           polygonsData={world}
@@ -319,9 +326,17 @@ export default function GlobeView({
           arcStroke={(d) => {
             const a = d as ArcDatum;
             const selected = a.card.id === selectedCardId;
-            if (a.kind === "comet") return 0.7;
-            if (selected) return 1.2;
-            return a.role === "out" || a.role === "in" ? 0.9 : a.role === "other" ? 0.35 : 0.55;
+            const base =
+              a.kind === "comet"
+                ? 0.45
+                : selected
+                  ? 0.8
+                  : a.role === "out" || a.role === "in"
+                    ? 0.6
+                    : a.role === "other"
+                      ? 0.2
+                      : 0.35;
+            return base * strokeScale;
           }}
           arcAltitudeAutoScale={0.4}
           // Received-by-the-selected-person routes are dotted; in transit stays dashed.
