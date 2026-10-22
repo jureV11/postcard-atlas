@@ -184,8 +184,12 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
         </div>
       )}
 
+      {/* The map as a print taped into the journal (tape only from tablet size up) */}
+      <div className="relative">
+        <span className="tape tape-tl hidden sm:block" aria-hidden="true" />
+        <span className="tape tape-tr hidden sm:block" aria-hidden="true" />
       <div
-        className={`relative -mx-4 aspect-square max-h-[72vh] overflow-hidden border-y border-ink/10 shadow-sm sm:mx-0 sm:aspect-auto sm:h-[620px] sm:max-h-none sm:rounded-2xl sm:border lg:h-[calc(100dvh-13rem)] lg:min-h-[560px] ${
+        className={`relative -mx-4 aspect-square max-h-[72vh] overflow-hidden border-y border-ink/10 shadow-sm sm:mx-0 sm:aspect-auto sm:h-[620px] sm:max-h-none sm:rounded-[3px] sm:border-[8px] sm:border-[#fffdf8] sm:shadow-[0_2px_4px_rgb(42_38_34/0.12),0_24px_44px_-24px_rgb(42_38_34/0.55)] lg:h-[calc(100dvh-13rem)] lg:min-h-[560px] ${
           view === "globe" ? "bg-[radial-gradient(circle_at_50%_45%,#f8f3ea_0%,#ece3d2_70%)]" : "bg-[#f3ede1]"
         }`}
       >
@@ -257,6 +261,7 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
             membersById={membersById}
           />
         )}
+      </div>
       </div>
 
       {replay.active && (

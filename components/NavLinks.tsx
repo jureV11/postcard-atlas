@@ -20,10 +20,17 @@ export function NavLinks() {
           <Link
             key={l.href}
             href={l.href}
-            className={`rounded-full px-2.5 py-1.5 text-sm font-medium transition sm:px-3 ${
-              active ? "bg-ink text-paper" : "text-ink-soft hover:bg-ink/5 hover:text-ink"
+            aria-current={active ? "page" : undefined}
+            className={`relative px-2.5 py-1.5 text-sm font-medium transition sm:px-3 ${
+              active ? "text-paper" : "text-paper/60 hover:text-paper"
             }`}
           >
+            <span
+              aria-hidden="true"
+              className={`absolute inset-x-2.5 -bottom-0.5 h-[3px] rounded-full bg-stamp transition-all duration-200 sm:inset-x-3 ${
+                active ? "opacity-100" : "scale-x-0 opacity-0"
+              }`}
+            />
             <span className="sm:hidden">{l.short}</span>
             <span className="hidden sm:inline">{l.label}</span>
           </Link>

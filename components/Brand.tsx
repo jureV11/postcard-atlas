@@ -20,7 +20,7 @@ export function Brand({ subtitle }: { subtitle?: string }) {
       <StampIcon />
       <span className="flex flex-col leading-tight">
         <span className="font-display text-lg font-semibold tracking-tight">Postcard Atlas</span>
-        {subtitle && <span className="text-xs text-ink-soft">{subtitle}</span>}
+        {subtitle && <span className="font-hand text-base leading-none opacity-70">{subtitle}</span>}
       </span>
     </span>
   );

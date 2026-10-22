@@ -18,8 +18,16 @@ html {
 }
 
 body {
-  background: var(--color-paper);
   color: var(--color-ink);
+  /* Journal paper: a warm page with a faint grain and a soft vignette */
+  background-color: var(--color-paper);
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgb(255 255 255 / 0.55), transparent 60%),
+    radial-gradient(rgb(42 38 34 / 0.045) 1px, transparent 1px),
+    radial-gradient(rgb(42 38 34 / 0.03) 1px, transparent 1px);
+  background-size: 100% 100%, 6px 6px, 9px 9px;
+  background-position: 0 0, 0 0, 3px 4px;
+  background-attachment: fixed;
 }
 
 /* In-transit postcards: dashes that march towards the recipient */
@@ -108,18 +116,36 @@ body {
 }
 
 @layer components {
+  /* A sheet of paper, with a second sheet peeking out behind it */
   .card {
-    @apply rounded-2xl border border-ink/10 bg-white/75 p-5 shadow-[0_1px_2px_rgb(42_38_34/0.04),0_4px_16px_-6px_rgb(42_38_34/0.08)];
+    @apply rounded-[6px] border border-ink/12 bg-[#fffdf8] p-5;
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.8) inset,
+      0 1px 2px rgb(42 38 34 / 0.06),
+      4px 5px 0 -1px #f1e8d6,
+      4px 5px 0 0 rgb(42 38 34 / 0.1),
+      0 14px 28px -18px rgb(42 38 34 / 0.35);
   }
+  /* Letterpress buttons: a solid ink block that presses into the page */
   .btn {
-    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-ink px-5 text-sm font-medium text-paper transition hover:bg-ink/85 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-[6px] bg-ink px-5 text-sm font-semibold tracking-wide text-paper transition-all duration-150 hover:bg-[#3a342e] active:translate-y-[2px] disabled:pointer-events-none disabled:opacity-50;
+    box-shadow:
+      0 3px 0 #120f0d,
+      0 6px 14px -6px rgb(42 38 34 / 0.6);
+  }
+  .btn:active {
+    box-shadow: 0 1px 0 #120f0d;
   }
   .btn-ghost {
-    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-ink/15 bg-white/60 px-5 text-sm font-medium transition hover:bg-white active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-[6px] border-[1.5px] border-ink/70 bg-[#fffdf8] px-5 text-sm font-semibold transition-all duration-150 hover:bg-white active:translate-y-[2px] disabled:pointer-events-none disabled:opacity-50;
+    box-shadow: 0 2px 0 rgb(42 38 34 / 0.35);
+  }
+  .btn-ghost:active {
+    box-shadow: 0 0 0 rgb(42 38 34 / 0.35);
   }
   .input {
     /* 16px text stops iOS zooming into the field */
-    @apply block min-h-11 w-full rounded-xl border border-ink/15 bg-white px-3.5 py-2.5 text-base outline-none transition placeholder:text-ink-soft/60 focus:border-ink/40 focus:ring-4 focus:ring-ink/5;
+    @apply block min-h-11 w-full rounded-[6px] border-[1.5px] border-ink/20 bg-[#fffdf8] px-3.5 py-2.5 text-base outline-none transition placeholder:text-ink-soft/60 focus:border-stamp/70 focus:ring-4 focus:ring-stamp/12;
   }
   .label {
     @apply mb-1.5 block text-sm font-medium;
@@ -220,3 +246,38 @@ body {
     transition: none;
   }
 }
+
+/* ── Travel journal: header strip, tape, the map as a taped-in print ────── */
+
+/* A thin airmail border, e.g. under the header */
+.airmail-strip {
+  height: 5px;
+  background: repeating-linear-gradient(-45deg, #c2503a 0 10px, #fffdf7 10px 16px, #2e5aa8 16px 26px, #fffdf7 26px 32px);
+}
+
+/* Washi tape: a translucent strip with torn ends */
+.tape {
+  position: absolute;
+  z-index: 6;
+  width: 110px;
+  height: 28px;
+  background: rgb(233 196 140 / 0.72);
+  background-image: repeating-linear-gradient(90deg, rgb(255 255 255 / 0.18) 0 6px, transparent 6px 12px);
+  box-shadow: 0 1px 2px rgb(42 38 34 / 0.18);
+  pointer-events: none;
+  mask: linear-gradient(90deg, transparent 0 3px, #000 3px calc(100% - 3px), transparent calc(100% - 3px)),
+    repeating-linear-gradient(0deg, #000 0 3px, transparent 3px 5px);
+  mask-composite: add;
+}
+.tape-tl {
+  top: -12px;
+  left: 18px;
+  transform: rotate(-8deg);
+}
+.tape-tr {
+  top: -12px;
+  right: 22px;
+  transform: rotate(6deg);
+  background-color: rgb(159 199 214 / 0.7);
+}
+

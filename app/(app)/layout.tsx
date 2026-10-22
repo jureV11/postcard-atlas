@@ -16,7 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-dvh">
       <header
-        className="sticky top-0 z-40 border-b border-ink/10 bg-paper/85 backdrop-blur"
+        className="sticky top-0 z-40 bg-ink text-paper shadow-[0_8px_24px_-12px_rgb(42_38_34/0.6)]"
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:h-16">
@@ -26,10 +26,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <span className="hidden sm:block">
             <NavLinks />
           </span>
-          <Link href={`/members/${member.id}`} aria-label="Your profile" className="shrink-0 rounded-full p-1">
+          <Link
+            href={`/members/${member.id}`}
+            aria-label="Your profile"
+            className="shrink-0 rounded-full p-0.5 ring-2 ring-paper/25 transition hover:ring-paper/60"
+          >
             <Avatar name={me.display_name} color={me.color} url={me.avatar_url} size={34} />
           </Link>
         </div>
+        <div className="airmail-strip" aria-hidden="true" />
       </header>
       {/* Bottom padding clears the phone tab bar */}
       <main className="mx-auto max-w-7xl px-4 pb-28 pt-5 sm:pb-16 sm:pt-6">{children}</main>
