@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { AtlasPanel } from "@/components/atlas/AtlasPanel";
 import { FlatMap } from "@/components/atlas/FlatMap";
@@ -48,6 +48,20 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
   const [flagRoutes, setFlagRoutes] = useState(true); // routes in the origin flag's colours
   const [houses, setHouses] = useState(true); // home markers as houses (or classic dots)
   const [names, setNames] = useState(false); // place names on the map: off by default, it gets crowded
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const optionsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!optionsOpen) return;
+    const close = (e: Event) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !optionsRef.current?.contains(e.target as Node)) setOptionsOpen(false);
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [optionsOpen]);
   const [filterId, setFilterId] = useState<string | null>(null);
   // With a person selected: show the cards they sent, received, or both.
   const [directions, setDirections] = useState({ sent: true, received: true });
@@ -210,7 +224,7 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
         {view === "globe" && <GlobeView {...layerProps} />}
 
         {view && (
-          <div className="absolute right-3 top-3 z-[5] flex flex-col items-end gap-1.5 sm:flex-row">
+          <div className="absolute right-3 top-3 z-[6] flex items-start gap-2">
             {replay.available && !replay.active && (
               <button
                 type="button"
@@ -224,25 +238,42 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
                 Replay
               </button>
             )}
-            {!replay.active && (
-              <Toggle checked={showRoutes} onChange={toggleRoutes} label="Routes" hint="Show where postcards flew from" />
-            )}
-            {(showRoutes || replay.active || filterId !== null) && (
-              <Toggle
-                checked={flagRoutes}
-                onChange={toggleFlagRoutes}
-                label="Flags"
-                hint="Colour each route like the flag of the country it was sent from"
-              />
-            )}
-            <Toggle checked={names} onChange={toggleNames} label="Names" hint="Show the names of places and people on the map" />
-            <Toggle
-              checked={houses}
-              onChange={toggleHouses}
-              label="Houses"
-              hint="Show homes as little houses with photos, or as plain dots"
-            />
-            <Toggle checked={colourful} onChange={toggleColour} label="Colour" hint="Colourful atlas style" />
+            {/* Everything else lives in one "Map options" panel, so nothing piles up */}
+            <div ref={optionsRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setOptionsOpen((o) => !o)}
+                aria-expanded={optionsOpen}
+                aria-controls="map-options"
+                className={`flex items-center gap-1.5 rounded-full border py-1.5 pl-2.5 pr-3 text-sm font-medium shadow-sm backdrop-blur transition ${
+                  optionsOpen ? "border-ink bg-ink text-paper" : "border-ink/10 bg-white/90 hover:bg-white"
+                }`}
+              >
+                <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="m12 3 9 5-9 5-9-5 9-5Z" />
+                  <path d="m3 13 9 5 9-5" />
+                </svg>
+                Map options
+              </button>
+              {optionsOpen && (
+                <div
+                  id="map-options"
+                  role="group"
+                  aria-label="Map options"
+                  className="absolute right-0 top-full mt-2 w-64 space-y-0.5 rounded-[8px] border border-ink/10 bg-[#fffdf8] p-1.5 shadow-[0_12px_32px_-12px_rgb(42_38_34/0.45)]"
+                >
+                  {!replay.active && (
+                    <OptionRow checked={showRoutes} onChange={toggleRoutes} label="Routes" hint="Lines from where each card was posted" />
+                  )}
+                  {(showRoutes || replay.active || filterId !== null) && (
+                    <OptionRow checked={flagRoutes} onChange={toggleFlagRoutes} label="Flag colours" hint="Colour routes like the flag they came from" />
+                  )}
+                  <OptionRow checked={names} onChange={toggleNames} label="Names" hint="Names of places and people" />
+                  <OptionRow checked={houses} onChange={toggleHouses} label="Houses" hint="Homes as houses with photos, or dots" />
+                  <OptionRow checked={colourful} onChange={toggleColour} label="Colourful map" hint="A colour per country, or plain paper" />
+                </div>
+              )}
+            </div>
           </div>
         )}
         {replay.active && <ReplayDate date={replay.date} />}
@@ -387,7 +418,8 @@ function DirectionToggle({
   );
 }
 
-function Toggle({
+/** One line in the "Map options" panel: name, a short explanation, and a switch. */
+function OptionRow({
   checked,
   onChange,
   label,
@@ -399,22 +431,21 @@ function Toggle({
   hint: string;
 }) {
   return (
-    <label
-      title={hint}
-      className={`flex cursor-pointer select-none items-center gap-2 rounded-full border py-1.5 pl-2 pr-3 text-sm font-medium shadow-sm backdrop-blur transition ${
-        checked ? "border-ink bg-ink text-paper" : "border-ink/10 bg-white/90 text-ink hover:bg-white"
-      }`}
-    >
+    <label className="flex cursor-pointer select-none items-center gap-3 rounded-[6px] px-2.5 py-2 transition hover:bg-paper">
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-medium">{label}</span>
+        <span className="block text-xs text-ink-soft">{hint}</span>
+      </span>
       <input type="checkbox" checked={checked} onChange={onChange} className="peer sr-only" />
+      {/* Switch */}
       <span
         aria-hidden="true"
-        className={`flex size-4 items-center justify-center rounded border text-[11px] leading-none peer-focus-visible:ring-2 peer-focus-visible:ring-stamp ${
-          checked ? "border-paper bg-paper text-ink" : "border-ink/30 bg-white"
+        className={`relative h-5 w-9 shrink-0 rounded-full transition peer-focus-visible:ring-2 peer-focus-visible:ring-stamp ${
+          checked ? "bg-ink" : "bg-ink/20"
         }`}
       >
-        {checked ? "✓" : ""}
+        <span className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-all ${checked ? "left-[18px]" : "left-0.5"}`} />
       </span>
-      {label}
     </label>
   );
 }
