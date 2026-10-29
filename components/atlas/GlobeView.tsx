@@ -96,6 +96,7 @@ export default function GlobeView({
   // closer you zoom. Shrink them with the camera height (in steps, so the arcs
   // aren't rebuilt on every frame of a zoom).
   const [strokeScale, setStrokeScale] = useState(1);
+  const lift = Math.max(0.25, strokeScale); // how high land, route ends and dots sit
 
   useEffect(() => {
     loadWorld().then(setWorld);
@@ -164,6 +165,17 @@ export default function GlobeView({
       }).map((a, i) => ({ ...a, offset: (i * 0.37) % 1.4 })),
     [cards, membersById, roles],
   );
+
+  // Where cards landed (one dot per address), in the sender's colour.
+  const landings = useMemo(() => {
+    const seen = new Map<string, { lat: number; lng: number; color: string }>();
+    for (const a of arcs) {
+      if (a.kind !== "line" || a.lost || a.card.status !== "received") continue;
+      const key = `${a.endLat.toFixed(3)},${a.endLng.toFixed(3)}`;
+      if (!seen.has(key)) seen.set(key, { lat: a.endLat, lng: a.endLng, color: a.role === "other" ? withAlpha(a.color, 0.3) : a.color });
+    }
+    return [...seen.values()];
+  }, [arcs]);
 
   const points = useMemo<PointDatum[]>(
     () => [
@@ -301,15 +313,16 @@ export default function GlobeView({
             if (key && sentFrom.has(key)) return mapStyle === PLAIN ? SENT_FROM : mapStyle.sentFrom;
             return mapStyle === PLAIN ? LAND : mapStyle.land((d as Country).properties.colorIndex);
           }}
-          polygonSideColor={() => "rgba(42,38,34,0.08)"}
+          polygonSideColor={() => "rgba(42,38,34,0.04)"}
           polygonStrokeColor={() => "rgba(255,255,255,0.7)"}
+          // Countries sit a hair above the sea (they'd look like floating slabs when
+          // zoomed in), and flatten further the closer you get.
           polygonAltitude={(d) => {
             const key = countryKeyFromFeature(d as Country);
-            if (key && homes.has(key)) return 0.012;
-            if (key && oldHomeCountries?.has(key)) return 0.009;
-            return key && sentFrom.has(key) ? 0.009 : 0.005;
+            const base = key && homes.has(key) ? 0.004 : key && (oldHomeCountries?.has(key) || sentFrom.has(key)) ? 0.003 : 0.0022;
+            return base * lift;
           }}
-          polygonsTransitionDuration={400}
+          polygonsTransitionDuration={0}
           onPolygonClick={() => onSelect(null)}
           // Postcards
           arcsData={showArcs ? arcs : []}
@@ -339,6 +352,18 @@ export default function GlobeView({
             return base * strokeScale;
           }}
           arcAltitudeAutoScale={0.4}
+          // Start and end just above the land, so routes don't dip under a country
+          arcStartAltitude={0.0045 * lift}
+          arcEndAltitude={0.0045 * lift}
+          // A small dot where each card landed
+          pointsData={showArcs ? landings : []}
+          pointLat="lat"
+          pointLng="lng"
+          pointColor="color"
+          pointAltitude={0.005 * lift}
+          pointRadius={Math.max(0.05, 0.32 * strokeScale)}
+          pointsMerge={false}
+          pointsTransitionDuration={0}
           // Received-by-the-selected-person routes are dotted; in transit stays dashed.
           arcDashLength={(d) => {
             const a = d as ArcDatum;
