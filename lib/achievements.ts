@@ -1,7 +1,7 @@
-import { continentOf, continentProgress } from "@/lib/continents";
+import { CONTINENTS, continentOf, continentProgress } from "@/lib/continents";
 import type { MemberStats } from "@/lib/stats";
 import { cardKm } from "@/lib/stats";
-import type { Member, Postcard } from "@/lib/types";
+import { isLocated, type Member, type Postcard } from "@/lib/types";
 
 export type Achievement = {
   id: string;
@@ -19,7 +19,8 @@ const DAY_MS = 86_400_000;
 /**
  * A member's achievements, from cards that count everywhere else: sent cards
  * that arrived and are public, and public cards they received. Lost cards are
- * only used for the one (secret) badge about them.
+ * only used for the one (secret) badge about them. Hand-delivered cards never
+ * went through the post, so they don't count for delivery-time badges.
  */
 export function achievementsFor(
   member: Member,
@@ -35,7 +36,7 @@ export function achievementsFor(
     .sort((a, b) => b.share - a.share)[0];
 
   const days = sent
-    .filter((c) => c.received_on)
+    .filter((c) => c.received_on && !c.hand_delivered)
     .map((c) => Math.max(1, Math.round((Date.parse(c.received_on!) - Date.parse(c.sent_on)) / DAY_MS)));
   const longest = sent.reduce((m, c) => Math.max(m, cardKm(c, membersById.get(c.recipient_id))), 0);
 
@@ -43,8 +44,24 @@ export function achievementsFor(
   for (const c of sent) perFriend.set(c.recipient_id, (perFriend.get(c.recipient_id) ?? 0) + 1);
   const mostToOne = Math.max(0, ...perFriend.values());
 
-  const receivedPublic = cards.filter((c) => c.recipient_id === member.id && c.status === "received" && c.is_public).length;
+  const receivedCards = cards
+    .filter((c) => c.recipient_id === member.id && c.status === "received" && c.is_public)
+    .filter(isLocated);
+  const receivedPublic = receivedCards.length;
+  const receivedCountries = new Set(receivedCards.map((c) => c.from_country_code));
+  const receivedContinents = new Set([...receivedCountries].map(continentOf).filter(Boolean));
+  const receivedFrom = new Set(receivedCards.map((c) => c.sender_id));
   const lostOne = cards.some((c) => c.sender_id === member.id && c.status === "lost");
+  const handDelivered = sent.some((c) => c.hand_delivered);
+  const nearest = sent.reduce((m, c) => Math.min(m, cardKm(c, membersById.get(c.recipient_id))), Infinity);
+
+  // Biggest trip: cards posted within 10 days of each other (the same rule as the reveal).
+  const sentDays = sent.map((c) => Date.parse(c.sent_on)).sort((a, b) => a - b);
+  let biggestTrip = 0;
+  for (let i = 0, run = 0; i < sentDays.length; i++) {
+    run = i > 0 && sentDays[i] - sentDays[i - 1] <= 10 * DAY_MS ? run + 1 : 1;
+    biggestTrip = Math.max(biggestTrip, run);
+  }
 
   const count = (id: string, name: string, description: string, have: number, need: number): Achievement => ({
     id,
@@ -80,6 +97,34 @@ export function achievementsFor(
     },
     count("pen-pal", "Pen pal", "5 postcards to the same friend", mostToOne, 5),
     count("mailbox", "Full mailbox", "Receive 10 postcards", receivedPublic, 10),
+    // Receiving
+    count("world-mail", "World mail", "Receive postcards from 3 continents", receivedContinents.size, 3),
+    count(
+      "every-continent",
+      "Every corner",
+      `Receive postcards from all ${CONTINENTS.length} inhabited continents`,
+      receivedContinents.size,
+      CONTINENTS.length,
+    ),
+    count("collector", "Collector", "Receive postcards from 10 countries", receivedCountries.size, 10),
+    count("fan-club", "Fan club", "Receive postcards from 3 different friends", receivedFrom.size, 3),
+    // Sending
+    count("postie", "Postie", "Send 25 postcards that arrive", sent.length, 25),
+    count("around-the-world", "Around the world", "Your postcards travel 40,075 km in total", Math.round(stats.postcardKm), 40_075),
+    {
+      id: "neighbourly",
+      name: "Neighbourly",
+      description: "A postcard from less than 100 km away",
+      earned: nearest < 100,
+    },
+    count("trip", "Trip report", "3 postcards from the same trip", biggestTrip, 3),
+    {
+      id: "special-delivery",
+      name: "Special delivery",
+      description: handDelivered ? "Hand-delivered a postcard" : "A secret one…",
+      earned: handDelivered,
+      secret: true,
+    },
     {
       id: "lost",
       name: "Lost at sea",

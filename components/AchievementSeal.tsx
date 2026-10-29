@@ -26,6 +26,24 @@ const ICONS: Record<string, string> = {
   mailbox: "M5 11a4 4 0 0 1 8 0v8H5zM13 7h4a4 4 0 0 1 2 3.5V19h-6M9 19v3M15 4v5h2",
   // Waves
   lost: "M3 9c2 0 2-1.5 4.5-1.5S10 9 12 9s2.5-1.5 4.5-1.5S19 9 21 9M3 14c2 0 2-1.5 4.5-1.5S10 14 12 14s2.5-1.5 4.5-1.5S19 14 21 14M3 19c2 0 2-1.5 4.5-1.5S10 19 12 19s2.5-1.5 4.5-1.5S19 19 21 19",
+  // Three continents: three little globes
+  "world-mail": "M7 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM17 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM12 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM9.5 8.5l1.5 6M14.5 8.5 13 14.5M10 6h4",
+  // Every continent: a globe with a star
+  "every-continent": "M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16ZM4 12h16M12 4c-2.4 2.3-2.4 13.7 0 16M12 4c2.4 2.3 2.4 13.7 0 16M19 2l.6 1.4L21 4l-1.4.6L19 6l-.6-1.4L17 4l1.4-.6z",
+  // Collector: a stack of cards
+  collector: "M6 8h12v11H6zM8 5h10v2M10 3h8v1M8 12h8M8 15h5",
+  // Fan club: three people
+  "fan-club": "M12 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM6 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM18 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM7.5 19a4.5 4.5 0 0 1 9 0M3 18a3 3 0 0 1 4-2.8M21 18a3 3 0 0 0-4-2.8",
+  // Postie: a mail bag
+  postie: "M6 9h12l-1 11H7zM9 9a3 3 0 0 1 6 0M4 6l4 3M20 6l-4 3",
+  // Around the world: a globe with an arrow circling it
+  "around-the-world": "M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12ZM6 12h12M12 6c-1.8 1.7-1.8 10.3 0 12M3.5 9.5A9 9 0 0 1 19 5.5M19 5.5l.2-2.5M19 5.5l-2.4.6",
+  // Neighbourly: two houses side by side
+  neighbourly: "M3 20v-7l4-4 4 4v7zM13 20v-7l4-4 4 4v7zM6 20v-3h2v3M16 20v-3h2v3",
+  // Trip report: a suitcase
+  trip: "M4 8h16v11H4zM9 8V5h6v3M4 13h16M10 13v2h4v-2",
+  // Special delivery: an envelope in a hand
+  "special-delivery": "M7 5h11v7H7zM7 6l5.5 3.5L18 6M3 15h5l3 2h4.5a1.5 1.5 0 0 1 0 3H9M3 20h3",
   // Question mark (secret, not yet earned)
   secret: "M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14M12 17.5v.5",
 };
