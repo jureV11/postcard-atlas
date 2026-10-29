@@ -25,7 +25,11 @@ export function GroupPassport({ passport: p, membersById }: { passport: Passport
           </h2>
         </div>
         <dl className="grid grid-cols-2 gap-px border-t border-ink/10 bg-ink/10 sm:grid-cols-3">
-          <Stat label="Postcards" value={String(p.delivered)} sub="delivered" />
+          <Stat
+            label="Postcards"
+            value={String(p.delivered)}
+            sub={p.delivered ? `≈ ${Math.round(p.totalKm / p.delivered).toLocaleString("en")} km each` : "delivered"}
+          />
           <Stat
             label="Kilometres"
             value={Math.round(p.totalKm).toLocaleString("en")}

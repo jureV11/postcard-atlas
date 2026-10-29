@@ -62,7 +62,13 @@ export function PostcardsHero({
           label="Travelled"
           value={Math.round(stats.totalKm).toLocaleString("en")}
           unit="km"
-          note={laps >= 0.05 ? `${laps.toFixed(laps < 10 ? 1 : 0)}× around the Earth` : "and counting"}
+          note={
+            stats.delivered
+              ? `≈ ${Math.round(stats.totalKm / stats.delivered).toLocaleString("en")} km per card`
+              : laps >= 0.05
+                ? `${laps.toFixed(laps < 10 ? 1 : 0)}× around the Earth`
+                : "and counting"
+          }
         />
         <Ticket label="In the post" value={avg ?? "—"} unit={avg ? "days" : undefined} note="on average" />
         <Ticket label="Countries" value={String(countries)} note="sent from" />
