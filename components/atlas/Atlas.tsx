@@ -22,11 +22,12 @@ const GlobeView = dynamic(() => import("@/components/atlas/GlobeView"), {
 type View = "flat" | "globe";
 // v2: the globe became the default, so earlier saved choices start fresh.
 const VIEW_KEY = "atlas-view-v2";
-const ROUTES_KEY = "atlas-routes";
-const COLOUR_KEY = "atlas-colour";
+// "-v3": new defaults (plain map, routes, names, dots) apply to everyone once.
+const ROUTES_KEY = "atlas-routes-v3";
+const COLOUR_KEY = "atlas-colour-v3";
 const FLAG_ROUTES_KEY = "atlas-flag-routes";
-const HOUSES_KEY = "atlas-houses";
-const NAMES_KEY = "atlas-names";
+const HOUSES_KEY = "atlas-houses-v3";
+const NAMES_KEY = "atlas-names-v3";
 
 function readPref(key: string): string | null {
   try {
@@ -43,11 +44,11 @@ function savePref(key: string, value: string) {
 
 export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWithAvatar[] }) {
   const [view, setView] = useState<View | null>(null); // null until the saved choice is read
-  const [showRoutes, setShowRoutes] = useState(false);
-  const [colourful, setColourful] = useState(true);
+  const [showRoutes, setShowRoutes] = useState(true);
+  const [colourful, setColourful] = useState(false);
   const [flagRoutes, setFlagRoutes] = useState(true); // routes in the origin flag's colours
-  const [houses, setHouses] = useState(true); // home markers as houses (or classic dots)
-  const [names, setNames] = useState(false); // place names on the map: off by default, it gets crowded
+  const [houses, setHouses] = useState(false); // home markers as round dots (or little houses)
+  const [names, setNames] = useState(true); // place names (they never overlap; see FlatMap)
   const [optionsOpen, setOptionsOpen] = useState(false);
   const optionsRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -70,11 +71,11 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
   // Remember view, routes and colour per device.
   useEffect(() => {
     setView(readPref(VIEW_KEY) === "flat" ? "flat" : "globe");
-    setShowRoutes(readPref(ROUTES_KEY) === "1");
-    setColourful(readPref(COLOUR_KEY) !== "0");
+    setShowRoutes(readPref(ROUTES_KEY) !== "0");
+    setColourful(readPref(COLOUR_KEY) === "1");
     setFlagRoutes(readPref(FLAG_ROUTES_KEY) !== "0");
-    setHouses(readPref(HOUSES_KEY) !== "0");
-    setNames(readPref(NAMES_KEY) === "1");
+    setHouses(readPref(HOUSES_KEY) === "1");
+    setNames(readPref(NAMES_KEY) !== "0");
   }, []);
   function changeView(v: View) {
     setView(v);
@@ -372,7 +373,7 @@ export function Atlas({ cards, members }: { cards: MapCard[]; members: MemberWit
               : showRoutes
                 ? "Click a route to open its postcard"
                 : "Tick Routes, or pick a person above, to see routes"}{" "}
-            · tick Names for place names
+            · more in Map options
           </span>
         )}
       </div>

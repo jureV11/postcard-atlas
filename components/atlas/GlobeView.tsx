@@ -314,6 +314,9 @@ export default function GlobeView({
             return mapStyle === PLAIN ? LAND : mapStyle.land((d as Country).properties.colorIndex);
           }}
           polygonSideColor={() => "rgba(42,38,34,0.04)"}
+          // Country surfaces follow the globe's curve closely (every 1.5°), so they
+          // can sit just above the sea without the sea showing through big countries.
+          polygonCapCurvatureResolution={1.5}
           polygonStrokeColor={() => "rgba(255,255,255,0.7)"}
           // Countries sit a hair above the sea (they'd look like floating slabs when
           // zoomed in), and flatten further the closer you get.
