@@ -1,23 +1,25 @@
 import { cityKey } from "@/lib/atlas";
+import { haversineKm } from "@/lib/geo";
 import { NICHE, type NicheFactor } from "@/lib/niche.config";
-import { nearestAirportKm, touristsPerResident, wikipediaViews } from "@/lib/placeFacts";
+import { nearestAirportKm, touristArrivals } from "@/lib/placeFacts";
 import { cityPopulation } from "@/lib/population";
 import { isLocated, type LocatedPostcard, type Member, type Postcard } from "@/lib/types";
 
 /**
  * Nicheness: how off-the-beaten-path the town a postcard came from is, out of 100.
- * Four factors (weights in lib/niche.config.ts): small place, far from a
- * scheduled airport, few tourists in the country, little-read Wikipedia page.
- * Missing data is never guessed: that factor is dropped and the rest reweighted.
- * Depends only on the place, so sending several cards from one country costs nothing.
+ * Four factors (weights in lib/niche.config.ts): far from the group, a country
+ * few tourists visit, a small place, far from an airport. Missing data is never
+ * guessed: that factor is dropped and the rest reweighted. It depends only on
+ * the place, so sending several cards from one country costs nothing.
  */
 export type NicheFacts = {
+  /** Km to the nearest friend's home, and whose it is. */
+  homeKm: number | null;
+  nearestFriend: string | null;
+  touristArrivals: number | null;
+  tourismYear: number | null;
   population: number | null;
   airportKm: number | null;
-  touristsPerResident: number | null;
-  tourismYear: number | null;
-  wikiTitle: string | null;
-  wikiMonthlyViews: number | null;
 };
 
 export type NicheFactorResult = {
@@ -40,8 +42,9 @@ export type NicheScore = {
 
 const LOOKUPS_AT_ONCE = 3;
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
+const linear = (v: number, zero: number, full: number) => clamp01((v - zero) / (full - zero));
 
-/** 1 at `full` or beyond, 0 at `zero` or beyond, log scale in between. */
+/** 1 at `full` or beyond, 0 at `zero` or beyond, log scale in between (smaller = more niche). */
 function logScale(v: number, full: number, zero: number): number {
   const lv = Math.log(Math.max(v, 1e-9));
   return clamp01((Math.log(zero) - lv) / (Math.log(zero) - Math.log(full)));
@@ -49,17 +52,10 @@ function logScale(v: number, full: number, zero: number): number {
 
 export function scoreFacts(facts: NicheFacts): Pick<NicheScore, "score" | "factors"> {
   const values: Record<NicheFactor, number | null> = {
+    distance: facts.homeKm === null ? null : linear(facts.homeKm, NICHE.distance.zero, NICHE.distance.full),
+    tourism: facts.touristArrivals === null ? null : logScale(facts.touristArrivals, NICHE.tourism.full, NICHE.tourism.zero),
     population: facts.population === null ? null : logScale(facts.population, NICHE.population.full, NICHE.population.zero),
-    remoteness:
-      facts.airportKm === null
-        ? null
-        : clamp01((facts.airportKm - NICHE.remoteness.zero) / (NICHE.remoteness.full - NICHE.remoteness.zero)),
-    tourism:
-      facts.touristsPerResident === null
-        ? null
-        : logScale(facts.touristsPerResident, NICHE.tourism.full, NICHE.tourism.zero),
-    obscurity:
-      facts.wikiMonthlyViews === null ? null : logScale(facts.wikiMonthlyViews, NICHE.obscurity.full, NICHE.obscurity.zero),
+    remoteness: facts.airportKm === null ? null : linear(facts.airportKm, NICHE.remoteness.zero, NICHE.remoteness.full),
   };
 
   const order = Object.keys(NICHE.weights) as NicheFactor[];
@@ -75,34 +71,41 @@ export function scoreFacts(facts: NicheFacts): Pick<NicheScore, "score" | "facto
   };
 }
 
-async function placeFacts(c: LocatedPostcard): Promise<NicheFacts> {
-  const [population, wiki] = await Promise.all([
-    cityPopulation(c.from_city, c.from_lat, c.from_lng),
-    wikipediaViews(c.from_city, c.from_country, c.from_lat, c.from_lng),
-  ]);
-  const tourism = touristsPerResident(c.from_country_code);
+async function placeFacts(c: LocatedPostcard, homes: Member[]): Promise<NicheFacts> {
+  let homeKm: number | null = null;
+  let nearestFriend: string | null = null;
+  for (const m of homes) {
+    const km = haversineKm(c.from_lat, c.from_lng, m.home_lat, m.home_lng);
+    if (homeKm === null || km < homeKm) {
+      homeKm = km;
+      nearestFriend = m.display_name;
+    }
+  }
+  const tourism = touristArrivals(c.from_country_code);
   return {
-    population,
-    airportKm: nearestAirportKm(c.from_lat, c.from_lng),
-    touristsPerResident: tourism?.perResident ?? null,
+    homeKm,
+    nearestFriend,
+    touristArrivals: tourism?.arrivals ?? null,
     tourismYear: tourism?.year ?? null,
-    wikiTitle: wiki?.title ?? null,
-    wikiMonthlyViews: wiki?.monthly ?? null,
+    population: await cityPopulation(c.from_city, c.from_lat, c.from_lng),
+    airportKm: nearestAirportKm(c.from_lat, c.from_lng),
   };
 }
 
-export async function nicheScores(cards: Postcard[]): Promise<NicheScore[]> {
+/** Scores for delivered, public cards. `members` gives the friends' homes (current members only count). */
+export async function nicheScores(cards: Postcard[], members: Member[]): Promise<NicheScore[]> {
   const arrived = cards.filter((c) => c.status === "received" && c.is_public).filter(isLocated);
+  const homes = members.filter((m) => !m.left_at);
 
-  // One set of lookups per distinct town (each cached on the server), a few towns
-  // at a time so the free APIs don't rate-limit us.
+  // One set of lookups per distinct town (population is cached on the server),
+  // a few towns at a time so the free API doesn't rate-limit us.
   const towns = new Map<string, LocatedPostcard>();
   for (const c of arrived) if (!towns.has(cityKey(c))) towns.set(cityKey(c), c);
   const facts = new Map<string, NicheFacts>();
   const queue = [...towns.entries()];
   for (let i = 0; i < queue.length; i += LOOKUPS_AT_ONCE) {
     const batch = queue.slice(i, i + LOOKUPS_AT_ONCE);
-    for (const [key, f] of await Promise.all(batch.map(async ([key, c]) => [key, await placeFacts(c)] as const)))
+    for (const [key, f] of await Promise.all(batch.map(async ([key, c]) => [key, await placeFacts(c, homes)] as const)))
       facts.set(key, f);
   }
 

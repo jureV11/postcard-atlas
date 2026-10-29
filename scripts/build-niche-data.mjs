@@ -1,6 +1,6 @@
 // Rebuilds the bundled tables the nicheness score uses:
 //   lib/data/airports.json — airports with scheduled flights (OurAirports, public domain)
-//   lib/data/tourism.json  — tourist arrivals per resident, per country (World Bank)
+//   lib/data/tourism.json  — tourist arrivals per country, total and per resident (World Bank)
 // Run: node scripts/build-niche-data.mjs
 import { writeFile } from "node:fs/promises";
 
@@ -76,7 +76,7 @@ async function tourism() {
     const year = [...years.keys()].sort((a, b) => b - a).find((y) => population.get(code)?.get(y));
     if (year === undefined) continue;
     const ratio = years.get(year) / population.get(code).get(year);
-    out[code] = { perResident: Number(ratio.toPrecision(3)), year };
+    out[code] = { arrivals: Math.round(years.get(year)), perResident: Number(ratio.toPrecision(3)), year };
   }
   return out;
 }

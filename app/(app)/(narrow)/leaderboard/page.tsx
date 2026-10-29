@@ -22,7 +22,7 @@ export default async function LeaderboardPage() {
   const passport = groupPassport(postcards, members);
   const stats = computeStats(members, postcards);
   const ranking = rankMembers(members, stats);
-  const niche = nicheLeaders(members, await nicheScores(postcards));
+  const niche = nicheLeaders(members, await nicheScores(postcards, members));
 
   const byKm = [...ranking].sort((a, b) => b.stats.postcardKm - a.stats.postcardKm);
   const nicheByMember = new Map(niche.map((n) => [n.member.id, n.best]));
@@ -182,6 +182,14 @@ export default async function LeaderboardPage() {
           <p className="mt-2">It&apos;s all about the town the card came from — sending lots from one country costs nothing.</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>
+              <strong className="text-ink">Far from the group — up to {NICHE.weights.distance}.</strong> Distance to the
+              nearest friend&apos;s home; {NICHE.distance.full.toLocaleString("en")} km or more scores full.
+            </li>
+            <li>
+              <strong className="text-ink">Rarely visited country — up to {NICHE.weights.tourism}.</strong> How many tourists
+              the country gets in a year; {formatCount(NICHE.tourism.full)} or fewer scores full. (World Bank)
+            </li>
+            <li>
               <strong className="text-ink">Small place — up to {NICHE.weights.population}.</strong> Fewer people, more points;
               {" "}{NICHE.population.full.toLocaleString("en")} or fewer scores full, so a tiny village counts the same as a
               small town. (GeoNames)
@@ -189,14 +197,6 @@ export default async function LeaderboardPage() {
             <li>
               <strong className="text-ink">Far from an airport — up to {NICHE.weights.remoteness}.</strong> Distance to the
               nearest airport with scheduled flights; {NICHE.remoteness.full} km or more scores full. (OurAirports)
-            </li>
-            <li>
-              <strong className="text-ink">Few tourists — up to {NICHE.weights.tourism}.</strong> Tourist arrivals per
-              resident for the whole country — the only part that&apos;s about the country. (World Bank)
-            </li>
-            <li>
-              <strong className="text-ink">Little-known — up to {NICHE.weights.obscurity}.</strong> How often the town&apos;s
-              English Wikipedia article is read; fewer views, more points.
             </li>
           </ul>
           <p className="mt-2">
@@ -211,9 +211,9 @@ export default async function LeaderboardPage() {
 
 function nicheReason(s: NicheScore): string {
   const bits: string[] = [];
+  if (s.facts.homeKm !== null) bits.push(`${formatKm(s.facts.homeKm)} from the nearest friend`);
+  if (s.facts.touristArrivals !== null) bits.push(`${formatCount(s.facts.touristArrivals)} tourists/yr`);
   if (s.facts.population !== null) bits.push(`~${formatCount(s.facts.population)} people`);
-  if (s.facts.airportKm !== null) bits.push(`${formatKm(s.facts.airportKm)} from an airport`);
-  if (s.facts.wikiMonthlyViews !== null) bits.push(`${formatCount(Math.round(s.facts.wikiMonthlyViews))} Wikipedia views/month`);
   return bits.join(" · ");
 }
 

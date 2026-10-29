@@ -60,7 +60,12 @@ export default async function PostcardPage({
   // Photos are the recipient's job — except for a lost card, which never reaches them.
   const canEditPhotos = (isRecipient && arrived) || (isSender && lost);
   // Nicheness: only for delivered, public cards — the same ones the leaderboard scores.
-  const [niche] = await nicheScores([card]);
+  const { data: homeRows } = await supabase
+    .from("members")
+    .select("*")
+    .eq("group_id", member.group_id)
+    .is("left_at", null);
+  const [niche] = await nicheScores([card], (homeRows ?? []) as Member[]);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">

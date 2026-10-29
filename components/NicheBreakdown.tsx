@@ -7,10 +7,10 @@ import type { NicheFactor } from "@/lib/niche.config";
 import { formatCount } from "@/lib/utils";
 
 const LABELS: Record<NicheFactor, string> = {
+  distance: "Far from the group",
+  tourism: "Rarely visited country",
   population: "Small place",
   remoteness: "Far from an airport",
-  tourism: "Few tourists",
-  obscurity: "Little-known",
 };
 
 /** A leaderboard row: the row opens the postcard, the score opens its breakdown. */
@@ -127,35 +127,19 @@ function FactorList({ factors, facts, country }: { factors: NicheFactorResult[];
 
 function describe(factor: NicheFactor, f: NicheFacts, country: string): ReactNode {
   switch (factor) {
+    case "distance":
+      return f.homeKm === null
+        ? "No homes to measure from"
+        : `${Math.round(f.homeKm).toLocaleString("en")} km from the nearest friend's home${f.nearestFriend ? ` (${f.nearestFriend})` : ""}`;
+    case "tourism":
+      return f.touristArrivals === null
+        ? `No tourism figures for ${country}`
+        : `${country} gets about ${formatCount(f.touristArrivals)} tourists a year (${f.tourismYear})`;
     case "population":
       return f.population === null ? "Population not found" : `About ${formatCount(f.population)} people live here`;
     case "remoteness":
       return f.airportKm === null
         ? "No airport data"
         : `${Math.round(f.airportKm).toLocaleString("en")} km to the nearest airport with scheduled flights`;
-    case "tourism":
-      return f.touristsPerResident === null
-        ? `No tourism figures for ${country}`
-        : `${country} gets ${formatRatio(f.touristsPerResident)} tourist${f.touristsPerResident === 1 ? "" : "s"} per resident a year (${f.tourismYear})`;
-    case "obscurity":
-      return f.wikiMonthlyViews === null || !f.wikiTitle ? (
-        "No English Wikipedia article found"
-      ) : (
-        <>
-          {formatCount(Math.round(f.wikiMonthlyViews))} views a month on{" "}
-          <a
-            href={`https://en.wikipedia.org/wiki/${encodeURIComponent(f.wikiTitle.replaceAll(" ", "_"))}`}
-            target="_blank"
-            rel="noreferrer"
-            className="underline hover:text-ink"
-          >
-            Wikipedia
-          </a>
-        </>
-      );
   }
-}
-
-function formatRatio(r: number): string {
-  return r >= 10 ? String(Math.round(r)) : r >= 1 ? r.toFixed(1) : r.toFixed(2);
 }
