@@ -44,6 +44,20 @@ const ICONS: Record<string, string> = {
   trip: "M4 8h16v11H4zM9 8V5h6v3M4 13h16M10 13v2h4v-2",
   // Special delivery: an envelope in a hand
   "special-delivery": "M7 5h11v7H7zM7 6l5.5 3.5L18 6M3 15h5l3 2h4.5a1.5 1.5 0 0 1 0 3H9M3 20h3",
+  // Island hopper: a palm tree on a little island
+  "island-hopper": "M3 20c2.5-2 5.5-2.5 9-2.5s6.5.5 9 2.5M12 17.5c0-4 .6-7.5 2-10.5M14 7c-1.8-1.6-4.6-1.4-6.5.6M14 7c1.8-1.6 4.6-1.4 6.5.6M14 7c-2.4-.2-4.4 1.2-5 3.6M14 7c2.4-.2 4.4 1.2 5 3.6",
+  // Line crosser: a globe with its equator and an arrow crossing it
+  equator: "M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16ZM4 12h16M9.5 6.5l4 10M13.5 16.5l-2.6-.6M13.5 16.5l.9-2.5",
+  // Other side of the world: two pins on opposite sides of a globe
+  antipodes: "M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12ZM12 3.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3ZM12 17.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3ZM12 7.5v1.5M12 11v2M12 15v1.5",
+  // Four seasons: a sun and a snowflake
+  "four-seasons": "M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5ZM8 2.5v1M8 12.5v1M3 8h1M12 8h1M4.5 4.5l.7.7M10.8 10.8l.7.7M11.5 4.5l-.7.7M16.5 12.5v8M12.5 16.5h8M13.7 13.7l5.6 5.6M19.3 13.7l-5.6 5.6",
+  // Swap meet: two arrows trading places
+  swap: "M4 9h14M14 5l4 4-4 4M20 16H6M10 12l-4 4 4 4",
+  // Round robin: a postcard going round a circle of friends
+  "round-robin": "M12 3a1.8 1.8 0 1 0 0 3.6A1.8 1.8 0 0 0 12 3ZM5 15a1.8 1.8 0 1 0 0 3.6A1.8 1.8 0 0 0 5 15ZM19 15a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 0 0 0-3.6ZM15 6.5a7 7 0 0 1 3.8 6.5M15.8 20a7 7 0 0 1-7.6 0M5.2 13A7 7 0 0 1 9 6.5M18.8 13l1-1.6M18.8 13l-1.8-.6",
+  // Season's greetings: a little fir tree with a star
+  festive: "M12 2.5l.8 1.7 1.8.2-1.3 1.2.4 1.8-1.7-.9-1.7.9.4-1.8-1.3-1.2 1.8-.2zM12 8l-4 5h2.5L7 17.5h10L13.5 13H16zM12 17.5v3",
   // Question mark (secret, not yet earned)
   secret: "M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14M12 17.5v.5",
 };

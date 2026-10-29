@@ -8,6 +8,7 @@ import type { CityGroup, LocatedMapCard, OldHome, RouteRole, Selection } from "@
 import { countryKeyFromFeature } from "@/lib/countries";
 import { PLAIN, type MapStyle } from "@/lib/mapStyle";
 import { destinationOf, type MemberWithAvatar } from "@/lib/types";
+import { BIG_CITIES, type BigCity } from "@/lib/data/bigCities";
 import { escapeHtml } from "@/lib/utils";
 import { loadWorld, type Country } from "@/lib/world";
 import { isWater, lostPoint, lostSvg } from "./bird";
@@ -17,6 +18,17 @@ const OCEAN = "#dde6e8";
 const LAND = "#e9e0cd";
 const SENT_FROM = "#e9c48c";
 const INK = "#2a2622";
+const SIDE = () => "rgba(42,38,34,0.04)";
+const STROKE = () => "rgba(255,255,255,0.7)";
+const CITY_INK = () => "#8f8576";
+/** City lettering by camera height: shown below `below`, `size` in degrees. */
+const CITY_LEVELS = [
+  { below: Infinity, size: 0 },
+  { below: 1.2, size: 0.9 },
+  { below: 0.65, size: 0.32 },
+  { below: 0.38, size: 0.18 },
+  { below: 0.22, size: 0.1 },
+];
 
 type ArcDatum = {
   kind: "line" | "comet";
@@ -96,10 +108,16 @@ export default function GlobeView({
   // closer you zoom. Shrink them with the camera height (in steps, so the arcs
   // aren't rebuilt on every frame of a zoom).
   const [strokeScale, setStrokeScale] = useState(1);
-  const lift = Math.max(0.25, strokeScale); // how high land, route ends and dots sit
+  // How high land, route ends and dots sit. Only three steps: every change
+  // rebuilds the country shapes, which takes a moment.
+  const lift = strokeScale >= 0.6 ? 1 : strokeScale >= 0.3 ? 0.5 : 0.25;
+  // Big cities in the background: 0 = none (far away), 1 = the largest, 2+ = all,
+  // with smaller lettering the closer you get (the text is drawn on the globe itself).
+  const [cityLevel, setCityLevel] = useState(0);
 
   useEffect(() => {
-    loadWorld().then(setWorld);
+    // 50m: detailed enough that small countries (Luxembourg, Malta…) have their real shape.
+    loadWorld("50m").then(setWorld);
   }, []);
 
   useEffect(() => {
@@ -280,6 +298,35 @@ export default function GlobeView({
 
   const selectedCardId = selection?.kind === "card" ? selection.id : null;
 
+  // Countries are only rebuilt when one of these accessors actually changes.
+  const capColor = useCallback(
+    (d: object) => {
+      const key = countryKeyFromFeature(d as Country);
+      const home = key ? homes.get(key) : undefined;
+      if (home) return withAlpha(home.color, filterId && !involved.has(home.id) ? 0.25 : 0.6);
+      // An old address's country: a lighter wash of their colour (the flat map stripes it).
+      const old = key ? oldHomeCountries?.get(key) : undefined;
+      if (old) return withAlpha(old.color, filterId && !involved.has(old.id) ? 0.15 : 0.38);
+      if (key && sentFrom.has(key)) return mapStyle === PLAIN ? SENT_FROM : mapStyle.sentFrom;
+      return mapStyle === PLAIN ? LAND : mapStyle.land((d as Country).properties.colorIndex);
+    },
+    [homes, oldHomeCountries, sentFrom, filterId, involved, mapStyle],
+  );
+  const landAltitude = useCallback(
+    (d: object) => {
+      // Countries sit a hair above the sea (they'd look like floating slabs when
+      // zoomed in), and flatten further the closer you get.
+      const key = countryKeyFromFeature(d as Country);
+      const base = key && homes.has(key) ? 0.004 : key && (oldHomeCountries?.has(key) || sentFrom.has(key)) ? 0.003 : 0.0022;
+      return base * lift;
+    },
+    [homes, oldHomeCountries, sentFrom, lift],
+  );
+  const cityLabels = useMemo(
+    () => (!showNames || cityLevel === 0 ? [] : cityLevel === 1 ? BIG_CITIES.filter((c) => c.pop >= 8) : BIG_CITIES),
+    [showNames, cityLevel],
+  );
+
   return (
     <div ref={containerRef} className={`absolute inset-0 ${showNames && zoomedIn ? "globe-labels" : ""}`}>
       {!ready && (
@@ -298,33 +345,21 @@ export default function GlobeView({
           onGlobeReady={() => setReady(true)}
           onZoom={(pov) => {
             setZoomedIn(pov.altitude < 0.75);
+            setCityLevel(CITY_LEVELS.findLastIndex((l) => pov.altitude < l.below));
             setStrokeScale(Math.min(1, Math.max(0.15, Math.round((pov.altitude / 1.7) * 20) / 20)));
           }}
           onGlobeClick={() => onSelect(null)}
           // Countries
           polygonsData={world}
-          polygonCapColor={(d) => {
-            const key = countryKeyFromFeature(d as Country);
-            const home = key ? homes.get(key) : undefined;
-            if (home) return withAlpha(home.color, filterId && !involved.has(home.id) ? 0.25 : 0.6);
-            // An old address's country: a lighter wash of their colour (the flat map stripes it).
-            const old = key ? oldHomeCountries?.get(key) : undefined;
-            if (old) return withAlpha(old.color, filterId && !involved.has(old.id) ? 0.15 : 0.38);
-            if (key && sentFrom.has(key)) return mapStyle === PLAIN ? SENT_FROM : mapStyle.sentFrom;
-            return mapStyle === PLAIN ? LAND : mapStyle.land((d as Country).properties.colorIndex);
-          }}
-          polygonSideColor={() => "rgba(42,38,34,0.04)"}
+          polygonCapColor={capColor}
+          polygonSideColor={SIDE}
           // Country surfaces follow the globe's curve closely (every 1.5°), so they
           // can sit just above the sea without the sea showing through big countries.
           polygonCapCurvatureResolution={1.5}
-          polygonStrokeColor={() => "rgba(255,255,255,0.7)"}
+          polygonStrokeColor={STROKE}
           // Countries sit a hair above the sea (they'd look like floating slabs when
           // zoomed in), and flatten further the closer you get.
-          polygonAltitude={(d) => {
-            const key = countryKeyFromFeature(d as Country);
-            const base = key && homes.has(key) ? 0.004 : key && (oldHomeCountries?.has(key) || sentFrom.has(key)) ? 0.003 : 0.0022;
-            return base * lift;
-          }}
+          polygonAltitude={landAltitude}
           polygonsTransitionDuration={0}
           onPolygonClick={() => onSelect(null)}
           // Postcards
@@ -395,6 +430,18 @@ export default function GlobeView({
             return tooltip(`${escapeHtml(s)} → ${escapeHtml(r)}${a.card.status === "in_transit" ? " · in transit" : a.lost ? " · lost in the post" : ""}`);
           }}
           onArcClick={(d) => onSelect({ kind: "card", id: (d as ArcDatum).card.id })}
+          // Big cities: a faint dot sized by population, with its name
+          labelsData={cityLabels}
+          labelLat="lat"
+          labelLng="lng"
+          labelText="name"
+          labelColor={CITY_INK}
+          labelSize={CITY_LEVELS[cityLevel].size}
+          labelDotRadius={(d) => (0.05 + 0.03 * Math.sqrt((d as BigCity).pop)) * CITY_LEVELS[cityLevel].size * 1.6}
+          labelDotOrientation={() => "bottom"}
+          labelAltitude={0.0055 * lift}
+          labelResolution={2}
+          labelsTransitionDuration={0}
           // Pins: HTML markers keep a constant, tappable size at any zoom
           htmlElementsData={points}
           htmlLat="lat"

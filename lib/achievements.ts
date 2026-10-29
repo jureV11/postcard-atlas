@@ -1,7 +1,7 @@
 import { CONTINENTS, continentOf, continentProgress } from "@/lib/continents";
 import type { MemberStats } from "@/lib/stats";
 import { cardKm } from "@/lib/stats";
-import { isLocated, type Member, type Postcard } from "@/lib/types";
+import { destinationOf, isLocated, type Member, type Postcard } from "@/lib/types";
 
 export type Achievement = {
   id: string;
@@ -15,6 +15,21 @@ export type Achievement = {
 };
 
 const DAY_MS = 86_400_000;
+
+/** Countries that are islands (or made of islands), by ISO code. */
+const ISLAND_NATIONS = new Set(
+  ("ag bb bh bs cu cv cy dm do fj fm gb gd ht id ie is jm jp ki km kn lc lk mg mh mt mu mv nr nz " +
+    "ph pw sb sc sg st to tt tv tw vc vu ws").split(" "),
+);
+
+/** Northern-hemisphere season of a date: 0 winter, 1 spring, 2 summer, 3 autumn. */
+const seasonOf = (date: string) => Math.floor((Number(date.slice(5, 7)) % 12) / 3);
+
+/** Posted between 20 December and 6 January. */
+function festive(date: string): boolean {
+  const md = date.slice(5, 10);
+  return md >= "12-20" || md <= "01-06";
+}
 
 /**
  * A member's achievements, from cards that count everywhere else: sent cards
@@ -62,6 +77,19 @@ export function achievementsFor(
     run = i > 0 && sentDays[i] - sentDays[i - 1] <= 10 * DAY_MS ? run + 1 : 1;
     biggestTrip = Math.max(biggestTrip, run);
   }
+
+  // Sent to someone who sent one back (or the other way round).
+  const sentTo = new Set(sent.map((c) => c.recipient_id));
+  const swaps = [...receivedFrom].filter((id) => sentTo.has(id)).length;
+  const islands = new Set(countries.filter((c) => ISLAND_NATIONS.has(c.toLowerCase())));
+  const crossedEquator = sent.some((c) => {
+    const to = destinationOf(c, membersById.get(c.recipient_id));
+    return !!to && Math.sign(c.from_lat) !== Math.sign(to.lat);
+  });
+  const seasons = new Set(sent.map((c) => seasonOf(c.sent_on)));
+  const friends = [...membersById.values()].filter((m) => m.id !== member.id && !m.left_at && m.group_id === member.group_id);
+  const friendsReached = friends.filter((m) => sentTo.has(m.id)).length;
+  const festiveCard = sent.some((c) => festive(c.sent_on));
 
   const count = (id: string, name: string, description: string, have: number, need: number): Achievement => ({
     id,
@@ -118,6 +146,30 @@ export function achievementsFor(
       earned: nearest < 100,
     },
     count("trip", "Trip report", "3 postcards from the same trip", biggestTrip, 3),
+    count("island-hopper", "Island hopper", "Postcards from 3 island countries", islands.size, 3),
+    {
+      id: "equator",
+      name: "Line crosser",
+      description: "A postcard that crossed the equator",
+      earned: crossedEquator,
+    },
+    count("antipodes", "Other side of the world", "A postcard that travelled 15,000 km", Math.round(longest), 15_000),
+    count("four-seasons", "Four seasons", "Send postcards in winter, spring, summer and autumn", seasons.size, 4),
+    count("swap", "Swap meet", "Swap postcards with 3 friends: they send you one, you send them one", swaps, 3),
+    count(
+      "round-robin",
+      "Round robin",
+      "Send a postcard to every friend in the group",
+      friendsReached,
+      Math.max(2, friends.length),
+    ),
+    {
+      id: "festive",
+      name: "Season's greetings",
+      description: festiveCard ? "Posted a postcard over Christmas and New Year" : "A secret one…",
+      earned: festiveCard,
+      secret: true,
+    },
     {
       id: "special-delivery",
       name: "Special delivery",
