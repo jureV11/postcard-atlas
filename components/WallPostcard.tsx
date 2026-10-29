@@ -85,8 +85,17 @@ export function WallPostcard({
               <div className="flex items-start justify-between gap-1">
                 {/* Postmark */}
                 <span className="flex size-11 shrink-0 -rotate-12 flex-col items-center justify-center rounded-full border-[1.5px] border-[#24345e]/70 text-center font-mono text-[6.5px] font-bold uppercase leading-tight text-[#24345e]/80">
-                  <span className="max-w-[38px] truncate">{city}</span>
-                  <span>{card.sent_on.slice(0, 4)}</span>
+                  {card.hand_delivered ? (
+                    <>
+                      <span>By</span>
+                      <span>hand</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="max-w-[38px] truncate">{city}</span>
+                      <span>{card.sent_on.slice(0, 4)}</span>
+                    </>
+                  )}
                 </span>
                 {cc && (
                   <span className="rotate-3 bg-white p-[3px] shadow-[0_1px_2px_rgb(0_0_0/0.25)] outline outline-1 outline-dashed outline-offset-[-2px] outline-ink/20">

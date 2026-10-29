@@ -143,6 +143,15 @@ export async function markLost(id: string, lostOn?: string | null): Promise<Resu
   return {};
 }
 
+/** Sender only: the card was handed over in person instead of posted (or not). */
+export async function setHandDelivered(id: string, value: boolean): Promise<Result> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_hand_delivered", { p_id: id, p_value: value });
+  if (error) return { error: error.message };
+  revalidatePath("/", "layout");
+  return {};
+}
+
 /** Sender only: it's still on its way after all. */
 export async function unmarkLost(id: string): Promise<Result> {
   const supabase = await createClient();

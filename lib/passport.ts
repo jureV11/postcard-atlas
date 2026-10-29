@@ -47,7 +47,7 @@ export function groupPassport(cards: Postcard[], members: Member[], today = new 
     const toCity = card.to_city ?? recipient?.home_city ?? "";
     if (!longest || km > longest.km) longest = { card, km, toCity };
     if (km >= 1 && (!shortest || km < shortest.km)) shortest = { card, km, toCity };
-    if (card.received_on)
+    if (card.received_on && !card.hand_delivered)
       days.push(Math.max(1, Math.round((Date.parse(card.received_on) - Date.parse(card.sent_on)) / 86_400_000)));
   }
 

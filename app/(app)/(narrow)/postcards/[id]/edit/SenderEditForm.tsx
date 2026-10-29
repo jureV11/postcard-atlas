@@ -9,7 +9,8 @@ import { MemberPicker } from "@/components/MemberPicker";
 import { todayLocal } from "@/lib/dates";
 import type { City } from "@/lib/geo";
 import type { Address, LocatedPostcard, MemberWithAvatar } from "@/lib/types";
-import { updatePostcard } from "../../actions";
+import { HandDeliveredField } from "@/components/HandDeliveredField";
+import { setHandDelivered, updatePostcard } from "../../actions";
 
 export function SenderEditForm({
   card,
@@ -40,6 +41,7 @@ export function SenderEditForm({
   const [sentOn, setSentOn] = useState(card.sent_on);
   const [message, setMessage] = useState(card.message ?? "");
   const [note, setNote] = useState(card.note ?? "");
+  const [handDelivered, setHandDeliveredState] = useState(!!card.hand_delivered);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,6 +58,13 @@ export function SenderEditForm({
     if (result.error) {
       setBusy(false);
       return setError(result.error);
+    }
+    if (handDelivered !== !!card.hand_delivered) {
+      const r = await setHandDelivered(card.id, handDelivered);
+      if (r.error) {
+        setBusy(false);
+        return setError(`Saved, but "hand delivered" didn't change: ${r.error}`);
+      }
     }
     if (effectiveAddressId && effectiveAddressId !== card.recipient_address_id) {
       const r = await setPostcardAddress(card.id, effectiveAddressId);
@@ -104,7 +113,7 @@ export function SenderEditForm({
         </div>
         <div>
           <label className="label" htmlFor="sentOn">
-            Date sent
+            {handDelivered ? "Date handed over" : "Date sent"}
           </label>
           <input
             id="sentOn"
@@ -115,6 +124,7 @@ export function SenderEditForm({
             onChange={(e) => setSentOn(e.target.value)}
             required
           />
+          {card.status !== "lost" && <HandDeliveredField checked={handDelivered} onChange={setHandDeliveredState} />}
         </div>
       </section>
 

@@ -12,7 +12,8 @@ import { todayLocal } from "@/lib/dates";
 import type { City } from "@/lib/geo";
 import type { Address, MemberWithAvatar } from "@/lib/types";
 import { LostDateField } from "@/components/LostDateField";
-import { logPostcard, markLost } from "../actions";
+import { HandDeliveredField } from "@/components/HandDeliveredField";
+import { logPostcard, markLost, setHandDelivered } from "../actions";
 
 // No photos here on purpose: the recipient photographs the card when it arrives.
 export function NewPostcardForm({ recipients, addresses }: { recipients: MemberWithAvatar[]; addresses: Address[] }) {
@@ -29,6 +30,7 @@ export function NewPostcardForm({ recipients, addresses }: { recipients: MemberW
   const [note, setNote] = useState("");
   const [neverArrived, setNeverArrived] = useState(false); // logging an old card that got lost
   const [lostOn, setLostOn] = useState("");
+  const [handDelivered, setHandDeliveredState] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,6 +59,13 @@ export function NewPostcardForm({ recipients, addresses }: { recipients: MemberW
         return setError((error ?? "Couldn't save the postcard") + saved);
       }
       ids.push(id);
+      if (handDelivered) {
+        const r = await setHandDelivered(id, true);
+        if (r.error) {
+          setStatus(null);
+          return setError(`Saved, but couldn't mark it hand delivered: ${r.error} — you can do that by editing it.`);
+        }
+      }
       if (neverArrived) {
         const r = await markLost(id, lostOn || null);
         if (r.error) {
@@ -130,7 +139,7 @@ export function NewPostcardForm({ recipients, addresses }: { recipients: MemberW
         </div>
         <div>
           <label className="label" htmlFor="sentOn">
-            Date sent
+            {handDelivered ? "Date handed over" : "Date sent"}
           </label>
           <input
             id="sentOn"
@@ -140,6 +149,13 @@ export function NewPostcardForm({ recipients, addresses }: { recipients: MemberW
             max={today}
             onChange={(e) => setSentOn(e.target.value)}
             required
+          />
+          <HandDeliveredField
+            checked={handDelivered}
+            onChange={(v) => {
+              setHandDeliveredState(v);
+              if (v) setNeverArrived(false); // handed over, so it can't be lost in the post
+            }}
           />
         </div>
       </section>

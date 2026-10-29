@@ -135,7 +135,7 @@ export default async function PostcardPage({
             frontUrl={frontUrl}
             backUrl={backUrl}
             alt={`Postcard from ${card.from_city}`}
-            postmark={inTransit ? undefined : { city: card.from_city, country: card.from_country, date: card.sent_on }}
+            postmark={inTransit || card.hand_delivered ? undefined : { city: card.from_city, country: card.from_country, date: card.sent_on }}
           />
         </div>
       ) : (
@@ -182,7 +182,11 @@ export default async function PostcardPage({
         </dl>
         {travelDays > 0 && !lost && (card.received_on || inTransit) && (
           <p className="text-sm text-ink-soft sm:col-span-2">
-            {card.received_on ? `Took ${travelDays} days to arrive.` : `${travelDays} days in transit so far.`}
+            {card.hand_delivered
+              ? "Hand delivered — given in person, no post involved."
+              : card.received_on
+                ? `Took ${travelDays} days to arrive.`
+                : `${travelDays} days in transit so far.`}
           </p>
         )}
       </section>

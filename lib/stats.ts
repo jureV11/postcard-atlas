@@ -129,7 +129,8 @@ export function groupStats(cards: Postcard[], members: Member[]): GroupStats {
   for (const card of delivered) {
     const km = cardKm(card, byId.get(card.recipient_id));
     totalKm += km;
-    if (!card.received_on) continue; // timing stats skip cards missing a date
+    // Timing stats skip cards missing a date, and hand-delivered ones (never in the post).
+    if (!card.received_on || card.hand_delivered) continue;
     // A card that arrived the same day it was posted counts as 1 day.
     const days = Math.max(1, Math.round((Date.parse(card.received_on) - Date.parse(card.sent_on)) / 86_400_000));
     timed.push({ card, km, days, kmPerDay: km / days });

@@ -70,6 +70,8 @@ export type Postcard = {
   to_lng?: number | null;
   /** When the sender gave up on it (status "lost", migration 0015). */
   lost_on?: string | null;
+  /** Handed over in person instead of posted (migration 0019): no time in the post. */
+  hand_delivered?: boolean;
 };
 
 /** One of a member's addresses (up to 5 active; exactly one is current). */
