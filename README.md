@@ -67,7 +67,7 @@ To host it, there's a ready Docker setup. See [HOSTING.md](HOSTING.md).
 
 **Found a bug or have an idea?** [Open an issue](../../issues/new/choose). There are short forms for bug reports and feature ideas. Screenshots help a lot.
 
-**Want to fix or build something yourself?**
+**Want to fix or build something yourself?** [CONTRIBUTING.md](CONTRIBUTING.md) walks through running your own test copy and getting a change onto the live site, including with Claude Code ([CLAUDE.md](CLAUDE.md) has the rules it follows).
 
 1. Fork the repo and create a branch.
 2. Make your change. Keep it focused on one thing.
