@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { Avatar } from "@/components/Avatar";
 import { Brand } from "@/components/Brand";
 import { NavLinks } from "@/components/NavLinks";
+import { ProfileMenu } from "@/components/ProfileMenu";
 import { TabBar } from "@/components/TabBar";
 import { requireMember } from "@/lib/session";
 import { signAvatarUrls } from "@/lib/storage";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const { supabase, member } = await requireMember();
+  const { supabase, user, member } = await requireMember();
   const [{ data: group }, [me]] = await Promise.all([
     supabase.from("groups").select("name").eq("id", member.group_id).single(),
     signAvatarUrls(supabase, [member]),
@@ -26,13 +26,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <span className="hidden sm:block">
             <NavLinks />
           </span>
-          <Link
-            href={`/members/${member.id}`}
-            aria-label="Your profile"
-            className="shrink-0 rounded-full p-0.5 ring-2 ring-paper/25 transition hover:ring-paper/60"
-          >
-            <Avatar name={me.display_name} color={me.color} url={me.avatar_url} size={34} />
-          </Link>
+          <ProfileMenu
+            memberId={member.id}
+            name={me.display_name}
+            color={me.color}
+            avatarUrl={me.avatar_url}
+            email={user.email ?? ""}
+          />
         </div>
         <div className="airmail-strip" aria-hidden="true" />
       </header>
