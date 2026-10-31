@@ -8,7 +8,7 @@ export const MOON_KM = 384_400;
 export const MOON_AND_BACK_KM = 2 * MOON_KM;
 
 export type Journey = { card: LocatedPostcard; km: number; toCity: string };
-export type MonthBar = { key: string; label: string; year: number; count: number };
+export type YearBar = { year: number; count: number };
 export type PenPals = { a: string; b: string; aToB: number; bToA: number; total: number };
 
 export type Passport = {
@@ -20,13 +20,12 @@ export type Passport = {
   members: number;
   longest: Journey | null;
   shortest: Journey | null;
-  /** Cards delivered in each of the last 12 months, oldest first. */
-  months: MonthBar[];
+  /** Delivered cards by year posted, from the group's first one to this year, oldest first. */
+  years: YearBar[];
   /** Pairs of friends by cards swapped, most first. */
   penPals: PenPals[];
 };
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /**
  * The group's "passport" for the leaderboard. Delivered, public cards only — the
@@ -51,18 +50,14 @@ export function groupPassport(cards: Postcard[], members: Member[], today = new 
       days.push(Math.max(1, Math.round((Date.parse(card.received_on) - Date.parse(card.sent_on)) / 86_400_000)));
   }
 
-  // Last 12 months by arrival, ending with this month.
-  const months: MonthBar[] = [];
-  for (let i = 11; i >= 0; i--) {
-    const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - i, 1));
-    const key = d.toISOString().slice(0, 7);
-    months.push({ key, label: MONTHS[d.getUTCMonth()], year: d.getUTCFullYear(), count: 0 });
-  }
-  const monthIndex = new Map(months.map((m, i) => [m.key, i]));
-  for (const c of delivered) {
-    const i = c.received_on ? monthIndex.get(c.received_on.slice(0, 7)) : undefined;
-    if (i !== undefined) months[i].count++;
-  }
+  // Delivered cards by the year they were posted, from the group's first one to
+  // this year: the chart (and its average) grows a year at a time.
+  const thisYear = today.getUTCFullYear();
+  const posted = delivered.map((c) => Number(c.sent_on.slice(0, 4))).filter((year) => year <= thisYear);
+  const firstYear = Math.min(thisYear, ...posted);
+  const years: YearBar[] = [];
+  for (let year = firstYear; year <= thisYear; year++) years.push({ year, count: 0 });
+  for (const year of posted) years[year - firstYear].count++;
 
   // Pen pals: unordered pairs, counting both directions.
   const pairs = new Map<string, PenPals>();
@@ -85,7 +80,7 @@ export function groupPassport(cards: Postcard[], members: Member[], today = new 
     members: members.filter((m) => !m.left_at).length, // current members
     longest,
     shortest: shortest && longest && shortest.card.id !== longest.card.id ? shortest : null,
-    months,
+    years,
     penPals: [...pairs.values()].sort((x, y) => y.total - x.total).slice(0, 5),
   };
 }
