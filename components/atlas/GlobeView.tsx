@@ -1,16 +1,16 @@
 "use client";
 
 // Loaded with next/dynamic (ssr: false) — three.js needs `window`.
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ComponentProps, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Globe, { type GlobeMethods } from "react-globe.gl";
 import { MeshPhongMaterial } from "three";
 import type { CityGroup, LocatedMapCard, OldHome, RouteRole, Selection } from "@/lib/atlas";
 import { countryKeyFromFeature } from "@/lib/countries";
 import { PLAIN, type MapStyle } from "@/lib/mapStyle";
 import { destinationOf, type MemberWithAvatar } from "@/lib/types";
-import { BIG_CITIES, type BigCity } from "@/lib/data/bigCities";
+import { capGeometry, capResolution, isTiny } from "@/lib/globeShapes";
 import { escapeHtml } from "@/lib/utils";
-import { loadWorld, type Country } from "@/lib/world";
+import { loadGlobeWorld, type Country } from "@/lib/world";
 import { isWater, lostPoint, lostSvg } from "./bird";
 import { houseSvg } from "./house";
 
@@ -20,15 +20,12 @@ const SENT_FROM = "#e9c48c";
 const INK = "#2a2622";
 const SIDE = () => "rgba(42,38,34,0.04)";
 const STROKE = () => "rgba(255,255,255,0.7)";
-const CITY_INK = () => "#8f8576";
-/** City lettering by camera height: shown below `below`, `size` in degrees. */
-const CITY_LEVELS = [
-  { below: Infinity, size: 0 },
-  { below: 1.2, size: 0.9 },
-  { below: 0.65, size: 0.32 },
-  { below: 0.38, size: 0.18 },
-  { below: 0.22, size: 0.1 },
-];
+// The globe's types say a shape's coordinates are a flat number[] (they're nested
+// arrays, as in any GeoJSON); the cast only quiets that.
+const CAP_GEOMETRY = capGeometry as unknown as ComponentProps<typeof Globe>["polygonGeoJsonGeometry"];
+/** Closest and furthest the camera goes, in globe radii above the surface. */
+const MIN_ALTITUDE = 0.05;
+const MAX_ALTITUDE = 4;
 
 type ArcDatum = {
   kind: "line" | "comet";
@@ -111,14 +108,19 @@ export default function GlobeView({
   // How high land, route ends and dots sit. Only three steps: every change
   // rebuilds the country shapes, which takes a moment.
   const lift = strokeScale >= 0.6 ? 1 : strokeScale >= 0.3 ? 0.5 : 0.25;
-  // Big cities in the background: 0 = none (far away), 1 = the largest, 2+ = all,
-  // with smaller lettering the closer you get (the text is drawn on the globe itself).
-  const [cityLevel, setCityLevel] = useState(0);
+  // The globe is ready before its countries are built: keep the message up until they're on it.
+  const [shaped, setShaped] = useState(false);
 
   useEffect(() => {
-    // 50m: detailed enough that small countries (Luxembourg, Malta…) have their real shape.
-    loadWorld("50m").then(setWorld);
+    loadGlobeWorld().then(setWorld);
   }, []);
+
+  useEffect(() => {
+    if (!world.length) return;
+    // The globe builds the countries in a timer of its own, set before this one runs.
+    const t = setTimeout(() => setShaped(true), 50);
+    return () => clearTimeout(t);
+  }, [world]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -251,6 +253,9 @@ export default function GlobeView({
     const g = globeRef.current;
     if (!ready || !g) return;
     const controls = g.controls();
+    // Scroll and pinch stop where the zoom buttons do (otherwise you can end up inside the globe).
+    controls.minDistance = g.getGlobeRadius() * (1 + MIN_ALTITUDE);
+    controls.maxDistance = g.getGlobeRadius() * (1 + MAX_ALTITUDE);
     controls.autoRotate = true;
     controls.autoRotateSpeed = 0.35;
     const stop = () => {
@@ -284,7 +289,7 @@ export default function GlobeView({
     if (!g) return;
     g.controls().autoRotate = false;
     const pov = g.pointOfView();
-    g.pointOfView({ ...pov, altitude: Math.min(4, Math.max(0.12, pov.altitude * factor)) }, 300);
+    g.pointOfView({ ...pov, altitude: Math.min(MAX_ALTITUDE, Math.max(MIN_ALTITUDE, pov.altitude * factor)) }, 300);
   }
 
   // Stable so the globe doesn't rebuild every pin on each render.
@@ -318,19 +323,21 @@ export default function GlobeView({
       // zoomed in), and flatten further the closer you get.
       const key = countryKeyFromFeature(d as Country);
       const base = key && homes.has(key) ? 0.004 : key && (oldHomeCountries?.has(key) || sentFrom.has(key)) ? 0.003 : 0.0022;
-      return base * lift;
+      // Tiny places (Vatican, San Marino) can sit inside a bigger country's shape:
+      // a hair higher, so they show on top.
+      return (base + (isTiny(d) ? 0.0005 : 0)) * lift;
     },
     [homes, oldHomeCountries, sentFrom, lift],
   );
-  const cityLabels = useMemo(
-    () => (!showNames || cityLevel === 0 ? [] : cityLevel === 1 ? BIG_CITIES.filter((c) => c.pop >= 8) : BIG_CITIES),
-    [showNames, cityLevel],
-  );
-
   return (
     <div ref={containerRef} className={`absolute inset-0 ${showNames && zoomedIn ? "globe-labels" : ""}`}>
-      {!ready && (
-        <div className="absolute inset-0 flex items-center justify-center text-sm text-ink-soft">Spinning up the globe…</div>
+      {(!ready || !shaped) && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+          <div className="flex items-center gap-2.5 rounded-full border border-ink/10 bg-[#fffdf8]/95 px-4 py-2 text-sm text-ink-soft shadow-sm">
+            <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-ink/15 border-t-stamp" />
+            Spinning up the globe…
+          </div>
+        </div>
       )}
       {size && (
         <Globe
@@ -345,7 +352,6 @@ export default function GlobeView({
           onGlobeReady={() => setReady(true)}
           onZoom={(pov) => {
             setZoomedIn(pov.altitude < 0.75);
-            setCityLevel(CITY_LEVELS.findLastIndex((l) => pov.altitude < l.below));
             setStrokeScale(Math.min(1, Math.max(0.15, Math.round((pov.altitude / 1.7) * 20) / 20)));
           }}
           onGlobeClick={() => onSelect(null)}
@@ -355,7 +361,10 @@ export default function GlobeView({
           polygonSideColor={SIDE}
           // Country surfaces follow the globe's curve closely (every 1.5°), so they
           // can sit just above the sea without the sea showing through big countries.
-          polygonCapCurvatureResolution={1.5}
+          // Small countries are drawn flat instead, and bigger ones get extra border
+          // points, so the colour matches the white border line (see lib/globeShapes).
+          polygonGeoJsonGeometry={CAP_GEOMETRY}
+          polygonCapCurvatureResolution={capResolution}
           polygonStrokeColor={STROKE}
           // Countries sit a hair above the sea (they'd look like floating slabs when
           // zoomed in), and flatten further the closer you get.
@@ -430,23 +439,12 @@ export default function GlobeView({
             return tooltip(`${escapeHtml(s)} → ${escapeHtml(r)}${a.card.status === "in_transit" ? " · in transit" : a.lost ? " · lost in the post" : ""}`);
           }}
           onArcClick={(d) => onSelect({ kind: "card", id: (d as ArcDatum).card.id })}
-          // Big cities: a faint dot sized by population, with its name
-          labelsData={cityLabels}
-          labelLat="lat"
-          labelLng="lng"
-          labelText="name"
-          labelColor={CITY_INK}
-          labelSize={CITY_LEVELS[cityLevel].size}
-          labelDotRadius={(d) => (0.05 + 0.03 * Math.sqrt((d as BigCity).pop)) * CITY_LEVELS[cityLevel].size * 1.6}
-          labelDotOrientation={() => "bottom"}
-          labelAltitude={0.0055 * lift}
-          labelResolution={2}
-          labelsTransitionDuration={0}
           // Pins: HTML markers keep a constant, tappable size at any zoom
           htmlElementsData={points}
           htmlLat="lat"
           htmlLng="lng"
-          htmlAltitude={(d) => ((d as PointDatum).kind === "city" ? 0.01 : 0.015)}
+          // On the land like the dots and city names (higher, they drift as the globe turns)
+          htmlAltitude={0.0055 * lift}
           htmlElement={makePin}
           htmlElementVisibilityModifier={(el, visible) => {
             // Hide (and make unclickable) pins on the far side of the globe
