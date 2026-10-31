@@ -5,11 +5,11 @@ import { Flag } from "@/components/Flag";
 import { formatKm } from "@/lib/geo";
 import { EARTH_KM, MOON_AND_BACK_KM, type Journey, type Passport } from "@/lib/passport";
 import type { MemberWithAvatar } from "@/lib/types";
-import { MonthlyBars } from "./MonthlyBars";
+import { YearlyBars } from "./YearlyBars";
 
 const WORLD_COUNTRIES = 195;
 
-/** The group's stats as a passport: a stat grid, distance in space terms, months and pen pals. */
+/** The group's stats as a passport: a stat grid, distance in space terms, years and pen pals. */
 export function GroupPassport({ passport: p, membersById }: { passport: Passport; membersById: Map<string, MemberWithAvatar> }) {
   const laps = p.totalKm / EARTH_KM;
   const moon = p.totalKm / MOON_AND_BACK_KM; // there and back (#9)
@@ -69,11 +69,11 @@ export function GroupPassport({ passport: p, membersById }: { passport: Passport
           <JourneyRow title="Shortest journey" journey={p.shortest} />
         </section>
 
-        {/* Months */}
+        {/* Years */}
         <section className="rounded-2xl border border-ink/10 bg-white/75">
-          <Header title="Postcards by month" note="last 12 months" />
+          <Header title="Postcards by year" note="by year posted" />
           <div className="px-5 pb-5">
-            <MonthlyBars months={p.months} />
+            <YearlyBars years={p.years} />
           </div>
         </section>
       </div>
