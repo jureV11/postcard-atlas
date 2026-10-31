@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { Achievements } from "@/components/Achievements";
 import { Avatar } from "@/components/Avatar";
 import { Flag } from "@/components/Flag";
 import { InviteCard } from "@/components/InviteCard";
+import { groupAchievements } from "@/lib/groupAchievements";
 import { isFormer } from "@/lib/members";
+import { loadGroupData } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
 import { signAvatarUrls } from "@/lib/storage";
 import type { Group, Member, MemberWithAvatar } from "@/lib/types";
@@ -11,9 +14,10 @@ import { LeaveGroupButton } from "./LeaveGroupButton";
 export default async function GroupHome() {
   const { supabase, member } = await requireMember();
 
-  const [{ data: group }, { data: memberRows }] = await Promise.all([
+  const [{ data: group }, { data: memberRows }, { postcards }] = await Promise.all([
     supabase.from("groups").select("*").eq("id", member.group_id).single(),
     supabase.from("members").select("*").eq("group_id", member.group_id).order("created_at"),
+    loadGroupData(supabase, member),
   ]);
   const g = group as Group;
   const everyone = await signAvatarUrls(supabase, (memberRows ?? []) as Member[]);
@@ -33,6 +37,8 @@ export default async function GroupHome() {
       </div>
 
       <InviteCard code={g.invite_code} groupName={g.name} />
+
+      <Achievements title="Group achievements" items={groupAchievements(postcards, everyone)} />
 
       <section>
         <h2 className="mb-3 font-display text-xl font-semibold">Members</h2>

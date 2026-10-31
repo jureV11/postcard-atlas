@@ -1,4 +1,7 @@
+import { cityKey } from "@/lib/atlas";
 import { CONTINENTS, continentOf, continentProgress } from "@/lib/continents";
+import { isCapital } from "@/lib/data/capitals";
+import { MOON_AND_BACK_KM } from "@/lib/passport";
 import type { MemberStats } from "@/lib/stats";
 import { cardKm } from "@/lib/stats";
 import { destinationOf, isLocated, type Member, type Postcard } from "@/lib/types";
@@ -21,6 +24,8 @@ const ISLAND_NATIONS = new Set(
   ("ag bb bh bs cu cv cy dm do fj fm gb gd ht id ie is jm jp ki km kn lc lk mg mh mt mu mv nr nz " +
     "ph pw sb sc sg st to tt tv tw vc vu ws").split(" "),
 );
+
+const ARCTIC_CIRCLE = 66.56;
 
 /** Northern-hemisphere season of a date: 0 winter, 1 spring, 2 summer, 3 autumn. */
 const seasonOf = (date: string) => Math.floor((Number(date.slice(5, 7)) % 12) / 3);
@@ -70,14 +75,6 @@ export function achievementsFor(
   const handDelivered = sent.some((c) => c.hand_delivered);
   const nearest = sent.reduce((m, c) => Math.min(m, cardKm(c, membersById.get(c.recipient_id))), Infinity);
 
-  // Biggest trip: cards posted within 10 days of each other (the same rule as the reveal).
-  const sentDays = sent.map((c) => Date.parse(c.sent_on)).sort((a, b) => a - b);
-  let biggestTrip = 0;
-  for (let i = 0, run = 0; i < sentDays.length; i++) {
-    run = i > 0 && sentDays[i] - sentDays[i - 1] <= 10 * DAY_MS ? run + 1 : 1;
-    biggestTrip = Math.max(biggestTrip, run);
-  }
-
   // Sent to someone who sent one back (or the other way round).
   const sentTo = new Set(sent.map((c) => c.recipient_id));
   const swaps = [...receivedFrom].filter((id) => sentTo.has(id)).length;
@@ -90,6 +87,22 @@ export function achievementsFor(
   const friends = [...membersById.values()].filter((m) => m.id !== member.id && !m.left_at && m.group_id === member.group_id);
   const friendsReached = friends.filter((m) => sentTo.has(m.id)).length;
   const festiveCard = sent.some((c) => festive(c.sent_on));
+
+  // Where from: the far north and south, capitals and everywhere else.
+  const northStar = sent.some((c) => c.from_lat >= ARCTIC_CIRCLE);
+  const southernCross = sent.some((c) => c.from_lat <= -40);
+  const capitals = new Set(sent.filter((c) => isCapital(c.from_country_code, c.from_lat, c.from_lng)).map((c) => c.from_country_code));
+  const otherTowns = new Set(sent.filter((c) => !isCapital(c.from_country_code, c.from_lat, c.from_lng)).map(cityKey));
+
+  // The group's first delivered card from each country (earliest posted; ties go to whoever logged it first).
+  const firsts = new Map<string, Postcard>();
+  for (const c of cards) {
+    if (c.status !== "received" || !c.is_public || !c.from_country_code) continue;
+    const f = firsts.get(c.from_country_code);
+    if (!f || c.sent_on < f.sent_on || (c.sent_on === f.sent_on && c.created_at < f.created_at)) firsts.set(c.from_country_code, c);
+  }
+  const pioneered = [...firsts.values()].filter((c) => c.sender_id === member.id).length;
+  const daysInPost = days.reduce((sum, d) => sum + d, 0);
 
   const count = (id: string, name: string, description: string, have: number, need: number): Achievement => ({
     id,
@@ -125,6 +138,7 @@ export function achievementsFor(
     },
     count("pen-pal", "Pen pal", "5 postcards to the same friend", mostToOne, 5),
     count("mailbox", "Full mailbox", "Receive 10 postcards", receivedPublic, 10),
+    count("mailbox-25", "Overflowing mailbox", "Receive 25 postcards", receivedPublic, 25),
     // Receiving
     count("world-mail", "World mail", "Receive postcards from 3 continents", receivedContinents.size, 3),
     count(
@@ -135,17 +149,16 @@ export function achievementsFor(
       CONTINENTS.length,
     ),
     count("collector", "Collector", "Receive postcards from 10 countries", receivedCountries.size, 10),
-    count("fan-club", "Fan club", "Receive postcards from 3 different friends", receivedFrom.size, 3),
     // Sending
     count("postie", "Postie", "Send 25 postcards that arrive", sent.length, 25),
     count("around-the-world", "Around the world", "Your postcards travel 40,075 km in total", Math.round(stats.postcardKm), 40_075),
+    count("moon", "To the Moon and back", "Your postcards travel 768,800 km in total", Math.round(stats.postcardKm), MOON_AND_BACK_KM),
     {
       id: "neighbourly",
       name: "Neighbourly",
       description: "A postcard from less than 100 km away",
       earned: nearest < 100,
     },
-    count("trip", "Trip report", "3 postcards from the same trip", biggestTrip, 3),
     count("island-hopper", "Island hopper", "Postcards from 3 island countries", islands.size, 3),
     {
       id: "equator",
@@ -163,6 +176,22 @@ export function achievementsFor(
       friendsReached,
       Math.max(2, friends.length),
     ),
+    {
+      id: "north-star",
+      name: "North star",
+      description: "A postcard from above the Arctic Circle",
+      earned: northStar,
+    },
+    {
+      id: "southern-cross",
+      name: "Southern cross",
+      description: "A postcard from the far south (below 40°S)",
+      earned: southernCross,
+    },
+    count("capitals", "Capital collector", "Postcards from 5 capital cities", capitals.size, 5),
+    count("beaten-track", "Off the beaten track", "Postcards from 10 towns that aren't capitals", otherTowns.size, 10),
+    count("early-bird", "Early bird", "Be the first in the group to send from 3 countries", pioneered, 3),
+    count("snail-mail", "Snail mail", "Your postcards spend a whole year in the post, all added up", daysInPost, 365),
     {
       id: "festive",
       name: "Season's greetings",
