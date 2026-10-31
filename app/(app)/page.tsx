@@ -44,9 +44,15 @@ export default async function MapPage() {
     <div className="space-y-4">
       <div className="flex items-end justify-between gap-4">
         <h1 className="font-display text-3xl font-semibold tracking-tight">Atlas</h1>
-        <Link href="/postcards/new" className="btn hidden shrink-0 sm:inline-flex">
-          <span aria-hidden="true">＋</span> Log a postcard
-        </Link>
+        {/* Both ways in, like the Postcards page (on phones the tab bar's stamp logs one you sent) */}
+        <div className="flex shrink-0 gap-2">
+          <Link href="/postcards/new" className="btn hidden sm:inline-flex">
+            <span aria-hidden="true">＋</span> Log a postcard
+          </Link>
+          <Link href="/postcards/arrived" className="btn-ghost px-4">
+            <span aria-hidden="true">✉</span> A postcard arrived!
+          </Link>
+        </div>
       </div>
 
       {/* Addresses on the left, the map in the middle (it gets all the extra width), stats on the right */}
