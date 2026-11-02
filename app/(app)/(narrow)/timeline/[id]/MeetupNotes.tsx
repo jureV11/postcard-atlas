@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
+import { Linkify } from "@/components/Linkify";
 import type { MemberWithAvatar } from "@/lib/types";
 import { saveMeetupNote } from "../actions";
 
@@ -35,7 +36,9 @@ export function MeetupNotes({ meetupId, notes, me }: { meetupId: string; notes: 
       {notes.map((n) =>
         n.mine && editing ? null : (
           <article key={n.id} className="card">
-            <p className="whitespace-pre-line">{n.body}</p>
+            <p className="whitespace-pre-line">
+              <Linkify text={n.body} />
+            </p>
             <footer className="mt-4 flex items-center gap-2 text-sm text-ink-soft">
               {n.author && <Avatar name={n.author.display_name} color={n.author.color} url={n.author.avatar_url} size={24} />}
               {/* Signed off like a letter */}
@@ -65,7 +68,7 @@ export function MeetupNotes({ meetupId, notes, me }: { meetupId: string; notes: 
               value={text}
               onChange={(e) => setText(e.target.value)}
               maxLength={4000}
-              placeholder="What happened, what you'll remember…"
+              placeholder="What happened, what you'll remember… Links work too: [our video](https://youtu.be/…)"
             />
             {error && <p className="error">{error}</p>}
             <div className="flex flex-wrap items-center gap-3">

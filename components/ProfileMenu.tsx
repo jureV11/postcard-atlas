@@ -81,10 +81,6 @@ export function ProfileMenu({
             </Link>
           </div>
           <div className="border-t border-ink/10 py-1">
-            {/* The phone tab bar has no room for these */}
-            <Link href="/timeline" className={`${item} sm:hidden`}>
-              Timeline
-            </Link>
             <Link href="/private" className={item}>
               Private postcards
             </Link>

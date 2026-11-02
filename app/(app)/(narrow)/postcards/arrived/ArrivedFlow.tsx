@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import countries from "i18n-iso-countries";
+import { useState } from "react";
 import { MemberPicker } from "@/components/MemberPicker";
 import { formatDate } from "@/lib/dates";
 import type { MemberWithAvatar } from "@/lib/types";
@@ -11,19 +10,20 @@ import { ReceiveForm } from "../[id]/ReceiveForm";
 type Match = { id: string; sentOn: string; hasMessage: boolean };
 
 /** Step 1: match the physical card to its mystery entry. Step 2: date, photos, reveal. */
-export function ArrivedFlow({ groupId, senders }: { groupId: string; senders: MemberWithAvatar[] }) {
+export function ArrivedFlow({
+  groupId,
+  senders,
+  countryOptions,
+}: {
+  groupId: string;
+  senders: MemberWithAvatar[];
+  countryOptions: { code: string; name: string }[]; // from the server, so the names match
+}) {
   const [senderId, setSenderId] = useState<string | null>(null);
   const [country, setCountry] = useState("");
   const [match, setMatch] = useState<Match | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const countryOptions = useMemo(() => {
-    const names = new Intl.DisplayNames(["en"], { type: "region" });
-    return Object.keys(countries.getAlpha2Codes())
-      .map((code) => ({ code, name: names.of(code) ?? code }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, []);
 
   async function find(e: React.FormEvent) {
     e.preventDefault();

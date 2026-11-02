@@ -138,6 +138,11 @@ export type MeetupPhoto = {
   is_main: boolean;
   uploaded_by: string | null;
   created_at: string;
+  // Migration 0021: may be missing before it has run
+  caption?: string | null;
+  position?: number | null;
+  focus_x?: number | null; // which part of the photo shows when it's cropped, in % (empty = the middle)
+  focus_y?: number | null;
 };
 
 /** A card sent to, or received from, someone outside the group: only its owner ever sees it (migration 0020). */

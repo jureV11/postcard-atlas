@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import type { City } from "@/lib/geo";
+import { MAX_MEETUP_PHOTOS } from "@/lib/meetups";
+import { notifyMembers } from "@/lib/push";
 import { requireMember } from "@/lib/session";
 
 type Result = { error?: string };
@@ -63,6 +65,15 @@ export async function saveMeetup(input: MeetupInput): Promise<Result & { id?: st
     const { error } = await supabase.from("meetup_members").insert(added.map((member_id) => ({ meetup_id: id, member_id })));
     if (error) return { error: error.message, id };
   }
+  // The inbox message comes from the database; a phone notification too, if they're on
+  const others = added.filter((m) => m !== member.id);
+  if (others.length)
+    await notifyMembers(supabase, others, {
+      title: "🗓️ You're on the timeline",
+      body: `${member.display_name} added you to ${title}.`,
+      url: `/timeline/${id}`,
+      tag: `meetup-${id}`,
+    });
 
   revalidatePath("/timeline", "layout");
   return { id };
@@ -87,14 +98,15 @@ export async function deleteMeetup(id: string): Promise<Result> {
 /** Save photos already uploaded to storage. The first becomes the main one if there isn't one yet. */
 export async function addMeetupPhotos(meetupId: string, paths: string[]): Promise<Result> {
   const { supabase, member } = await requireMember();
-  const { data: main } = await supabase.from("meetup_photos").select("id").eq("meetup_id", meetupId).eq("is_main", true);
-  const hasMain = !!main?.length;
-  const { error } = await supabase
-    .from("meetup_photos")
-    .insert(paths.map((path, i) => ({ meetup_id: meetupId, path, uploaded_by: member.id, is_main: !hasMain && i === 0 })));
+  const { data: existing } = await supabase.from("meetup_photos").select("is_main, position").eq("meetup_id", meetupId);
+  const hasMain = !!existing?.some((p) => p.is_main);
+  const after = Math.max(-1, ...(existing ?? []).map((p) => (p.position as number | null) ?? 0)) + 1; // new ones go at the end
+  const { error } = await supabase.from("meetup_photos").insert(
+    paths.map((path, i) => ({ meetup_id: meetupId, path, uploaded_by: member.id, is_main: !hasMain && i === 0, position: after + i })),
+  );
   if (error) {
     await supabase.storage.from("meetups").remove(paths); // don't leave orphaned files
-    return { error: error.message.includes("up to 10") ? "A meetup can have up to 10 photos." : error.message };
+    return { error: error.message.includes("up to 50") ? `A meetup can have up to ${MAX_MEETUP_PHOTOS} photos.` : error.message };
   }
   revalidatePath("/timeline", "layout");
   return {};
@@ -131,10 +143,53 @@ export async function removeMeetupPhoto(photoId: string): Promise<Result> {
       .from("meetup_photos")
       .select("id")
       .eq("meetup_id", photo.meetup_id)
+      .order("position", { nullsFirst: true })
       .order("created_at")
       .limit(1);
     if (next?.length) await supabase.from("meetup_photos").update({ is_main: true }).eq("id", next[0].id);
   }
+  revalidatePath("/timeline", "layout");
+  return {};
+}
+
+/** Move a photo one place earlier (-1) or later (1). Anyone in the group may. */
+export async function moveMeetupPhoto(meetupId: string, photoId: string, step: -1 | 1): Promise<Result> {
+  const { supabase } = await requireMember();
+  const { data } = await supabase.from("meetup_photos").select("id, position, created_at").eq("meetup_id", meetupId);
+  const photos = ((data ?? []) as { id: string; position: number | null; created_at: string }[]).sort(
+    (a, b) => (a.position ?? 0) - (b.position ?? 0) || a.created_at.localeCompare(b.created_at),
+  );
+  const from = photos.findIndex((p) => p.id === photoId);
+  const to = from + step;
+  if (from === -1 || to < 0 || to >= photos.length) return {};
+  [photos[from], photos[to]] = [photos[to], photos[from]];
+  // Number them 0, 1, 2… again, saving only the ones that changed
+  const changed = photos.map((p, i) => ({ ...p, i })).filter((p) => p.position !== p.i);
+  for (const p of changed) {
+    const { error } = await supabase.from("meetup_photos").update({ position: p.i }).eq("id", p.id);
+    if (error) return { error: error.message };
+  }
+  revalidatePath("/timeline", "layout");
+  return {};
+}
+
+/** A short caption under a photo; empty takes it off. */
+export async function setPhotoCaption(photoId: string, caption: string): Promise<Result> {
+  const { supabase } = await requireMember();
+  const text = caption.trim();
+  if (text.length > 300) return { error: "Keep it short: under 300 characters." };
+  const { error } = await supabase.from("meetup_photos").update({ caption: text || null }).eq("id", photoId);
+  if (error) return { error: error.message };
+  revalidatePath("/timeline", "layout");
+  return {};
+}
+
+/** Which part of a photo shows where it's cropped (the timeline), in % across and down. */
+export async function setPhotoFocus(photoId: string, x: number, y: number): Promise<Result> {
+  const { supabase } = await requireMember();
+  const clamp = (n: number) => Math.round(Math.min(100, Math.max(0, n)));
+  const { error } = await supabase.from("meetup_photos").update({ focus_x: clamp(x), focus_y: clamp(y) }).eq("id", photoId);
+  if (error) return { error: error.message };
   revalidatePath("/timeline", "layout");
   return {};
 }
