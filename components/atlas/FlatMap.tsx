@@ -10,7 +10,7 @@ import type { CityGroup, LocatedMapCard, OldHome, RouteRole, Selection } from "@
 import { countryKeyFromFeature } from "@/lib/countries";
 import { PLAIN, type MapStyle } from "@/lib/mapStyle";
 import { destinationOf, type MemberWithAvatar } from "@/lib/types";
-import { loadWorld, type Country } from "@/lib/world";
+import { loadGlobeWorld, loadWorld, type Country } from "@/lib/world";
 import { BIRD, isWater, LOST_AT, lostMarkup } from "./bird";
 import { HOUSE_PATH, HOUSE_WINDOW, initialOf } from "./house";
 
@@ -20,6 +20,9 @@ const HOME_R = 9; // screen px, roughly a home marker's half-height
 const HOUSE_SCALE = 0.95; // house marker size (1 = 22px tall)
 const CITY_R = 3.5;
 const SMALL_COUNTRY_PX2 = 60; // countries smaller than this on screen get a highlight circle
+// Zoomed out, the lighter (globe) outlines are drawn: they differ from the full ones by
+// less than a pixel there and are far quicker to redraw while dragging. Full detail up close.
+const DETAIL_ZOOM = 6;
 
 export function FlatMap({
   cards,
@@ -78,10 +81,13 @@ export function FlatMap({
   const fittedOnce = useRef(false);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [world, setWorld] = useState<Country[] | null>(null);
+  const [lightWorld, setLightWorld] = useState<Country[] | null>(null);
   const [t, setT] = useState<ZoomTransform>(zoomIdentity);
+  const frame = useRef(0);
 
   useEffect(() => {
     loadWorld("50m").then(setWorld);
+    loadGlobeWorld().then(setLightWorld);
   }, []);
 
   useEffect(() => {
@@ -123,16 +129,22 @@ export function FlatMap({
   const countryPaths = useMemo(() => {
     if (!projection || !world) return [];
     const path = geoPath(projection);
-    return world.map((f, i) => ({
-      id: `${f.id ?? f.properties.name}-${i}`,
-      key: countryKeyFromFeature(f),
-      name: f.properties.name,
-      colorIndex: f.properties.colorIndex,
-      d: path(f) ?? "",
-      area: path.area(f),
-      centroid: path.centroid(f),
-    }));
-  }, [projection, world]);
+    return world.map((f, i) => {
+      const d = path(f) ?? "";
+      const light = lightWorld?.[i];
+      return {
+        id: `${f.id ?? f.properties.name}-${i}`,
+        key: countryKeyFromFeature(f),
+        name: f.properties.name,
+        colorIndex: f.properties.colorIndex,
+        d,
+        // Same countries in the same order (both from the 50m file)
+        dLight: light && light.properties.name === f.properties.name ? (path(light) ?? d) : d,
+        area: path.area(f),
+        centroid: path.centroid(f),
+      };
+    });
+  }, [projection, world, lightWorld]);
 
   const graticule = useMemo(() => (projection ? (geoPath(projection)(geoGraticule10()) ?? "") : ""), [projection]);
   const sphere = useMemo(() => (projection ? (geoPath(projection)({ type: "Sphere" }) ?? "") : ""), [projection]);
@@ -228,12 +240,26 @@ export function FlatMap({
       ])
       // Can't pan past the edge of the land into blank space.
       .translateExtent(landBounds)
-      .on("zoom", (e: { transform: ZoomTransform }) => setT(e.transform));
+      // At most one redraw per screen frame, however fast the wheel or touch events come
+      .on("zoom", (e: { transform: ZoomTransform }) => {
+        cancelAnimationFrame(frame.current);
+        frame.current = requestAnimationFrame(() => setT(e.transform));
+      })
+      // Birds and marching routes pause while the map moves, so the browser only redraws once per frame
+      .on("start", () => {
+        svg.pauseAnimations();
+        svg.classList.add("map-moving");
+      })
+      .on("end", () => {
+        svg.unpauseAnimations();
+        svg.classList.remove("map-moving");
+      });
     const sel = select(svg);
     sel.call(z);
     zoomRef.current = z;
     return () => {
       sel.on(".zoom", null);
+      cancelAnimationFrame(frame.current);
     };
   }, [size, landBounds]);
 
@@ -286,9 +312,47 @@ export function FlatMap({
   }, [projection, filterId]);
 
   const k = t.k;
+  const detailed = k >= DETAIL_ZOOM;
   const selectedCardId = selection?.kind === "card" ? selection.id : null;
   const selectedCity = selection?.kind === "city" ? selection.key : null;
   const selectedMember = selection?.kind === "member" ? selection.id : null;
+
+  // Countries don't change while the map is dragged, so React leaves them alone then
+  const countryLayer = useMemo(
+    () =>
+      countryPaths.map((c) => {
+        const home = c.key ? homes.get(c.key) : undefined;
+        const sent = c.key ? sentFrom.has(c.key) : false;
+        const dimHome = !!filterId && !!home && !involved.has(home.id);
+        const oldHome = !home && c.key ? oldHomeCountries?.get(c.key) : undefined;
+        const dimOld = !!filterId && !!oldHome && !involved.has(oldHome.id);
+        return (
+          <g key={c.id}>
+            <path
+              d={detailed ? c.d : c.dLight}
+              fill={home ? home.color : sent ? mapStyle.sentFrom : mapStyle.land(c.colorIndex)}
+              fillOpacity={home ? (dimHome ? 0.22 : mapStyle.homeOpacity) : 1}
+              stroke={sent && !home ? mapStyle.sentFromEdge : mapStyle.border}
+              strokeOpacity={sent && !home ? 0.6 : 1}
+              strokeWidth={0.6}
+              vectorEffect="non-scaling-stroke"
+            >
+              <title>{c.name}</title>
+            </path>
+            {oldHome && (
+              <path
+                d={detailed ? c.d : c.dLight}
+                fill={`url(#old-home-${oldHome.id})`}
+                opacity={dimOld ? 0.3 : 1}
+                pointerEvents="none"
+              />
+            )}
+            {sent && !oldHome && <path d={detailed ? c.d : c.dLight} fill="url(#hatch)" pointerEvents="none" />}
+          </g>
+        );
+      }),
+    [countryPaths, detailed, homes, sentFrom, filterId, involved, oldHomeCountries, mapStyle],
+  );
 
   // Labels: outlined text that stays the same size on screen.
   const label = (x: number, y: number, text: string, opts?: { bold?: boolean; dx?: number; dy?: number }) => (
@@ -408,37 +472,7 @@ export function FlatMap({
               vectorEffect="non-scaling-stroke"
             />
 
-            {countryPaths.map((c) => {
-              const home = c.key ? homes.get(c.key) : undefined;
-              const sent = c.key ? sentFrom.has(c.key) : false;
-              const dimHome = !!filterId && !!home && !involved.has(home.id);
-              const oldHome = !home && c.key ? oldHomeCountries?.get(c.key) : undefined;
-              const dimOld = !!filterId && !!oldHome && !involved.has(oldHome.id);
-              return (
-                <g key={c.id}>
-                  <path
-                    d={c.d}
-                    fill={home ? home.color : sent ? mapStyle.sentFrom : mapStyle.land(c.colorIndex)}
-                    fillOpacity={home ? (dimHome ? 0.22 : mapStyle.homeOpacity) : 1}
-                    stroke={sent && !home ? mapStyle.sentFromEdge : mapStyle.border}
-                    strokeOpacity={sent && !home ? 0.6 : 1}
-                    strokeWidth={0.6}
-                    vectorEffect="non-scaling-stroke"
-                  >
-                    <title>{c.name}</title>
-                  </path>
-                  {oldHome && (
-                    <path
-                      d={c.d}
-                      fill={`url(#old-home-${oldHome.id})`}
-                      opacity={dimOld ? 0.3 : 1}
-                      pointerEvents="none"
-                    />
-                  )}
-                  {sent && !oldHome && <path d={c.d} fill="url(#hatch)" pointerEvents="none" />}
-                </g>
-              );
-            })}
+            {countryLayer}
 
             {/* Tiny countries (islands, microstates) get a circle so they're visible at world zoom */}
             {countryPaths.map((c) => {

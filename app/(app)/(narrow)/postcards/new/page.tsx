@@ -41,6 +41,13 @@ export default async function NewPostcardPage() {
       ) : (
         <NewPostcardForm recipients={others} addresses={addresses} />
       )}
+      <p className="text-center text-sm text-ink-soft">
+        Sending one to someone outside the group?{" "}
+        <Link href="/private/new" className="font-medium text-ink underline underline-offset-2">
+          Keep it in your private postcards
+        </Link>
+        , just for you.
+      </p>
     </div>
   );
 }

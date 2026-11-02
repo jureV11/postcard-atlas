@@ -113,3 +113,60 @@ export type LocatedPostcard = Postcard & {
 export function isLocated<T extends Postcard>(c: T): c is T & LocatedPostcard {
   return c.sender_id !== null && c.from_lat !== null && c.from_lng !== null && c.from_country_code !== null;
 }
+
+/** A time the group met up (migration 0020), with who was there and its photos. */
+export type Meetup = {
+  id: string;
+  group_id: string;
+  title: string;
+  starts_on: string; // YYYY-MM-DD
+  ends_on: string | null;
+  city: string | null;
+  country: string | null;
+  country_code: string | null;
+  lat: number | null;
+  lng: number | null;
+  postcard_id: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type MeetupPhoto = {
+  id: string;
+  meetup_id: string;
+  path: string;
+  is_main: boolean;
+  uploaded_by: string | null;
+  created_at: string;
+};
+
+/** A card sent to, or received from, someone outside the group: only its owner ever sees it (migration 0020). */
+export type PrivatePostcard = {
+  id: string;
+  user_id: string;
+  direction: "sent" | "received";
+  person: string; // who it went to, or came from
+  /** Where it was posted from */
+  from_city: string | null;
+  from_country: string | null;
+  from_country_code: string | null;
+  from_lat: number | null;
+  from_lng: number | null;
+  sent_on: string;
+  received_on: string | null;
+  message: string; // what the card says
+  note: string;
+  front_path: string | null;
+  back_path: string | null;
+  created_at: string;
+};
+
+/** Someone's write-up of a meetup (one each). */
+export type MeetupNote = {
+  id: string;
+  meetup_id: string;
+  member_id: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+};

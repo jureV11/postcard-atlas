@@ -6,7 +6,7 @@ const SIGNED_URL_TTL = 60 * 60; // 1 hour
 /** Buckets are private, so images are served through short-lived signed URLs. */
 export async function signPaths(
   supabase: SupabaseClient,
-  bucket: "avatars" | "postcards",
+  bucket: "avatars" | "postcards" | "meetups" | "private-postcards",
   paths: (string | null | undefined)[],
 ): Promise<Map<string, string>> {
   const unique = [...new Set(paths.filter((p): p is string => !!p))];

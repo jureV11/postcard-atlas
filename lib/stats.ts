@@ -1,4 +1,3 @@
-import { cityKey } from "@/lib/atlas";
 import { haversineKm } from "@/lib/geo";
 import { destinationOf, isLocated, type LocatedPostcard, type Member, type Postcard } from "@/lib/types";
 
@@ -9,6 +8,7 @@ export type MemberStats = {
   sent: Postcard[]; // everything they've sent, including mystery cards in transit
   arrived: LocatedPostcard[]; // sent and received — the ones that count
   inTransit: number; // sent, still on the way
+  lost: Postcard[]; // sent, marked lost in the post
   received: Postcard[]; // cards they've received
   incoming: number; // on their way to this member
   countries: CountryTally[]; // countries sent from, most cards first
@@ -58,17 +58,21 @@ export function computeStats(members: Member[], cards: Postcard[]): Map<string, 
       if (!farthest || km > farthest.km) farthest = { card: c, km };
     }
 
-    // Explorer km: home → each unique sent-from city, counted once
-    const cities = new Map<string, LocatedPostcard>();
-    for (const c of arrived) if (!cities.has(cityKey(c))) cities.set(cityKey(c), c);
-    let explorerKm = 0;
-    for (const c of cities.values()) explorerKm += haversineKm(m.home_lat, m.home_lng, c.from_lat, c.from_lng);
+    // Explorer km: home → the farthest spot they've posted a card from in each country,
+    // once per country (so three towns next to each other don't count three times)
+    const farthestIn = new Map<string, number>();
+    for (const c of arrived) {
+      const km = haversineKm(m.home_lat, m.home_lng, c.from_lat, c.from_lng);
+      if (km > (farthestIn.get(c.from_country_code) ?? -1)) farthestIn.set(c.from_country_code, km);
+    }
+    const explorerKm = [...farthestIn.values()].reduce((sum, km) => sum + km, 0);
 
     result.set(m.id, {
       memberId: m.id,
       sent,
       arrived,
-      inTransit: sent.length - sent.filter((c) => c.status === "received").length,
+      inTransit: sent.filter((c) => c.status === "in_transit").length,
+      lost: sent.filter((c) => c.status === "lost"),
       received: cards.filter((c) => c.recipient_id === m.id && c.status === "received"),
       incoming: cards.filter((c) => c.recipient_id === m.id && c.status === "in_transit").length,
       countries: [...tally.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
@@ -82,7 +86,11 @@ export function computeStats(members: Member[], cards: Postcard[]): Map<string, 
   return result;
 }
 
-/** Leaderboard order: countries sent from, then postcard km, then cards sent. */
+/**
+ * Leaderboard order: countries sent from, then postcard km, then cards sent. The
+ * number is shared by everyone on the same count of countries ("1, 2, 2, 4"), with
+ * the one whose cards travelled farther listed first.
+ */
 export function rankMembers<T extends Member>(members: T[], stats: Map<string, MemberStats>) {
   const rows = members.map((m) => ({ member: m, stats: stats.get(m.id)! }));
   rows.sort(
@@ -91,15 +99,10 @@ export function rankMembers<T extends Member>(members: T[], stats: Map<string, M
       b.stats.postcardKm - a.stats.postcardKm ||
       b.stats.arrived.length - a.stats.arrived.length,
   );
-  // Shared rank for exact ties ("1, 2, 2, 4")
   let rank = 0;
   return rows.map((row, i) => {
     const prev = rows[i - 1];
-    const tied =
-      prev &&
-      prev.stats.countries.length === row.stats.countries.length &&
-      Math.round(prev.stats.postcardKm) === Math.round(row.stats.postcardKm) &&
-      prev.stats.arrived.length === row.stats.arrived.length;
+    const tied = prev && prev.stats.countries.length === row.stats.countries.length;
     if (!tied) rank = i + 1;
     return { ...row, rank };
   });

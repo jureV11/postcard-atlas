@@ -21,6 +21,13 @@ export default async function ArrivedPage() {
         </p>
       </div>
       <ArrivedFlow groupId={member.group_id} senders={others} />
+      <p className="text-center text-sm text-ink-soft">
+        Got one from someone outside the group?{" "}
+        <Link href="/private/new?direction=received" className="font-medium text-ink underline underline-offset-2">
+          Keep it in your private postcards
+        </Link>
+        , just for you.
+      </p>
     </div>
   );
 }

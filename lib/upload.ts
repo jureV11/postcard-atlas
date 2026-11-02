@@ -33,3 +33,32 @@ export async function uploadPostcardPhoto(
   if (error) throw error;
   return path;
 }
+
+/** Resize to max 1600px and upload a meetup photo; returns the storage path. */
+export async function uploadMeetupPhoto(
+  supabase: BrowserSupabase,
+  groupId: string,
+  meetupId: string,
+  file: File,
+): Promise<string> {
+  const blob = await resizeImage(file, { maxDim: 1600, quality: 0.82 });
+  const path = `${groupId}/${meetupId}/${crypto.randomUUID()}.jpg`;
+  const { error } = await supabase.storage.from("meetups").upload(path, blob, { contentType: "image/jpeg" });
+  if (error) throw error;
+  return path;
+}
+
+/** Resize and upload one side of a private postcard into the owner's own folder. */
+export async function uploadPrivatePhoto(
+  supabase: BrowserSupabase,
+  userId: string,
+  cardId: string,
+  side: "front" | "back",
+  file: File,
+): Promise<string> {
+  const blob = await resizeImage(file, { maxDim: 1600, quality: 0.82 });
+  const path = `${userId}/${cardId}/${side}-${Date.now()}.jpg`;
+  const { error } = await supabase.storage.from("private-postcards").upload(path, blob, { contentType: "image/jpeg" });
+  if (error) throw error;
+  return path;
+}
