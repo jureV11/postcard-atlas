@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { geoMercator, geoPath } from "d3-geo";
 import { select } from "d3-selection";
 import "d3-transition";
-import { zoom as d3zoom, zoomIdentity, type ZoomBehavior, type ZoomTransform } from "d3-zoom";
+import { zoom as d3zoom, zoomIdentity, zoomTransform, type ZoomBehavior, type ZoomTransform } from "d3-zoom";
 import { loadWorld, type Country } from "@/lib/world";
 
 export type MeetupPlace = { id: string; title: string; dates: string; city: string | null; lat: number; lng: number };
@@ -17,9 +17,9 @@ const MIN_SPAN = 14; // degrees: even if every meetup was in one town, show the 
 
 /**
  * Every place we met up, as pins on a map that fits them all. Tap a pin for the
- * meetups there. Zoom with the + / − buttons, a pinch or Ctrl + scroll, and drag
- * to move around, so pins close together can be told apart. A plain scroll or
- * one-finger swipe still scrolls the page.
+ * meetups there. Zoom with the scroll wheel, the + / − buttons or a pinch, and
+ * drag to move around, so pins close together can be told apart. Scrolling down
+ * when it's fully zoomed out, or a one-finger swipe, still scrolls the page.
  */
 export function TimelineMap({ places }: { places: MeetupPlace[] }) {
   const [world, setWorld] = useState<Country[] | null>(null);
@@ -98,10 +98,11 @@ export function TimelineMap({ places }: { places: MeetupPlace[] }) {
       ])
       .clickDistance(6) // a tap on a pin isn't a drag
       .tapDistance(12)
-      // The wheel only zooms with Ctrl (or a trackpad pinch), and one finger only scrolls the page
+      // The wheel zooms, except outward when it's already all the way out: then the page
+      // scrolls on past the map. One finger only scrolls the page; two pinch.
       .filter((e: Event) =>
         e.type === "wheel"
-          ? (e as WheelEvent).ctrlKey || (e as WheelEvent).metaKey
+          ? (e as WheelEvent).deltaY < 0 || zoomTransform(svg).k > 1.001
           : e.type === "touchstart"
             ? (e as TouchEvent).touches.length > 1
             : !(e as MouseEvent).button,
@@ -134,7 +135,7 @@ export function TimelineMap({ places }: { places: MeetupPlace[] }) {
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-display text-xl font-semibold">Where we&apos;ve met up</h2>
         <p className="text-sm text-ink-soft">
-          {pins.length} {pins.length === 1 ? "place" : "places"} · tap a pin, zoom with + / − or a pinch
+          {pins.length} {pins.length === 1 ? "place" : "places"} · tap a pin · scroll, pinch or + / − to zoom
         </p>
       </div>
       {drawing ? (
