@@ -109,7 +109,7 @@ export default async function LeaderboardPage() {
             );
           })}
         </ol>
-        <p className="text-xs text-ink-soft">Ties are broken by km travelled, then cards delivered.</p>
+        <p className="text-xs text-ink-soft">Same number of countries, same place: whoever&apos;s cards travelled farther is listed first.</p>
       </section>
 
       {/* Distance */}

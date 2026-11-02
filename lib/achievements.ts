@@ -128,6 +128,17 @@ export function achievementsFor(
         ? { have: Math.min(bestContinent.visited, Math.ceil(bestContinent.total / 2)), need: Math.ceil(bestContinent.total / 2) }
         : undefined,
     },
+    {
+      id: "continent-full",
+      name: "A whole continent",
+      description: bestContinent?.visited
+        ? `Postcards from every country of one continent — best so far: ${bestContinent.name} ${bestContinent.visited}/${bestContinent.total}`
+        : "Postcards from every country of one continent",
+      earned: !!bestContinent && bestContinent.share >= 1,
+      progress: bestContinent
+        ? { have: Math.min(bestContinent.visited, bestContinent.total), need: bestContinent.total }
+        : undefined,
+    },
     count("long-haul", "Long haul", "A postcard that travelled 10,000 km", Math.round(longest), 10_000),
     count("slow-boat", "Slow boat", "A postcard that took 60 days or more", Math.max(0, ...days), 60),
     {

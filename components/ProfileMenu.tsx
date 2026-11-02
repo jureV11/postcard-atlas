@@ -11,13 +11,13 @@ export function ProfileMenu({
   name,
   color,
   avatarUrl,
-  email,
+  unread = 0,
 }: {
   memberId: string;
   name: string;
   color: string;
   avatarUrl: string | null;
-  email: string;
+  unread?: number;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -44,12 +44,18 @@ export function ProfileMenu({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        aria-label="Your profile"
+        aria-label={unread ? `Your profile, ${unread} unread in your inbox` : "Your profile"}
         aria-expanded={open}
         aria-controls="profile-menu"
-        className={`block rounded-full p-0.5 ring-2 transition ${open ? "ring-paper/60" : "ring-paper/25 hover:ring-paper/60"}`}
+        className={`relative block rounded-full p-0.5 ring-2 transition ${open ? "ring-paper/60" : "ring-paper/25 hover:ring-paper/60"}`}
       >
         <Avatar name={name} color={color} url={avatarUrl} size={34} />
+        {/* Unread inbox messages, like a stamp on the corner */}
+        {unread > 0 && (
+          <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-stamp px-1 text-[11px] font-bold text-white ring-2 ring-ink">
+            {unread > 9 ? "9+" : unread}
+          </span>
+        )}
       </button>
       {open && (
         <div
@@ -58,14 +64,29 @@ export function ProfileMenu({
         >
           <div className="px-3 pb-2 pt-1.5">
             <p className="text-xs text-ink-soft">Signed in as</p>
-            <p className="truncate text-sm font-medium">{email}</p>
+            <p className="truncate text-sm font-medium">{name}</p>
           </div>
           <div className="border-t border-ink/10 py-1">
+            <Link href="/inbox" className={`${item} justify-between`}>
+              Inbox
+              {unread > 0 && (
+                <span className="rounded-full bg-stamp px-2 py-0.5 text-xs font-bold text-white tabular-nums">{unread}</span>
+              )}
+            </Link>
             <Link href={`/members/${memberId}`} className={item}>
               Your profile
             </Link>
             <Link href="/settings" className={item}>
               Edit profile
+            </Link>
+          </div>
+          <div className="border-t border-ink/10 py-1">
+            {/* The phone tab bar has no room for these */}
+            <Link href="/timeline" className={`${item} sm:hidden`}>
+              Timeline
+            </Link>
+            <Link href="/private" className={item}>
+              Private postcards
             </Link>
           </div>
           <form action="/auth/signout" method="post" className="border-t border-ink/10 pt-1">

@@ -40,6 +40,30 @@ body {
   stroke-dasharray: 6 8;
   animation: march 1.2s linear infinite;
 }
+/* An achievement opened from the inbox: stamped onto the page, then glowing a few times */
+@keyframes achievement-stamp {
+  0% { transform: scale(1.35) rotate(-6deg); opacity: 0; }
+  60% { transform: scale(0.95) rotate(1deg); opacity: 1; }
+  100% { transform: none; }
+}
+@keyframes achievement-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(194 80 58 / 0); }
+  50% { box-shadow: 0 0 0 10px rgb(194 80 58 / 0.25), 0 0 28px 4px rgb(194 80 58 / 0.35); }
+}
+.achievement-unlock {
+  animation:
+    achievement-stamp 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.2) 0.3s both,
+    achievement-glow 1.4s ease-in-out 0.9s 3;
+}
+@media (prefers-reduced-motion: reduce) {
+  .achievement-unlock {
+    animation: none;
+  }
+}
+/* Still while the flat map is dragged or zoomed (see FlatMap) */
+.map-moving .arc-transit {
+  animation-play-state: paused;
+}
 @media (prefers-reduced-motion: reduce) {
   .arc-transit {
     animation: none;

@@ -3,14 +3,17 @@ import { Brand } from "@/components/Brand";
 import { NavLinks } from "@/components/NavLinks";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { TabBar } from "@/components/TabBar";
+import { recordAchievements, unreadCount } from "@/lib/inbox";
 import { requireMember } from "@/lib/session";
 import { signAvatarUrls } from "@/lib/storage";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const { supabase, user, member } = await requireMember();
-  const [{ data: group }, [me]] = await Promise.all([
+  const { supabase, member } = await requireMember();
+  // New achievements land in the inbox before it's counted
+  const [{ data: group }, [me], unread] = await Promise.all([
     supabase.from("groups").select("name").eq("id", member.group_id).single(),
     signAvatarUrls(supabase, [member]),
+    recordAchievements(supabase, member).then(() => unreadCount(supabase, member.id)),
   ]);
 
   return (
@@ -31,7 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             name={me.display_name}
             color={me.color}
             avatarUrl={me.avatar_url}
-            email={user.email ?? ""}
+            unread={unread}
           />
         </div>
         <div className="airmail-strip" aria-hidden="true" />

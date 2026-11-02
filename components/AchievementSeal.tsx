@@ -76,6 +76,7 @@ const ICONS: Record<string, string> = {
 
 // Group achievements (Group page) wear the seal of their personal counterpart.
 Object.assign(ICONS, {
+  "continent-full": ICONS["continent-half"],
   "group-everyone": ICONS["round-robin"],
   "group-pen-pal-web": ICONS["pen-pal"],
   "group-century": ICONS.postie,
@@ -84,7 +85,9 @@ Object.assign(ICONS, {
   "group-million": ICONS["countries-15"],
   "group-continents-3": ICONS["continents-3"],
   "group-every-continent": ICONS["every-continent"],
+  "group-world-10": ICONS["countries-15"],
   "group-fifty-flags": ICONS["countries-5"],
+  "group-world-50": ICONS["every-continent"],
   "group-capitals": ICONS.capitals,
   "group-continent-half": ICONS["continent-half"],
   "group-continent-full": ICONS["continent-half"],

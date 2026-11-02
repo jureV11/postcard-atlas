@@ -6,6 +6,9 @@ import { MOON_AND_BACK_KM } from "@/lib/passport";
 import { cardKm } from "@/lib/stats";
 import { isLocated, type Member, type Postcard } from "@/lib/types";
 
+/** Countries in the world, as on the leaderboard ("% of the world"). */
+const WORLD_COUNTRIES = 195;
+
 /**
  * Achievements the whole group earns together, for the Group page. Delivered,
  * public cards only (the same ones the leaderboard's passport counts), so a
@@ -51,7 +54,9 @@ export function groupAchievements(cards: Postcard[], members: Member[]): Achieve
     count("group-million", "Millionaires", "Postcards travel 1,000,000 km together", km, 1_000_000),
     count("group-continents-3", "Three corners", "Postcards from 3 continents", continents.size, 3),
     count("group-every-continent", "Every continent", `Postcards from all ${CONTINENTS.length} inhabited continents`, continents.size, CONTINENTS.length),
+    count("group-world-10", "A tenth of the world", `Postcards from 10% of the world's countries (${Math.ceil(WORLD_COUNTRIES * 0.1)})`, countries.length, Math.ceil(WORLD_COUNTRIES * 0.1)),
     count("group-fifty-flags", "Fifty flags", "Postcards from 50 countries", countries.length, 50),
+    count("group-world-50", "Half the world", `Postcards from half the world's countries (${Math.ceil(WORLD_COUNTRIES * 0.5)})`, countries.length, Math.ceil(WORLD_COUNTRIES * 0.5)),
     count("group-capitals", "Capital city tour", "Postcards from 10 capital cities", capitals.size, 10),
     {
       id: "group-continent-half",

@@ -8,6 +8,7 @@ import { NicheCard } from "@/components/NicheBreakdown";
 import { PostcardFlip } from "@/components/PostcardFlip";
 import { daysBetween, formatDate, todayLocal } from "@/lib/dates";
 import { formatKm, haversineKm } from "@/lib/geo";
+import { meetupDates } from "@/lib/meetups";
 import { withFormerLabel } from "@/lib/members";
 import { nicheScores } from "@/lib/niche";
 import { visibleTo } from "@/lib/postcards";
@@ -66,6 +67,12 @@ export default async function PostcardPage({
     .eq("group_id", member.group_id)
     .is("left_at", null);
   const [niche] = await nicheScores([card], (homeRows ?? []) as Member[]);
+  // Meetups on the timeline that link to this card (only delivered, public cards can be linked)
+  const { data: meetupRows } =
+    arrived && card.is_public
+      ? await supabase.from("meetups").select("id, title, starts_on, ends_on").eq("postcard_id", card.id).order("starts_on")
+      : { data: null };
+  const meetups = (meetupRows ?? []) as { id: string; title: string; starts_on: string; ends_on: string | null }[];
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -214,6 +221,21 @@ export default async function PostcardPage({
           )}
         </section>
       )}
+
+      {meetups.map((m) => (
+        <Link key={m.id} href={`/timeline/${m.id}`} className="card flex items-center gap-3 p-4 transition hover:bg-white">
+          <span className="text-2xl" aria-hidden="true">
+            ✶
+          </span>
+          <span className="min-w-0 flex-1 text-sm">
+            <span className="block text-ink-soft">This postcard mentioned</span>
+            <span className="block truncate font-medium">
+              {m.title} · {meetupDates(m)}
+            </span>
+          </span>
+          <span className="shrink-0 text-sm font-medium text-ink-soft">On the timeline →</span>
+        </Link>
+      ))}
 
       {canEditPhotos && (
         <details className="card group" open={!frontUrl && !backUrl}>

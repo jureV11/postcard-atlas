@@ -13,14 +13,22 @@ import { achievementsFor } from "@/lib/achievements";
 import type { MapCard } from "@/lib/atlas";
 import { formatDate } from "@/lib/dates";
 import { formatKm } from "@/lib/geo";
+import { recentAchievements } from "@/lib/inbox";
 import { loadGroupData } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
 import { computeStats, rankMembers } from "@/lib/stats";
 import { signPaths } from "@/lib/storage";
 import type { LocatedPostcard, MemberWithAvatar, Postcard } from "@/lib/types";
 
-export default async function MemberPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function MemberPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ achievement?: string }>;
+}) {
   const { id } = await params;
+  const { achievement } = await searchParams; // from an inbox message: unfold and highlight it
   const { supabase, member: me } = await requireMember();
   const { postcards, members, membersById } = await loadGroupData(supabase, me);
 
@@ -32,6 +40,8 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
   const ranking = rankMembers(members, allStats);
   const rank = ranking.find((r) => r.member.id === person.id)!.rank;
   const isMe = person.id === me.id;
+  // Only your own: when each was unlocked is private to you
+  const recent = isMe ? await recentAchievements(supabase, me.id) : undefined;
 
   const shown = [...stats.sent, ...stats.received];
   const urls = await signPaths(supabase, "postcards", shown.flatMap((c) => [c.front_path, c.back_path]));
@@ -42,6 +52,9 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
   });
   const sentCards = stats.sent.map(withUrls);
   const firstName = person.display_name.split(" ")[0];
+  // Lost cards go public like arrived ones; until then (trip still travelling) only the sender sees them
+  const lost = stats.lost.filter((c) => isMe || c.is_public).length;
+  const arrivedCount = stats.sent.filter((c) => c.status === "received").length;
 
   return (
     <div className="space-y-8">
@@ -65,20 +78,36 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
       </section>
 
       {/* Stats */}
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <StatTile
           primary
+          className="col-span-2 lg:col-span-1"
           label="Countries"
           value={stats.countries.length}
           hint={members.length > 1 ? `#${rank} of ${members.length} in the group` : "sent from"}
         />
-        <StatTile label="Postcard km" value={Math.round(stats.postcardKm).toLocaleString("en")} hint="City → recipient, every card" />
-        <StatTile label="Explorer km" value={Math.round(stats.explorerKm).toLocaleString("en")} hint="Home → each new city, once" />
         <StatTile
-          label="Cards sent"
-          value={stats.sent.length}
-          hint={`${isMe && stats.inTransit ? `${stats.inTransit} on the way · ` : ""}${stats.received.length} received`}
+          label="Postcard km"
+          value={Math.round(stats.postcardKm).toLocaleString("en")}
+          hint="All their delivered cards, added up"
         />
+        <StatTile
+          label="Explorer km"
+          value={Math.round(stats.explorerKm).toLocaleString("en")}
+          hint="Home → farthest place, once per country"
+        />
+        <StatTile
+          label="Sent"
+          value={stats.sent.length}
+          hint={[
+            `${arrivedCount} arrived`,
+            lost ? `${lost} lost in the post` : "",
+            isMe && stats.inTransit ? `${stats.inTransit} on the way` : "",
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        />
+        <StatTile label="Received" value={stats.received.length} hint="from friends in the group" />
       </section>
 
       {/* Highlights */}
@@ -104,6 +133,9 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
       )}
 
       <Achievements
+        foldable
+        highlight={isMe ? achievement : undefined}
+        recent={recent}
         title={isMe ? "Your achievements" : `${firstName}'s achievements`}
         items={achievementsFor(person, stats, postcards, membersById)}
       />
