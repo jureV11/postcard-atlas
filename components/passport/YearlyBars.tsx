@@ -6,11 +6,19 @@ import type { YearBar } from "@/lib/passport";
 const SHOWN = 10; // years on screen at once; a slider moves through older ones
 
 /**
- * Postcards delivered per year: one series, so no legend. The busiest year is
+ * Postcards delivered (or meetups) per year: one series, so no legend. The busiest year is
  * highlighted, a dashed line marks the average, and hovering (or tapping) a
  * year shows its exact count. With more than 10 years, a slider scrolls back.
  */
-export function YearlyBars({ years: all }: { years: YearBar[] }) {
+export function YearlyBars({
+  years: all,
+  noun = ["postcard", "postcards"],
+  what = "Postcards delivered",
+}: {
+  years: YearBar[];
+  noun?: [string, string]; // one, many
+  what?: string; // what is counted, for screen readers
+}) {
   const lastStart = Math.max(0, all.length - SHOWN);
   const [start, setStart] = useState(lastStart); // newest years first
   const [hover, setHover] = useState<number | null>(null);
@@ -28,13 +36,13 @@ export function YearlyBars({ years: all }: { years: YearBar[] }) {
       <div className="mb-3 flex items-baseline justify-between gap-3">
         <p className="text-sm text-ink-soft">
           <span className="font-medium text-ink">{years[shown].year}</span> · {years[shown].count}{" "}
-          {years[shown].count === 1 ? "postcard" : "postcards"}
+          {years[shown].count === 1 ? noun[0] : noun[1]}
           {hover === null && years[busiest].count > 0 && " — busiest year"}
         </p>
         <p className="shrink-0 font-mono text-xs text-ink-soft tabular-nums">avg {avg.toFixed(1)}/yr</p>
       </div>
 
-      <div className="relative flex h-36 gap-1 border-b border-ink/15" role="img" aria-label={`Postcards delivered per year, ${range}`}>
+      <div className="relative flex h-36 gap-1 border-b border-ink/15" role="img" aria-label={`${what} per year, ${range}`}>
         {/* Recessive grid: top and middle */}
         {[1, 0.5].map((f) => (
           <div
@@ -66,7 +74,7 @@ export function YearlyBars({ years: all }: { years: YearBar[] }) {
               onFocus={() => setHover(i)}
               onBlur={() => setHover(null)}
               onClick={() => setHover(i)}
-              aria-label={`${y.year}: ${y.count} ${y.count === 1 ? "postcard" : "postcards"}`}
+              aria-label={`${y.year}: ${y.count} ${y.count === 1 ? noun[0] : noun[1]}`}
               className="group relative flex h-full flex-1 items-end focus-visible:outline-none"
             >
               <span
@@ -114,7 +122,7 @@ export function YearlyBars({ years: all }: { years: YearBar[] }) {
 
       {/* The same numbers as a table, for screen readers */}
       <table className="sr-only">
-        <caption>Postcards delivered per year</caption>
+        <caption>{what} per year</caption>
         <tbody>
           {all.map((y) => (
             <tr key={y.year}>

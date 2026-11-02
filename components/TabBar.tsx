@@ -13,6 +13,7 @@ const TABS = [
   { href: "/", label: "Map", icon: icon("M9 4 3 6.5v13L9 17l6 2.5 6-2.5V4l-6 2.5L9 4Zm0 0v13m6-10.5v13") },
   { href: "/postcards", label: "Cards", icon: icon("M3 6h18v12H3zM3 7l9 6 9-6") },
   { href: "/postcards/new", label: "Log", primary: true },
+  { href: "/timeline", label: "Timeline", icon: icon("M3 12h18M7 12V8m5 4v6m5-6V7M5.5 8h3M10.5 18h3M15.5 7h3") },
   { href: "/leaderboard", label: "Ranks", icon: icon("M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4ZM7 6H4a3 3 0 0 0 3 4m10-4h3a3 3 0 0 1-3 4") },
   { href: "/group", label: "Group", icon: icon("M16 19a4 4 0 0 0-8 0M12 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7 8a3 3 0 0 0-3-3m1-5a2.5 2.5 0 1 0 0-5M5 19a3 3 0 0 1 3-3M7 11a2.5 2.5 0 1 1 0-5") },
 ];
@@ -28,7 +29,7 @@ export function TabBar() {
       className="fixed inset-x-0 bottom-0 z-40 border-t border-ink/10 bg-paper/95 backdrop-blur sm:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <ul className="grid h-16 grid-cols-5">
+      <ul className="grid h-16 grid-cols-6">
         {TABS.map((t) => {
           const active = isActive(t.href);
           return (

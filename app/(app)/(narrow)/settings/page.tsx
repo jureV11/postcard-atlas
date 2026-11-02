@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { InstallApp } from "@/components/InstallApp";
 import { NotificationsSettings } from "@/components/NotificationsSettings";
 import { pushPublicKey } from "@/lib/push";
 import { requireMember } from "@/lib/session";
@@ -25,6 +26,10 @@ export default async function SettingsPage() {
           avatarUrl={me.avatar_url}
           takenColors={(others ?? []).map((o) => o.color as string)}
         />
+      </section>
+
+      <section className="card">
+        <InstallApp />
       </section>
 
       <section className="card">

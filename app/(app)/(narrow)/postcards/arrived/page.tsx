@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { countryOptions } from "@/lib/countries";
 import { requireMember } from "@/lib/session";
 import { loadGroupData } from "@/lib/postcards";
 import { ArrivedFlow } from "./ArrivedFlow";
@@ -20,7 +21,7 @@ export default async function ArrivedPage() {
           Tell us who signed it and which country the stamp is from, and we&apos;ll match it to the card they logged.
         </p>
       </div>
-      <ArrivedFlow groupId={member.group_id} senders={others} />
+      <ArrivedFlow groupId={member.group_id} senders={others} countryOptions={countryOptions()} />
       <p className="text-center text-sm text-ink-soft">
         Got one from someone outside the group?{" "}
         <Link href="/private/new?direction=received" className="font-medium text-ink underline underline-offset-2">

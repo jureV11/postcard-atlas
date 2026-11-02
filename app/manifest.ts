@@ -3,6 +3,7 @@ import type { MetadataRoute } from "next";
 /** Lets phones install the site as an app ("Add to Home Screen"): name, icons, full screen. */
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    id: "/",
     name: "Postcard Atlas",
     short_name: "Postcards",
     description: "Every postcard our group sends, on one map.",

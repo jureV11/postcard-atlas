@@ -57,6 +57,9 @@ export default async function MeetupPage({ params }: { params: Promise<{ id: str
             isMain: p.is_main,
             canRemove: p.uploaded_by === member.id || wasThere,
             by: p.uploaded_by ? (membersById.get(p.uploaded_by)?.display_name ?? null) : null,
+            caption: p.caption ?? null,
+            focusX: p.focus_x ?? null,
+            focusY: p.focus_y ?? null,
           }))}
         />
 

@@ -1,24 +1,33 @@
 import Link from "next/link";
+import { MeetupStats } from "@/components/MeetupStats";
 import { Timeline, type TimelineEntry } from "@/components/Timeline";
-import { loadMeetups, meetupDates } from "@/lib/meetups";
+import { meetupStats } from "@/lib/meetupStats";
+import { loadMeetups, mainPhoto, meetupDates, photoFocus } from "@/lib/meetups";
 import { loadGroupData } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
 
+// Full width (not in the narrow column), so the line runs edge to edge.
 export default async function TimelinePage() {
   const { supabase, member } = await requireMember();
-  const [meetups, { membersById }] = await Promise.all([loadMeetups(supabase), loadGroupData(supabase, member)]);
+  const [meetups, { members, membersById }] = await Promise.all([loadMeetups(supabase), loadGroupData(supabase, member)]);
 
-  const entries: TimelineEntry[] = meetups.map((m) => ({
-    id: m.id,
-    title: m.title,
-    dates: meetupDates(m),
-    startsOn: m.starts_on,
-    city: m.city,
-    country: m.country,
-    countryCode: m.country_code,
-    photoUrl: m.photos[0]?.url ?? null,
-    members: m.memberIds.flatMap((id) => membersById.get(id) ?? []),
-  }));
+  const entries: TimelineEntry[] = meetups.map((m) => {
+    const photo = mainPhoto(m.photos);
+    return {
+      id: m.id,
+      title: m.title,
+      dates: meetupDates(m),
+      startsOn: m.starts_on,
+      city: m.city,
+      country: m.country,
+      countryCode: m.country_code,
+      photoUrl: photo?.url ?? null,
+      photoFocus: photo ? photoFocus(photo) : "50% 50%",
+      lat: m.lat,
+      lng: m.lng,
+      members: m.memberIds.flatMap((id) => membersById.get(id) ?? []),
+    };
+  });
   const today = new Date().toISOString().slice(0, 10);
 
   return (
@@ -34,7 +43,7 @@ export default async function TimelinePage() {
       </div>
 
       {entries.length === 0 ? (
-        <div className="card text-center">
+        <div className="card mx-auto max-w-4xl text-center">
           <p className="font-display text-xl font-semibold">Nothing on the line yet</p>
           <p className="mt-1 text-ink-soft">Add the first time you all met up: a trip, a weekend, a night out.</p>
           <Link href="/timeline/new" className="btn mt-4">
@@ -42,7 +51,10 @@ export default async function TimelinePage() {
           </Link>
         </div>
       ) : (
-        <Timeline entries={entries} today={today} />
+        <>
+          <Timeline entries={entries} today={today} />
+          <MeetupStats stats={meetupStats(meetups, members, today)} avatars={membersById} />
+        </>
       )}
     </div>
   );

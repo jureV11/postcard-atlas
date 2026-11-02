@@ -3,12 +3,12 @@ import { formatDate } from "@/lib/dates";
 import { signPaths } from "@/lib/storage";
 import type { Meetup, MeetupNote, MeetupPhoto, Member, Postcard } from "@/lib/types";
 
-export const MAX_MEETUP_PHOTOS = 10;
+export const MAX_MEETUP_PHOTOS = 50;
 
 export type MeetupWithPhotos = Meetup & {
   memberIds: string[];
   notes: MeetupNote[]; // oldest first
-  photos: (MeetupPhoto & { url: string | null })[]; // main photo first, then oldest first
+  photos: (MeetupPhoto & { url: string | null })[]; // in the order people put them
 };
 
 /** The group's meetups (all of them, or one), oldest first, with who was there and signed photo URLs. */
@@ -25,9 +25,19 @@ export async function loadMeetups(supabase: SupabaseClient, id?: string): Promis
     memberIds: meetup_members.map((mm) => mm.member_id),
     notes: [...meetup_notes].sort((a, b) => a.created_at.localeCompare(b.created_at)),
     photos: [...meetup_photos]
-      .sort((a, b) => Number(b.is_main) - Number(a.is_main) || a.created_at.localeCompare(b.created_at))
+      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || a.created_at.localeCompare(b.created_at))
       .map((p) => ({ ...p, url: urls.get(p.path) ?? null })),
   }));
+}
+
+/** The meetup's main photo (or the first one). */
+export function mainPhoto<P extends Pick<MeetupPhoto, "is_main">>(photos: P[]): P | undefined {
+  return photos.find((p) => p.is_main) ?? photos[0];
+}
+
+/** CSS object-position for a cropped photo: the part someone chose, or the middle. */
+export function photoFocus(p: Pick<MeetupPhoto, "focus_x" | "focus_y">): string {
+  return `${p.focus_x ?? 50}% ${p.focus_y ?? 50}%`;
 }
 
 /** "12 Mar 2025" or "12–15 Mar 2025" or "30 Dec 2024 – 2 Jan 2025". */
