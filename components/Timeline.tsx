@@ -26,7 +26,7 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 const MONTH_PX = 72; // every month is the same width, so the line is to scale
 const EDGE = 130; // room before the first month and after the last, for a card on the edge
 const CARD_W = 208;
-const LANE = 290; // a card plus a gap, if cards ever have to stack outward
+const LANE = 290; // a card plus a gap, if cards ever have to stack outward (more once a long title is measured)
 const GAP = 44; // line to the nearest card
 const MAX_SHIFT = CARD_W * 2; // how far a card may slide sideways from its date before it stacks outward instead
 const SPACING = 16; // between cards side by side
@@ -94,7 +94,7 @@ function TimelineSearch({ entries }: { entries: TimelineEntry[] }) {
                   )}
                 </span>
                 <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium">{e.title}</span>
+                  <span className="block text-sm leading-snug font-medium break-words">{e.title}</span>
                   <span className="flex items-center gap-1.5 truncate text-xs text-ink-soft">
                     {e.countryCode && <Flag code={e.countryCode} size={12} />}
                     {[e.city, e.dates].filter(Boolean).join(" · ")}
@@ -113,6 +113,8 @@ const yearOf = (date: string) => Number(date.slice(0, 4));
 
 function ScaledTimeline({ entries, today }: { entries: TimelineEntry[]; today: string }) {
   const scroller = useRef<HTMLDivElement>(null);
+  const cards = useRef<HTMLDivElement>(null);
+  const [lane, setLane] = useState(LANE);
 
   const firstYear = Math.min(yearOf(today), ...entries.map((e) => yearOf(e.startsOn)));
   const lastYear = Math.max(yearOf(today), ...entries.map((e) => yearOf(e.startsOn)));
@@ -151,11 +153,25 @@ function ScaledTimeline({ entries, today }: { entries: TimelineEntry[]; today: s
   });
   const upLanes = Math.max(1, ends.up.length);
   const downLanes = Math.max(1, ends.down.length);
-  const axis = GAP + upLanes * LANE;
+  const axis = GAP + upLanes * lane;
   const width = 2 * EDGE + months * MONTH_PX;
-  const height = axis + GAP + downLanes * LANE;
+  const height = axis + GAP + downLanes * lane;
   const todayX = x(today);
   const fillers = doodleSpots(placed, width);
+
+  // Titles are shown in full, so a long one makes its card taller: make room for the tallest
+  useEffect(() => {
+    const box = cards.current;
+    if (!box) return;
+    const measure = () => {
+      const tallest = Math.max(0, ...[...box.querySelectorAll<HTMLElement>("[data-card]")].map((c) => c.offsetHeight));
+      setLane(Math.max(LANE, tallest + 26));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    box.querySelectorAll("[data-card]").forEach((c) => observer.observe(c));
+    return () => observer.disconnect();
+  }, [entries]);
 
   useEffect(() => {
     const s = scroller.current;
@@ -195,7 +211,7 @@ function ScaledTimeline({ entries, today }: { entries: TimelineEntry[]; today: s
       </div>
       {/* Faint dashed edges, so it's clear where the timeline starts and ends */}
       <div ref={scroller} className="overflow-x-auto overflow-y-hidden border-y-[1.5px] border-dashed border-ink/25 pt-4 pb-3">
-        <div className="relative" style={{ width, height }}>
+        <div ref={cards} className="relative" style={{ width, height }}>
           {/* The line */}
           <span aria-hidden="true" className="absolute inset-x-0 h-[3px] -translate-y-1/2 rounded-full bg-ink/30" style={{ top: axis }} />
 
@@ -228,9 +244,9 @@ function ScaledTimeline({ entries, today }: { entries: TimelineEntry[]; today: s
 
           {/* Stalks from the line to each card, bent if the card slid along */}
           <svg aria-hidden="true" className="pointer-events-none absolute inset-0" width={width} height={height}>
-            {placed.map(({ entry, cx, left, side, lane, link }) => {
+            {placed.map(({ entry, cx, left, side, lane: row, link }) => {
               const dir = side === "up" ? -1 : 1;
-              const reach = GAP + lane * LANE;
+              const reach = GAP + row * lane;
               const mid = left + CARD_W / 2;
               const bend = axis + dir * Math.max(8, reach - 12 - 9 * (link - 1)); // later ones bend nearer the line, so they never cross
               const end = axis + dir * (reach + 6);
@@ -239,8 +255,8 @@ function ScaledTimeline({ entries, today }: { entries: TimelineEntry[]; today: s
             })}
           </svg>
 
-          {placed.map(({ entry, cx, left, side, lane }) => {
-            const reach = GAP + lane * LANE; // line to card
+          {placed.map(({ entry, cx, left, side, lane: row }) => {
+            const reach = GAP + row * lane; // line to card
             const future = entry.startsOn > today;
             return (
               <div key={entry.id}>
@@ -253,6 +269,7 @@ function ScaledTimeline({ entries, today }: { entries: TimelineEntry[]; today: s
                   style={{ left: cx, top: axis }}
                 />
                 <div
+                  data-card
                   className={`absolute ${side === "up" ? "-rotate-2" : "rotate-2"} transition hover:z-20 hover:rotate-0`}
                   style={{
                     left,
@@ -360,9 +377,9 @@ function Snapshot({ entry: e, future }: { entry: TimelineEntry; future: boolean 
           {future ? "Coming up · " : ""}
           {e.dates}
         </p>
-        <p className="mt-0.5 truncate font-display text-lg leading-snug font-semibold">{e.title}</p>
+        <p className="mt-0.5 font-display text-lg leading-snug font-semibold break-words">{e.title}</p>
         {e.city && (
-          <p className="flex items-center gap-1.5 truncate text-sm text-ink-soft">
+          <p className="flex items-center gap-1.5 text-sm break-words text-ink-soft">
             {e.countryCode && <Flag code={e.countryCode} size={14} />}
             {e.city}
           </p>

@@ -44,6 +44,7 @@ export function MeetupForm({
     if (!v.title.trim()) return setError("Give the meetup a name.");
     if (!v.startsOn) return setError("When was it?");
     if (v.endsOn && v.endsOn < v.startsOn) return setError("It can't end before it starts.");
+    if (new Set(v.memberIds).size < 2) return setError("Add who else was there: a meetup needs at least two people.");
     setBusy(true);
     const { id, error } = await saveMeetup({
       id: v.id,
@@ -119,7 +120,7 @@ export function MeetupForm({
       <div>
         <p className="label">Who was there</p>
         <MemberPicker multiple members={members} value={v.memberIds} onChange={(ids) => set("memberIds", ids)} />
-        <p className="hint">Anyone who was there can take down photos of the meetup.</p>
+        <p className="hint">At least two people. Anyone who was there can take down photos of the meetup.</p>
       </div>
 
       {postcards.length > 0 && (
