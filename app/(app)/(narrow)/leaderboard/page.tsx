@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { AchievementSeal } from "@/components/AchievementSeal";
 import { Avatar } from "@/components/Avatar";
 import { Flag } from "@/components/Flag";
 import { NicheRow } from "@/components/NicheBreakdown";
 import { GroupPassport } from "@/components/passport/GroupPassport";
+import { achievementsFor } from "@/lib/achievements";
 import { formatKm } from "@/lib/geo";
 import { nicheLeaders, nicheScores, type NicheScore } from "@/lib/niche";
 import { NICHE } from "@/lib/niche.config";
@@ -15,6 +17,7 @@ import { formatCount } from "@/lib/utils";
 
 const MEDALS: Record<number, string> = { 1: "#d4a017", 2: "#9aa3a8", 3: "#b07a4a" };
 const MAX_FLAGS = 10;
+const MAX_SEALS = 5; // rarest first, then "+N"
 
 export default async function LeaderboardPage() {
   const { supabase, member: me } = await requireMember();
@@ -25,6 +28,17 @@ export default async function LeaderboardPage() {
   const niche = nicheLeaders(members, await nicheScores(postcards, members));
 
   const byKm = [...ranking].sort((a, b) => b.stats.postcardKm - a.stats.postcardKm);
+
+  // Achievements: who has the most, and which of theirs are the rarest in the group
+  const collected = members.map((m) => {
+    const items = achievementsFor(m, stats.get(m.id)!, postcards, membersById);
+    return { member: m, earned: items.filter((a) => a.earned), total: items.length };
+  });
+  const holders = new Map<string, number>();
+  for (const c of collected) for (const a of c.earned) holders.set(a.id, (holders.get(a.id) ?? 0) + 1);
+  const byBadges = collected
+    .map((c) => ({ ...c, earned: [...c.earned].sort((a, b) => holders.get(a.id)! - holders.get(b.id)!) }))
+    .sort((a, b) => b.earned.length - a.earned.length || a.member.display_name.localeCompare(b.member.display_name));
   const nicheByMember = new Map(niche.map((n) => [n.member.id, n.best]));
 
   const topCountries = ranking[0];
@@ -110,6 +124,44 @@ export default async function LeaderboardPage() {
           })}
         </ol>
         <p className="text-xs text-ink-soft">Same number of countries, same place: whoever&apos;s cards travelled farther is listed first.</p>
+      </section>
+
+      {/* Achievements */}
+      <section className="space-y-3">
+        <SectionTitle title="Achievements" subtitle="Who's earned the most badges. Their rarest ones show first; tap someone for all of theirs." />
+        <ol className="overflow-hidden rounded-2xl border border-ink/10 bg-white/75">
+          {byBadges.map(({ member: m, earned, total }) => (
+            <li key={m.id} className="border-b border-ink/10 last:border-b-0">
+              <Link href={`/members/${m.id}#achievements`} className="flex items-center gap-3 px-4 py-3 transition hover:bg-white">
+                {/* Same number, same place */}
+                <RankBadge rank={earned.length ? 1 + byBadges.filter((b) => b.earned.length > earned.length).length : 0} small />
+                <Avatar name={m.display_name} color={m.color} url={m.avatar_url} size={32} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">
+                    {m.display_name}
+                    {m.id === me.id && <span className="ml-1.5 text-xs font-normal text-ink-soft">(you)</span>}
+                  </span>
+                  {earned.length ? (
+                    <span className="mt-0.5 flex items-center gap-0.5 [&_svg]:size-7">
+                      {earned.slice(0, MAX_SEALS).map((a) => (
+                        <span key={a.id} title={`${a.name}${holders.get(a.id) === 1 ? " · only one with it" : ""}`}>
+                          <AchievementSeal id={a.id} earned />
+                        </span>
+                      ))}
+                      {earned.length > MAX_SEALS && <span className="ml-1 text-xs text-ink-soft">+{earned.length - MAX_SEALS}</span>}
+                    </span>
+                  ) : (
+                    <span className="block text-xs text-ink-soft">None yet</span>
+                  )}
+                </span>
+                <span className="shrink-0 text-right font-display text-xl font-semibold tabular-nums">
+                  {earned.length}
+                  <span className="ml-1 font-sans text-xs font-normal text-ink-soft">/ {total}</span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ol>
       </section>
 
       {/* Distance */}

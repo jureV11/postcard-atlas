@@ -5,22 +5,21 @@ import { useEffect, useRef, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { Flag } from "@/components/Flag";
 import { TimelineMap } from "@/components/TimelineMap";
-import type { MemberWithAvatar } from "@/lib/types";
+import type { MeetupStop, MemberWithAvatar } from "@/lib/types";
 
 export type TimelineEntry = {
   id: string;
   title: string;
   dates: string;
   startsOn: string;
-  city: string | null;
-  country: string | null;
-  countryCode: string | null;
+  places: MeetupStop[]; // in the order we went: one city, or a trip through several
   photoUrl: string | null;
   photoFocus: string; // which part of the main photo to keep in view (CSS object-position)
-  lat: number | null;
-  lng: number | null;
   members: MemberWithAvatar[];
 };
+
+/** "Lisbon", or a trip: "Beijing → Xi'an → Shanghai". */
+const placesLabel = (places: MeetupStop[]) => places.map((p) => p.name).join(" → ");
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MONTH_PX = 72; // every month is the same width, so the line is to scale
@@ -49,7 +48,7 @@ export function Timeline({ entries, today }: { entries: TimelineEntry[]; today: 
       </div>
       <TimelineMap
         places={entries.flatMap((e) =>
-          e.lat !== null && e.lng !== null ? [{ id: e.id, title: e.title, dates: e.dates, city: e.city, lat: e.lat, lng: e.lng }] : [],
+          e.places.map((p, step) => ({ id: e.id, title: e.title, dates: e.dates, city: p.name, lat: p.lat, lng: p.lng, step })),
         )}
       />
     </>
@@ -63,7 +62,13 @@ function TimelineSearch({ entries }: { entries: TimelineEntry[] }) {
   const matches = words.length
     ? entries
         .filter((e) => {
-          const text = [e.title, e.city, e.country, e.dates, e.startsOn.slice(0, 4), ...e.members.map((m) => m.display_name)]
+          const text = [
+            e.title,
+            ...e.places.flatMap((p) => [p.name, p.country]),
+            e.dates,
+            e.startsOn.slice(0, 4),
+            ...e.members.map((m) => m.display_name),
+          ]
             .join(" ")
             .toLowerCase();
           return words.every((w) => text.includes(w));
@@ -96,8 +101,8 @@ function TimelineSearch({ entries }: { entries: TimelineEntry[] }) {
                 <span className="min-w-0">
                   <span className="block text-sm leading-snug font-medium break-words">{e.title}</span>
                   <span className="flex items-center gap-1.5 truncate text-xs text-ink-soft">
-                    {e.countryCode && <Flag code={e.countryCode} size={12} />}
-                    {[e.city, e.dates].filter(Boolean).join(" · ")}
+                    {e.places[0] && <Flag code={e.places[0].countryCode} size={12} />}
+                    {[placesLabel(e.places), e.dates].filter(Boolean).join(" · ")}
                   </span>
                 </span>
               </Link>
@@ -378,10 +383,12 @@ function Snapshot({ entry: e, future }: { entry: TimelineEntry; future: boolean 
           {e.dates}
         </p>
         <p className="mt-0.5 font-display text-lg leading-snug font-semibold break-words">{e.title}</p>
-        {e.city && (
-          <p className="flex items-center gap-1.5 text-sm break-words text-ink-soft">
-            {e.countryCode && <Flag code={e.countryCode} size={14} />}
-            {e.city}
+        {e.places.length > 0 && (
+          <p className="flex items-start gap-1.5 text-sm text-ink-soft">
+            <span className="mt-[3px] shrink-0">
+              <Flag code={e.places[0].countryCode} size={14} />
+            </span>
+            <span className="min-w-0 break-words">{placesLabel(e.places)}</span>
           </p>
         )}
         {e.members.length > 0 && (

@@ -9,11 +9,13 @@ export function CitySearch({
   value,
   onChange,
   placeholder = "Search for a city…",
+  compact = false,
 }: {
   id?: string;
   value: City | null;
   onChange: (city: City | null) => void;
   placeholder?: string;
+  compact?: boolean; // in a narrow row: on phones, no country name (the flag shows it) and ✎ for "Change"
 }) {
   const listId = useId();
   const [query, setQuery] = useState("");
@@ -64,10 +66,24 @@ export function CitySearch({
         <Flag code={value.countryCode} />
         <span className="min-w-0 flex-1 truncate">
           {value.name}
-          <span className="text-ink-soft">, {value.country}</span>
+          <span className={`text-ink-soft ${compact ? "hidden sm:inline" : ""}`}>, {value.country}</span>
         </span>
-        <button type="button" className="text-sm font-medium text-stamp hover:underline" onClick={() => onChange(null)}>
-          Change
+        <button
+          type="button"
+          className="shrink-0 text-sm font-medium text-stamp hover:underline"
+          aria-label={`Change ${value.name}`}
+          onClick={() => onChange(null)}
+        >
+          {compact ? (
+            <>
+              <span className="sm:hidden" aria-hidden="true">
+                ✎
+              </span>
+              <span className="hidden sm:inline">Change</span>
+            </>
+          ) : (
+            "Change"
+          )}
         </button>
       </div>
     );

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { loadMeetups, postcardOptions } from "@/lib/meetups";
+import { loadMeetups, meetupPlaces, postcardOptions } from "@/lib/meetups";
 import { isFormer } from "@/lib/members";
 import { loadGroupData } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
@@ -26,10 +26,7 @@ export default async function EditMeetupPage({ params }: { params: Promise<{ id:
           title: m.title,
           startsOn: m.starts_on,
           endsOn: m.ends_on ?? "",
-          place:
-            m.city && m.country && m.country_code && m.lat !== null && m.lng !== null
-              ? { name: m.city, country: m.country, countryCode: m.country_code, lat: m.lat, lng: m.lng }
-              : null,
+          places: meetupPlaces(m),
           memberIds: m.memberIds,
           postcardId: m.postcard_id ?? "",
         }}

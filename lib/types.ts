@@ -129,7 +129,11 @@ export type Meetup = {
   postcard_id: string | null;
   created_by: string | null;
   created_at: string;
+  stops?: MeetupStop[]; // the places after the first, on a trip through several (migration 0023)
 };
+
+/** A place on a meetup: its own city is the first one, `stops` the rest. */
+export type MeetupStop = { name: string; country: string; countryCode: string; lat: number; lng: number };
 
 export type MeetupPhoto = {
   id: string;

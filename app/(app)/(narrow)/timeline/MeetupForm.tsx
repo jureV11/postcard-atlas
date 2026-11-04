@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CitySearch } from "@/components/CitySearch";
+import { DateField } from "@/components/DateField";
 import { MemberPicker } from "@/components/MemberPicker";
 import type { City } from "@/lib/geo";
+import { MAX_STOPS } from "@/lib/meetups";
 import type { MemberWithAvatar } from "@/lib/types";
 import { deleteMeetup, saveMeetup } from "./actions";
 
@@ -15,10 +17,80 @@ export type MeetupFormValues = {
   title: string;
   startsOn: string;
   endsOn: string;
-  place: City | null;
+  places: (City | null)[]; // in the order you went; an empty one is a search still to fill in
   memberIds: string[];
   postcardId: string;
 };
+
+/**
+ * Where it was: one city, or a trip through several in the order you went (#45).
+ * Each gets a pin, and a trip's are joined up on the maps.
+ */
+function Places({ places, onChange }: { places: (City | null)[]; onChange: (places: (City | null)[]) => void }) {
+  const rows = places.length ? places : [null];
+  const trip = rows.length > 1;
+  const update = (i: number, city: City | null) => onChange(rows.map((p, j) => (j === i ? city : p)));
+  const remove = (i: number) => onChange(rows.filter((_, j) => j !== i));
+  const moveUp = (i: number) => onChange(rows.map((p, j) => (j === i - 1 ? rows[i] : j === i ? rows[i - 1] : p)));
+
+  return (
+    <div>
+      <label htmlFor="place-0" className="label">
+        Where
+      </label>
+      <ol className="space-y-2">
+        {rows.map((city, i) => (
+          <li key={i} className="flex items-center gap-2">
+            {trip && (
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-ink text-xs font-semibold text-paper tabular-nums">
+                {i + 1}
+              </span>
+            )}
+            <div className="min-w-0 flex-1">
+              <CitySearch
+                id={`place-${i}`}
+                value={city}
+                onChange={(c) => update(i, c)}
+                placeholder={i ? "Then where?" : "Search for a city…"}
+                compact={trip}
+              />
+            </div>
+            {trip && (
+              <span className="flex shrink-0">
+                {i > 0 && (
+                  <button
+                    type="button"
+                    className="flex size-8 items-center justify-center rounded-full text-ink-soft hover:bg-paper-deep hover:text-ink"
+                    aria-label={`Move place ${i + 1} earlier`}
+                    onClick={() => moveUp(i)}
+                  >
+                    ↑
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="flex size-8 items-center justify-center rounded-full text-ink-soft hover:bg-paper-deep hover:text-stamp"
+                  aria-label={`Remove place ${i + 1}`}
+                  onClick={() => remove(i)}
+                >
+                  ✕
+                </button>
+              </span>
+            )}
+          </li>
+        ))}
+      </ol>
+      {rows[rows.length - 1] && rows.length <= MAX_STOPS && (
+        <button type="button" className="mt-2 text-left text-sm font-medium text-ink hover:underline" onClick={() => onChange([...rows, null])}>
+          + {trip ? "Add the next place" : "Add another place (a trip through several)"}
+        </button>
+      )}
+      <p className="hint">
+        {trip ? "In the order you went. Each gets a pin, joined up on the map." : "Shown with a pin on a little map."}
+      </p>
+    </div>
+  );
+}
 
 /** Add a meetup, or change one. Photos and write-ups go on the meetup's own page. */
 export function MeetupForm({
@@ -51,7 +123,7 @@ export function MeetupForm({
       title: v.title,
       startsOn: v.startsOn,
       endsOn: v.endsOn || null,
-      place: v.place,
+      places: v.places.filter((p): p is City => !!p),
       memberIds: v.memberIds,
       postcardId: v.postcardId || null,
     });
@@ -87,35 +159,22 @@ export function MeetupForm({
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="space-y-4">
         <div>
           <label htmlFor="starts" className="label">
             When
           </label>
-          <input id="starts" type="date" className="input" value={v.startsOn} onChange={(e) => set("startsOn", e.target.value)} />
+          <DateField id="starts" value={v.startsOn} onChange={(d) => set("startsOn", d)} />
         </div>
         <div>
           <label htmlFor="ends" className="label">
             Until <span className="font-normal text-ink-soft">(if it was more than a day)</span>
           </label>
-          <input
-            id="ends"
-            type="date"
-            className="input"
-            value={v.endsOn}
-            min={v.startsOn || undefined}
-            onChange={(e) => set("endsOn", e.target.value)}
-          />
+          <DateField id="ends" value={v.endsOn} onChange={(d) => set("endsOn", d)} clearable />
         </div>
       </div>
 
-      <div>
-        <label htmlFor="place" className="label">
-          Where
-        </label>
-        <CitySearch id="place" value={v.place} onChange={(c) => set("place", c)} />
-        <p className="hint">Shown with a pin on a little map.</p>
-      </div>
+      <Places places={v.places} onChange={(places) => set("places", places)} />
 
       <div>
         <p className="label">Who was there</p>

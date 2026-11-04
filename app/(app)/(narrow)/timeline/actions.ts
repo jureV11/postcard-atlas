@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { City } from "@/lib/geo";
-import { MAX_MEETUP_PHOTOS, MAX_WRITE_UP } from "@/lib/meetups";
+import { MAX_MEETUP_PHOTOS, MAX_STOPS, MAX_WRITE_UP } from "@/lib/meetups";
 import { notifyMembers } from "@/lib/push";
 import { requireMember } from "@/lib/session";
 
@@ -13,7 +13,7 @@ export type MeetupInput = {
   title: string;
   startsOn: string;
   endsOn: string | null;
-  place: City | null;
+  places: City[]; // in the order you went; the first is the meetup's own city
   memberIds: string[];
   postcardId: string | null;
 };
@@ -25,16 +25,19 @@ export async function saveMeetup(input: MeetupInput): Promise<Result & { id?: st
   if (!title) return { error: "Give the meetup a name." };
   if (input.endsOn && input.endsOn < input.startsOn) return { error: "It can't end before it starts." };
   if (new Set(input.memberIds).size < 2) return { error: "Add who else was there: a meetup needs at least two people." };
+  if (input.places.length > MAX_STOPS + 1) return { error: `A trip can have up to ${MAX_STOPS + 1} places.` };
 
+  const [first, ...rest] = input.places;
   const fields = {
     title,
     starts_on: input.startsOn,
     ends_on: input.endsOn || null,
-    city: input.place?.name ?? null,
-    country: input.place?.country ?? null,
-    country_code: input.place?.countryCode ?? null,
-    lat: input.place?.lat ?? null,
-    lng: input.place?.lng ?? null,
+    city: first?.name ?? null,
+    country: first?.country ?? null,
+    country_code: first?.countryCode ?? null,
+    lat: first?.lat ?? null,
+    lng: first?.lng ?? null,
+    stops: rest.map(({ name, country, countryCode, lat, lng }) => ({ name, country, countryCode, lat, lng })),
     postcard_id: input.postcardId,
   };
 
@@ -166,6 +169,26 @@ export async function moveMeetupPhoto(meetupId: string, photoId: string, step: -
   [photos[from], photos[to]] = [photos[to], photos[from]];
   // Number them 0, 1, 2… again, saving only the ones that changed
   const changed = photos.map((p, i) => ({ ...p, i })).filter((p) => p.position !== p.i);
+  for (const p of changed) {
+    const { error } = await supabase.from("meetup_photos").update({ position: p.i }).eq("id", p.id);
+    if (error) return { error: error.message };
+  }
+  revalidatePath("/timeline", "layout");
+  return {};
+}
+
+/** Put the photos in this order (dragged into place). Any added meanwhile go at the end. */
+export async function reorderMeetupPhotos(meetupId: string, ids: string[]): Promise<Result> {
+  const { supabase } = await requireMember();
+  const { data } = await supabase.from("meetup_photos").select("id, position, created_at").eq("meetup_id", meetupId);
+  const photos = ((data ?? []) as { id: string; position: number | null; created_at: string }[]).sort(
+    (a, b) => (a.position ?? 0) - (b.position ?? 0) || a.created_at.localeCompare(b.created_at),
+  );
+  const rank = new Map(ids.map((id, i) => [id, i]));
+  const key = (p: (typeof photos)[number]) => rank.get(p.id) ?? ids.length + photos.indexOf(p);
+  const ordered = [...photos].sort((a, b) => key(a) - key(b));
+  // Number them 0, 1, 2… again, saving only the ones that changed
+  const changed = ordered.map((p, i) => ({ ...p, i })).filter((p) => p.position !== p.i);
   for (const p of changed) {
     const { error } = await supabase.from("meetup_photos").update({ position: p.i }).eq("id", p.id);
     if (error) return { error: error.message };

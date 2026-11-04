@@ -1,10 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { formatDate } from "@/lib/dates";
 import { signPaths } from "@/lib/storage";
-import type { Meetup, MeetupNote, MeetupPhoto, Member, Postcard } from "@/lib/types";
+import type { Meetup, MeetupNote, MeetupPhoto, MeetupStop, Member, Postcard } from "@/lib/types";
 
 export const MAX_MEETUP_PHOTOS = 50;
 export const MAX_WRITE_UP = 200_000; // characters, about 33,000 words (the database checks it too)
+export const MAX_STOPS = 30; // places on one trip after the first (the database checks it too)
 
 export type MeetupWithPhotos = Meetup & {
   memberIds: string[];
@@ -39,6 +40,15 @@ export function mainPhoto<P extends Pick<MeetupPhoto, "is_main">>(photos: P[]): 
 /** CSS object-position for a cropped photo: the part someone chose, or the middle. */
 export function photoFocus(p: Pick<MeetupPhoto, "focus_x" | "focus_y">): string {
   return `${p.focus_x ?? 50}% ${p.focus_y ?? 50}%`;
+}
+
+/** Every place on a meetup in the order you went: its own city first, then the stops. */
+export function meetupPlaces(m: Pick<Meetup, "city" | "country" | "country_code" | "lat" | "lng" | "stops">): MeetupStop[] {
+  const first =
+    m.city && m.country_code && m.lat !== null && m.lng !== null
+      ? [{ name: m.city, country: m.country ?? "", countryCode: m.country_code, lat: m.lat, lng: m.lng }]
+      : [];
+  return [...first, ...(m.stops ?? [])];
 }
 
 /** "12 Mar 2025" or "12–15 Mar 2025" or "30 Dec 2024 – 2 Jan 2025". */
