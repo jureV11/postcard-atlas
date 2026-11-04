@@ -6,7 +6,15 @@ import { Linkify } from "@/components/Linkify";
 import { createClient } from "@/lib/supabase/client";
 import { uploadMeetupPhoto } from "@/lib/upload";
 import { errorMessage } from "@/lib/utils";
-import { addMeetupPhotos, moveMeetupPhoto, removeMeetupPhoto, setMainPhoto, setPhotoCaption, setPhotoFocus } from "../actions";
+import {
+  addMeetupPhotos,
+  moveMeetupPhoto,
+  removeMeetupPhoto,
+  reorderMeetupPhotos,
+  setMainPhoto,
+  setPhotoCaption,
+  setPhotoFocus,
+} from "../actions";
 
 export type PhotoItem = {
   id: string;
@@ -23,8 +31,8 @@ const focusOf = (p: { focusX: number | null; focusY: number | null }) => `${p.fo
 
 /**
  * The photo you picked big, all of them in a strip in their order; add more (up to
- * the limit), caption them, move them, pick the main one and which part of it shows
- * on the timeline, take one down.
+ * the limit), caption them, move them (one step, or drag them all into order),
+ * pick the main one and which part of it shows on the timeline, take one down.
  */
 export function MeetupPhotos({
   meetupId,
@@ -50,6 +58,85 @@ export function MeetupPhotos({
   const [captioning, setCaptioning] = useState(false);
   const [caption, setCaption] = useState("");
   const [framing, setFraming] = useState<{ x: number; y: number } | null>(null); // choosing the part shown on the timeline
+  const [order, setOrder] = useState<string[] | null>(null); // while reordering: the photo ids, in their new order
+  const [dragging, setDragging] = useState<string | null>(null);
+  const grid = useRef<HTMLOListElement>(null);
+  const press = useRef<{ x: number; y: number; timer?: number } | null>(null);
+  const drag = useRef<string | null>(null);
+  const arranging = order !== null;
+
+  // Dragging photos into order. A mouse drags straight away; a finger holds a moment
+  // first, so a quick swipe still scrolls the page. While a photo is held, the page
+  // doesn't scroll, unless you take it near the top or bottom edge.
+  useEffect(() => {
+    if (!arranging) return;
+    const stop = () => {
+      if (press.current?.timer) clearTimeout(press.current.timer);
+      press.current = null;
+      drag.current = null;
+      setDragging(null);
+    };
+    const onMove = (e: PointerEvent) => {
+      const p = press.current;
+      const id = drag.current;
+      if (!p) return;
+      if (!id) {
+        if (Math.hypot(e.clientX - p.x, e.clientY - p.y) > 8) stop(); // moved before the hold: a scroll
+        return;
+      }
+      // The slot nearest the finger is where it goes
+      const slots = [...(grid.current?.children ?? [])].map((el) => el.getBoundingClientRect());
+      const to = slots.reduce(
+        (best, r, i) => {
+          const d = Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2));
+          return d < best.d ? { i, d } : best;
+        },
+        { i: -1, d: Infinity },
+      ).i;
+      setOrder((o) => {
+        if (!o || to < 0 || o.indexOf(id) === to) return o;
+        const next = o.filter((x) => x !== id);
+        next.splice(to, 0, id);
+        return next;
+      });
+      if (e.clientY < 80) scrollBy(0, -14);
+      else if (e.clientY > innerHeight - 110) scrollBy(0, 14); // above the tab bar on phones
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (drag.current) e.preventDefault();
+    };
+    addEventListener("pointermove", onMove);
+    addEventListener("pointerup", stop);
+    addEventListener("pointercancel", stop);
+    addEventListener("touchmove", onTouchMove, { passive: false });
+    return () => {
+      removeEventListener("pointermove", onMove);
+      removeEventListener("pointerup", stop);
+      removeEventListener("pointercancel", stop);
+      removeEventListener("touchmove", onTouchMove);
+      stop();
+    };
+  }, [arranging]);
+
+  function pickUp(e: React.PointerEvent, id: string) {
+    if (e.button > 0) return;
+    const begin = () => {
+      drag.current = id;
+      setDragging(id);
+      navigator.vibrate?.(12);
+    };
+    press.current = { x: e.clientX, y: e.clientY };
+    if (e.pointerType === "mouse") {
+      e.preventDefault();
+      begin();
+    } else press.current.timer = window.setTimeout(begin, 250);
+  }
+
+  function saveOrder() {
+    const ids = order;
+    setOrder(null);
+    if (ids && ids.some((id, i) => photos[i]?.id !== id)) run("Saving the order…", () => reorderMeetupPhotos(meetupId, ids));
+  }
 
   async function add(files: File[]) {
     if (!files.length) return;
@@ -84,7 +171,7 @@ export function MeetupPhotos({
 
   return (
     <section className="space-y-3">
-      {current && (
+      {current && !arranging && (
         <figure className="overflow-hidden rounded-[6px] bg-[#fffdf8] p-2 shadow-[0_1px_2px_rgb(42_38_34/0.1),0_14px_28px_-16px_rgb(42_38_34/0.5)] ring-1 ring-ink/10">
           {framing ? (
             <div className="space-y-3">
@@ -265,40 +352,81 @@ export function MeetupPhotos({
         </figure>
       )}
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {photos.map((p, i) => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => setShownId(p.id)}
-            aria-label={`Photo ${i + 1}`}
-            className={`relative size-16 shrink-0 overflow-hidden rounded-[4px] ring-2 transition ${
-              p.id === current?.id ? "ring-stamp" : "ring-transparent hover:ring-ink/30"
-            }`}
-          >
-            {p.url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={p.url} alt="" className="size-full object-cover" style={{ objectPosition: focusOf(p) }} loading="lazy" />
-            )}
-            {p.isMain && (
-              <span className="absolute top-0.5 left-0.5 rounded-full bg-ink/70 px-1 text-[10px] leading-4 text-paper" aria-label="Main photo">
-                ★
-              </span>
-            )}
-          </button>
-        ))}
-        {room > 0 && (
-          <button
-            type="button"
-            onClick={() => input.current?.click()}
-            disabled={!!busy}
-            className="flex size-16 shrink-0 flex-col items-center justify-center rounded-[4px] border-[1.5px] border-dashed border-ink/30 text-xs text-ink-soft hover:border-ink/60 hover:text-ink"
-          >
-            <span className="text-xl leading-none">+</span>
-            Photo
-          </button>
-        )}
-      </div>
+      {order ? (
+        <div className="space-y-3 rounded-[6px] border-[1.5px] border-dashed border-ink/25 p-3">
+          <p className="text-sm text-ink-soft">
+            Drag the photos into the order you want. On a phone, press and hold one for a moment, then drag.
+          </p>
+          <ol ref={grid} className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+            {order.map((id, i) => {
+              const p = photos.find((x) => x.id === id);
+              if (!p) return null;
+              return (
+                <li
+                  key={id}
+                  onPointerDown={(e) => pickUp(e, id)}
+                  onContextMenu={(e) => e.preventDefault()}
+                  className={`relative aspect-square cursor-grab overflow-hidden rounded-[4px] bg-paper-deep select-none [-webkit-touch-callout:none] ${
+                    dragging === id ? "z-10 scale-110 cursor-grabbing shadow-xl ring-2 ring-stamp" : "transition-transform"
+                  }`}
+                >
+                  {p.url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.url} alt="" draggable={false} className="pointer-events-none size-full object-cover" style={{ objectPosition: focusOf(p) }} />
+                  )}
+                  <span className="absolute bottom-0.5 left-0.5 rounded-full bg-ink/70 px-1.5 font-mono text-[10px] leading-4 text-paper tabular-nums">
+                    {p.isMain ? "★ " : ""}
+                    {i + 1}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+          <div className="flex gap-2">
+            <button type="button" className="btn min-h-10 px-5" onClick={saveOrder}>
+              Done
+            </button>
+            <button type="button" className="btn-ghost min-h-10 px-4" onClick={() => setOrder(null)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {photos.map((p, i) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => setShownId(p.id)}
+              aria-label={`Photo ${i + 1}`}
+              className={`relative size-16 shrink-0 overflow-hidden rounded-[4px] ring-2 transition ${
+                p.id === current?.id ? "ring-stamp" : "ring-transparent hover:ring-ink/30"
+              }`}
+            >
+              {p.url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={p.url} alt="" className="size-full object-cover" style={{ objectPosition: focusOf(p) }} loading="lazy" />
+              )}
+              {p.isMain && (
+                <span className="absolute top-0.5 left-0.5 rounded-full bg-ink/70 px-1 text-[10px] leading-4 text-paper" aria-label="Main photo">
+                  ★
+                </span>
+              )}
+            </button>
+          ))}
+          {room > 0 && (
+            <button
+              type="button"
+              onClick={() => input.current?.click()}
+              disabled={!!busy}
+              className="flex size-16 shrink-0 flex-col items-center justify-center rounded-[4px] border-[1.5px] border-dashed border-ink/30 text-xs text-ink-soft hover:border-ink/60 hover:text-ink"
+            >
+              <span className="text-xl leading-none">+</span>
+              Photo
+            </button>
+          )}
+        </div>
+      )}
       <input
         ref={input}
         type="file"
@@ -307,9 +435,24 @@ export function MeetupPhotos({
         className="hidden"
         onChange={(e) => add([...(e.target.files ?? [])])}
       />
-      <p className="text-xs text-ink-soft">
-        {busy ?? (photos.length ? `${photos.length} of ${max} photos` : `No photos yet: add up to ${max}.`)}
-      </p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs text-ink-soft">
+          {busy ?? (photos.length ? `${photos.length} of ${max} photos` : `No photos yet: add up to ${max}.`)}
+        </p>
+        {photos.length > 1 && !arranging && (
+          <button
+            type="button"
+            className="text-sm font-medium text-ink hover:underline"
+            disabled={!!busy}
+            onClick={() => {
+              setFraming(null);
+              setOrder(photos.map((p) => p.id));
+            }}
+          >
+            ⇄ Reorder photos
+          </button>
+        )}
+      </div>
       {error && <p className="error">{error}</p>}
       {viewing !== null && photos.length > 0 && (
         <Lightbox

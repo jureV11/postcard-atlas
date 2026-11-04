@@ -19,7 +19,7 @@ export default async function NewMeetupPage() {
         <p className="mt-1 text-ink-soft">Photos and write-ups come next, on the meetup&apos;s own page.</p>
       </div>
       <MeetupForm
-        initial={{ title: "", startsOn: "", endsOn: "", place: null, memberIds: [member.id], postcardId: "" }}
+        initial={{ title: "", startsOn: "", endsOn: "", places: [], memberIds: [member.id], postcardId: "" }}
         members={members.filter((m) => !isFormer(m))}
         postcards={postcardOptions(postcards, membersById)}
       />

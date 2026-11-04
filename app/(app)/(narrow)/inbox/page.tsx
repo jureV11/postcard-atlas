@@ -4,8 +4,8 @@ import { deleteMessage, markInboxRead, restoreMessage, setMessageRead } from "./
 
 const ICONS: Record<InboxMessage["kind"], string> = { arrived: "📬", achievement: "🏅", meetup: "🗓️" };
 
-export default async function InboxPage({ searchParams }: { searchParams: Promise<{ deleted?: string }> }) {
-  const { deleted } = await searchParams; // just binned: offer "Undo"
+export default async function InboxPage({ searchParams }: { searchParams: Promise<{ deleted?: string; gone?: string }> }) {
+  const { deleted, gone } = await searchParams; // just binned: offer "Undo". Gone: what a message pointed to was deleted
   const { supabase, member } = await requireMember();
   const { data } = await supabase
     .from("inbox_messages")
@@ -40,6 +40,12 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
             <button className="font-semibold underline underline-offset-2 hover:text-white">Undo</button>
           </form>
         </div>
+      )}
+
+      {gone && (
+        <p className="rounded-[6px] bg-paper-deep px-4 py-2.5 text-sm" role="status">
+          {gone === "meetup" ? "That meetup isn't on the timeline anymore: someone deleted it." : "That postcard isn't there anymore."}
+        </p>
       )}
 
       {messages.length === 0 ? (

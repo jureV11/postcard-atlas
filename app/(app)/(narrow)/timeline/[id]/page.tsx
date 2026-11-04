@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
 import { CountryOutline } from "@/components/CountryOutline";
 import { Flag } from "@/components/Flag";
+import { TripMap } from "@/components/TripMap";
 import { formatDate } from "@/lib/dates";
-import { loadMeetups, MAX_MEETUP_PHOTOS, MAX_WRITE_UP, meetupDates } from "@/lib/meetups";
+import { loadMeetups, MAX_MEETUP_PHOTOS, MAX_WRITE_UP, meetupDates, meetupPlaces } from "@/lib/meetups";
 import { loadGroupData } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
 import { MeetupNotes } from "./MeetupNotes";
@@ -19,6 +20,8 @@ export default async function MeetupPage({ params }: { params: Promise<{ id: str
   const me = membersById.get(member.id)!;
   const wasThere = m.memberIds.includes(member.id);
   const attendees = m.memberIds.flatMap((mid) => membersById.get(mid) ?? []);
+  const places = meetupPlaces(m);
+  const oneCountry = new Set(places.map((p) => p.countryCode)).size === 1;
   // Only a delivered, public card is linked, so nothing about a surprise shows
   const card = postcards.find((c) => c.id === m.postcard_id && c.status === "received" && c.is_public);
 
@@ -32,12 +35,25 @@ export default async function MeetupPage({ params }: { params: Promise<{ id: str
           <div className="min-w-0">
             <p className="text-sm font-medium tracking-wide text-ink-soft uppercase">{meetupDates(m)}</p>
             <h1 className="font-display text-3xl font-semibold tracking-tight">{m.title}</h1>
-            {m.city && (
+            {places.length === 1 && (
               <p className="mt-1 flex items-center gap-1.5 text-ink-soft">
-                {m.country_code && <Flag code={m.country_code} size={16} />}
-                {m.city}
-                {m.country ? `, ${m.country}` : ""}
+                <Flag code={places[0].countryCode} size={16} />
+                {places[0].name}
+                {places[0].country ? `, ${places[0].country}` : ""}
               </p>
+            )}
+            {/* A trip: every stop in order, a flag on each unless it all stayed in one country */}
+            {places.length > 1 && (
+              <ol className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-ink-soft">
+                {places.map((p, i) => (
+                  <li key={i} className="flex items-center gap-1.5">
+                    {i > 0 && <span aria-hidden="true">→</span>}
+                    {(!oneCountry || i === 0) && <Flag code={p.countryCode} size={16} />}
+                    {p.name}
+                  </li>
+                ))}
+                {oneCountry && places[0].country && <li>· {places[0].country}</li>}
+              </ol>
             )}
           </div>
           <Link href={`/timeline/${m.id}/edit`} className="btn-ghost shrink-0 px-4">
@@ -64,9 +80,20 @@ export default async function MeetupPage({ params }: { params: Promise<{ id: str
         />
 
         <div className="space-y-6">
-          {m.city && m.country_code && m.lat !== null && m.lng !== null && (
+          {places.length === 1 && (
             <section className="card p-3">
-              <CountryOutline countryCode={m.country_code} countryName={m.country ?? ""} city={m.city} lat={m.lat} lng={m.lng} />
+              <CountryOutline
+                countryCode={places[0].countryCode}
+                countryName={places[0].country}
+                city={places[0].name}
+                lat={places[0].lat}
+                lng={places[0].lng}
+              />
+            </section>
+          )}
+          {places.length > 1 && (
+            <section className="card p-3">
+              <TripMap stops={places} />
             </section>
           )}
 

@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
-import { NextResponse, type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
+import { redirectTo } from "@/lib/redirect";
 import { createClient } from "@/lib/supabase/server";
 
 const UNLOCKED = "Achievement unlocked: ";
@@ -28,6 +29,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // Only ever an in-app path, never somewhere else
     const link = String(message.link);
     if (link.startsWith("/") && !link.startsWith("//")) to = link;
+    // A meetup or card deleted since: stay in the inbox and say so, not a "page not found"
+    const [, section, target] = link.match(/^\/(timeline|postcards)\/([0-9a-f-]{36})$/) ?? [];
+    if (target) {
+      const { data } = await supabase
+        .from(section === "timeline" ? "meetups" : "postcards")
+        .select("id")
+        .eq("id", target)
+        .maybeSingle();
+      if (!data) to = `/inbox?gone=${section === "timeline" ? "meetup" : "card"}`;
+    }
   }
-  return NextResponse.redirect(new URL(to, request.url));
+  return redirectTo(to);
 }

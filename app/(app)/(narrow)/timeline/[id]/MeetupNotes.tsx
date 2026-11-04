@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
 import { Linkify } from "@/components/Linkify";
@@ -9,7 +9,14 @@ import { saveMeetupNote } from "../actions";
 
 export type NoteItem = { id: string; body: string; date: string; author: MemberWithAvatar | null; mine: boolean };
 
-/** Everyone's write-ups, each signed; yours can be written, edited or deleted. */
+const READ_KEY = "postcard-atlas:write-ups-read"; // the write-ups you've chosen to read, on this device
+const countWords = (s: string) => (s.trim() ? s.trim().split(/\s+/).length : 0);
+
+/**
+ * Everyone's write-ups, each signed; yours can be written, edited or deleted.
+ * Other people's start blurred, like a spoiler, so what they remember doesn't
+ * shape what you write (#50). Tap one to read it; it stays readable after that.
+ */
 export function MeetupNotes({
   meetupId,
   notes,
@@ -27,7 +34,26 @@ export function MeetupNotes({
   const [text, setText] = useState(mine?.body ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const words = countWords(text);
+  const [read, setRead] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    try {
+      setRead(new Set(JSON.parse(localStorage.getItem(READ_KEY) ?? "[]") as string[]));
+    } catch {
+      // Private browsing or blocked storage: they just start blurred each time
+    }
+  }, []);
+
+  function reveal(ids: string[]) {
+    const next = new Set([...read, ...ids]);
+    setRead(next);
+    try {
+      localStorage.setItem(READ_KEY, JSON.stringify([...next]));
+    } catch {}
+  }
+
+  const hidden = notes.filter((n) => !n.mine && !read.has(n.id));
 
   async function save(body: string) {
     setBusy(true);
@@ -41,15 +67,39 @@ export function MeetupNotes({
 
   return (
     <section className="space-y-4">
-      <h2 className="font-display text-xl font-semibold">Write-ups</h2>
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="font-display text-xl font-semibold">Write-ups</h2>
+        {hidden.length > 1 && (
+          <button type="button" className="text-sm font-medium text-ink-soft hover:text-ink hover:underline" onClick={() => reveal(hidden.map((n) => n.id))}>
+            Show all {hidden.length}
+          </button>
+        )}
+      </div>
       {notes.length === 0 && !editing && <p className="text-sm text-ink-soft">Nobody has written about it yet.</p>}
 
       {notes.map((n) =>
         n.mine && editing ? null : (
           <article key={n.id} className="card">
-            <p className="whitespace-pre-line">
-              <Linkify text={n.body} />
-            </p>
+            {hidden.includes(n) ? (
+              <div className="relative">
+                {/* Just the start, blurred: enough to look like writing, too blurry to read */}
+                <p aria-hidden="true" className="pointer-events-none max-h-32 overflow-hidden whitespace-pre-line blur-[6px] select-none">
+                  {n.body.slice(0, 500)}
+                </p>
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-center">
+                  <button type="button" className="btn-ghost min-h-10 px-4" onClick={() => reveal([n.id])}>
+                    Read {n.author ? `${n.author.display_name}'s` : "their"} write-up
+                  </button>
+                  <p className="rounded-full bg-paper/80 px-2.5 py-0.5 text-xs text-ink-soft">
+                    {countWords(n.body).toLocaleString("en")} words · hidden so it doesn&apos;t shape yours
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="whitespace-pre-line">
+                <Linkify text={n.body} />
+              </p>
+            )}
             <footer className="mt-4 flex items-center gap-2 text-sm text-ink-soft">
               {n.author && <Avatar name={n.author.display_name} color={n.author.color} url={n.author.avatar_url} size={24} />}
               {/* Signed off like a letter */}

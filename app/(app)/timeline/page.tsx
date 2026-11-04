@@ -2,7 +2,7 @@ import Link from "next/link";
 import { MeetupStats } from "@/components/MeetupStats";
 import { Timeline, type TimelineEntry } from "@/components/Timeline";
 import { meetupStats } from "@/lib/meetupStats";
-import { loadMeetups, mainPhoto, meetupDates, photoFocus } from "@/lib/meetups";
+import { loadMeetups, mainPhoto, meetupDates, meetupPlaces, photoFocus } from "@/lib/meetups";
 import { loadGroupData } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
 
@@ -18,13 +18,9 @@ export default async function TimelinePage() {
       title: m.title,
       dates: meetupDates(m),
       startsOn: m.starts_on,
-      city: m.city,
-      country: m.country,
-      countryCode: m.country_code,
+      places: meetupPlaces(m),
       photoUrl: photo?.url ?? null,
       photoFocus: photo ? photoFocus(photo) : "50% 50%",
-      lat: m.lat,
-      lng: m.lng,
       members: m.memberIds.flatMap((id) => membersById.get(id) ?? []),
     };
   });

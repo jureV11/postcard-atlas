@@ -8,7 +8,8 @@ import "d3-transition";
 import { zoom as d3zoom, zoomIdentity, zoomTransform, type ZoomBehavior, type ZoomTransform } from "d3-zoom";
 import { loadWorld, type Country } from "@/lib/world";
 
-export type MeetupPlace = { id: string; title: string; dates: string; city: string | null; lat: number; lng: number };
+/** A place we met up; a trip through several cities has one per stop (`step` 0, 1, 2… in the order we went). */
+export type MeetupPlace = { id: string; title: string; dates: string; city: string | null; lat: number; lng: number; step: number };
 
 const W = 800;
 const H = 440;
@@ -16,8 +17,8 @@ const PAD = 48;
 const MIN_SPAN = 14; // degrees: even if every meetup was in one town, show the area around it
 
 /**
- * Every place we met up, as pins on a map that fits them all. Tap a pin for the
- * meetups there. Zoom with the scroll wheel, the + / − buttons or a pinch, and
+ * Every place we met up, as pins on a map that fits them all, a trip's stops
+ * joined up by a dashed line in the order we went. Tap a pin for the meetups there. Zoom with the scroll wheel, the + / − buttons or a pinch, and
  * drag to move around, so pins close together can be told apart. Scrolling down
  * when it's fully zoomed out, or a one-finger swipe, still scrolls the page.
  */
@@ -25,6 +26,7 @@ export function TimelineMap({ places }: { places: MeetupPlace[] }) {
   const [world, setWorld] = useState<Country[] | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   const [t, setT] = useState<ZoomTransform>(zoomIdentity);
+  const [unit, setUnit] = useState(1); // map units per screen pixel, so pins are the same size on a phone as on a laptop
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null);
 
@@ -36,16 +38,23 @@ export function TimelineMap({ places }: { places: MeetupPlace[] }) {
     };
   }, []);
 
-  // Meetups in the same town share one pin
+  // Meetups in the same town share one pin (a trip that passed through twice is listed once)
   const pins = useMemo(() => {
     const byPlace = new Map<string, { key: string; lat: number; lng: number; meetups: MeetupPlace[] }>();
     for (const p of places) {
       const key = `${p.lat.toFixed(1)},${p.lng.toFixed(1)}`;
       const pin = byPlace.get(key) ?? { key, lat: p.lat, lng: p.lng, meetups: [] };
-      pin.meetups.push(p);
+      if (!pin.meetups.some((m) => m.id === p.id)) pin.meetups.push(p);
       byPlace.set(key, pin);
     }
     return [...byPlace.values()];
+  }, [places]);
+
+  // Trips through several places: their stops in order
+  const trips = useMemo(() => {
+    const byMeetup = new Map<string, MeetupPlace[]>();
+    for (const p of places) byMeetup.set(p.id, [...(byMeetup.get(p.id) ?? []), p]);
+    return [...byMeetup.entries()].filter(([, stops]) => stops.length > 1).map(([id, stops]) => ({ id, stops: stops.sort((a, b) => a.step - b.step) }));
   }, [places]);
 
   const drawing = useMemo(() => {
@@ -79,10 +88,24 @@ export function TimelineMap({ places }: { places: MeetupPlace[] }) {
         const [x, y] = projection([p.lng, p.lat]) ?? [0, 0];
         return { ...p, x, y };
       }),
+      trips: trips.map((trip) => ({ id: trip.id, points: trip.stops.map((s) => projection([s.lng, s.lat]) ?? [0, 0]) })),
     };
-  }, [world, pins]);
+  }, [world, pins, trips]);
 
   const ready = !!drawing;
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!ready || !svg) return;
+    // Watch the frame around it: on an <svg> itself, a ResizeObserver follows the drawing, not its size on screen
+    const frame = svg.parentElement!;
+    const observer = new ResizeObserver(() => {
+      const width = frame.clientWidth;
+      if (width) setUnit(W / width);
+    });
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, [ready]);
+
   useEffect(() => {
     const svg = svgRef.current;
     if (!ready || !svg) return;
@@ -152,6 +175,25 @@ export function TimelineMap({ places }: { places: MeetupPlace[] }) {
                 <path key={i} d={d} fill="#efe8da" stroke="#fff" strokeWidth={0.8} vectorEffect="non-scaling-stroke" />
               ))}
             </g>
+            {/* Trips: their stops joined up, the picked pin's trips darker */}
+            {drawing.trips.map((trip) => {
+              const on = !!chosen?.meetups.some((m) => m.id === trip.id);
+              const d = trip.points.map((pt, i) => `${i ? "L" : "M"}${t.apply(pt as [number, number]).join(" ")}`).join("");
+              return (
+                <path
+                  key={trip.id}
+                  d={d}
+                  fill="none"
+                  stroke={on ? "#2a2622" : "#c2503a"}
+                  strokeOpacity={on ? 0.8 : 0.5}
+                  strokeWidth={(on ? 1.6 : 1.2) * unit}
+                  strokeDasharray={`${3.5 * unit} ${3.5 * unit}`}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  pointerEvents="none"
+                />
+              );
+            })}
             {/* Pins stay the same size however far you zoom in, so close ones pull apart */}
             {drawing.pins.map(({ x: px, y: py, ...p }) => {
               const [x, y] = t.apply([px, py]);
@@ -169,18 +211,18 @@ export function TimelineMap({ places }: { places: MeetupPlace[] }) {
                 >
                   <title>{p.meetups.map((m) => m.title).join(", ")}</title>
                   {/* A wider invisible ring, so a small pin is still easy to tap */}
-                  <circle cx={x} cy={y} r={14} fill="transparent" />
-                  <circle cx={x} cy={y} r={on ? 10 : 8} fill="#c2503a" fillOpacity={0.18} />
+                  <circle cx={x} cy={y} r={16 * unit} fill="transparent" />
+                  <circle cx={x} cy={y} r={(on ? 11 : 9) * unit} fill="#c2503a" fillOpacity={0.18} />
                   <circle
                     cx={x}
                     cy={y}
-                    r={n > 1 ? (on ? 6.5 : 5.5) : on ? 4.5 : 3.5}
+                    r={(n > 1 ? (on ? 7.5 : 6.5) : on ? 5 : 4) * unit}
                     fill={on ? "#2a2622" : "#c2503a"}
                     stroke="#fff"
-                    strokeWidth={1.2}
+                    strokeWidth={1.3 * unit}
                   />
                   {n > 1 && (
-                    <text x={x} y={y + 2.6} textAnchor="middle" fontSize={7.5} fontWeight={700} fill="#fff">
+                    <text x={x} y={y + 3 * unit} textAnchor="middle" fontSize={8.5 * unit} fontWeight={700} fill="#fff">
                       {n}
                     </text>
                   )}

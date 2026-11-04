@@ -1,7 +1,10 @@
+import { meetupPlaces } from "@/lib/meetups";
 import type { YearBar } from "@/lib/passport";
-import type { Member } from "@/lib/types";
+import type { Meetup, Member } from "@/lib/types";
 
-type MeetupLike = { starts_on: string; ends_on: string | null; city: string | null; country_code: string | null; memberIds: string[] };
+type MeetupLike = Pick<Meetup, "starts_on" | "ends_on" | "city" | "country" | "country_code" | "lat" | "lng" | "stops"> & {
+  memberIds: string[];
+};
 
 export type MeetupStats = {
   past: number;
@@ -50,8 +53,9 @@ export function meetupStats(meetups: MeetupLike[], members: Member[], today: str
     years,
     busiest: years.length ? years.reduce((b, y) => (y.count > b.count ? y : b)) : null,
     upcoming: meetups.length - past.length,
-    places: new Set(past.filter((m) => m.city).map((m) => `${m.city}|${m.country_code}`)).size,
-    countries: new Set(past.flatMap((m) => (m.country_code ? [m.country_code] : []))).size,
+    // Every stop of a trip counts
+    places: new Set(past.flatMap((m) => meetupPlaces(m).map((p) => `${p.name}|${p.countryCode}`))).size,
+    countries: new Set(past.flatMap((m) => meetupPlaces(m).map((p) => p.countryCode))).size,
     days: past.reduce((sum, m) => sum + dayCount(m), 0),
     attendance: current
       .map((member) => ({ member, count: count.get(member.id) ?? 0 }))
