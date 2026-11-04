@@ -12,7 +12,7 @@ export type MeetupStats = {
   years: YearBar[]; // meetups per year, from the first one to this year
   busiest: YearBar | null;
   attendance: { member: Member; count: number }[]; // most first
-  pairs: { a: Member; b: Member; count: number }[]; // the most-together pairs first
+  pairs: { a: Member; b: Member; count: number }[]; // every pair that has met up, the most-together first
 };
 
 /** Counts over the meetups that have already happened (the ones still to come only as a number). */
@@ -61,7 +61,6 @@ export function meetupStats(meetups: MeetupLike[], members: Member[], today: str
         const [a, b] = key.split("|");
         return { a: byId.get(a)!, b: byId.get(b)!, count: n };
       })
-      .sort((x, y) => y.count - x.count)
-      .slice(0, 3),
+      .sort((x, y) => y.count - x.count || `${x.a.display_name}${x.b.display_name}`.localeCompare(`${y.a.display_name}${y.b.display_name}`)),
   };
 }

@@ -5,6 +5,8 @@ import { YearlyBars } from "@/components/passport/YearlyBars";
 import type { MeetupStats as Stats } from "@/lib/meetupStats";
 import type { MemberWithAvatar } from "@/lib/types";
 
+const BUDDIES = 6; // pairs shown before "Show all"
+
 /** Under the map: how often we meet up (in all and per year), who comes to the most, and who goes together. */
 export function MeetupStats({ stats, avatars }: { stats: Stats; avatars: Map<string, MemberWithAvatar> }) {
   if (!stats.past) return null;
@@ -12,6 +14,18 @@ export function MeetupStats({ stats, avatars }: { stats: Stats; avatars: Map<str
   const least = Math.min(...stats.attendance.map((a) => a.count));
   const fewest = least < top ? stats.attendance.filter((a) => a.count === least).map((a) => a.member.display_name) : [];
   const names = (list: string[]) => (list.length > 1 ? `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}` : list[0]);
+  const pair = ({ a, b, count }: Stats["pairs"][number]) => (
+    <li key={`${a.id}-${b.id}`} className="flex items-center gap-3">
+      <span className="flex shrink-0 -space-x-2">
+        {face(a.id, 32)}
+        {face(b.id, 32)}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-sm font-medium">
+        {a.display_name} &amp; {b.display_name}
+      </span>
+      <span className="shrink-0 text-sm text-ink-soft">{count === 1 ? "1 meetup" : `${count} meetups`} together</span>
+    </li>
+  );
   const face = (id: string, size = 28) => {
     const m = avatars.get(id);
     return m ? <Avatar name={m.display_name} color={m.color} url={m.avatar_url} size={size} /> : null;
@@ -69,20 +83,19 @@ export function MeetupStats({ stats, avatars }: { stats: Stats; avatars: Map<str
         <div className="card space-y-3">
           <h3 className="font-display text-lg font-semibold">Travel buddies</h3>
           {stats.pairs.length ? (
-            <ol className="space-y-3">
-              {stats.pairs.map(({ a, b, count }) => (
-                <li key={`${a.id}-${b.id}`} className="flex items-center gap-3">
-                  <span className="flex shrink-0 -space-x-2">
-                    {face(a.id, 32)}
-                    {face(b.id, 32)}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                    {a.display_name} &amp; {b.display_name}
-                  </span>
-                  <span className="shrink-0 text-sm text-ink-soft">{count === 1 ? "1 meetup" : `${count} meetups`} together</span>
-                </li>
-              ))}
-            </ol>
+            <>
+              <ol className="space-y-3">{stats.pairs.slice(0, BUDDIES).map(pair)}</ol>
+              {/* The rest fold away, so a big group doesn't make this a wall of names */}
+              {stats.pairs.length > BUDDIES && (
+                <details className="group">
+                  <summary className="cursor-pointer list-none text-sm font-medium text-ink-soft hover:text-ink">
+                    <span className="group-open:hidden">Show all {stats.pairs.length} pairs ▾</span>
+                    <span className="hidden group-open:inline">Show fewer ▴</span>
+                  </summary>
+                  <ol className="mt-3 space-y-3">{stats.pairs.slice(BUDDIES).map(pair)}</ol>
+                </details>
+              )}
+            </>
           ) : (
             <p className="text-sm text-ink-soft">Once two of you have been on a meetup together, they show up here.</p>
           )}

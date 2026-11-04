@@ -4,7 +4,7 @@ import { Avatar } from "@/components/Avatar";
 import { CountryOutline } from "@/components/CountryOutline";
 import { Flag } from "@/components/Flag";
 import { formatDate } from "@/lib/dates";
-import { loadMeetups, MAX_MEETUP_PHOTOS, meetupDates } from "@/lib/meetups";
+import { loadMeetups, MAX_MEETUP_PHOTOS, MAX_WRITE_UP, meetupDates } from "@/lib/meetups";
 import { loadGroupData } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
 import { MeetupNotes } from "./MeetupNotes";
@@ -110,6 +110,7 @@ export default async function MeetupPage({ params }: { params: Promise<{ id: str
 
       <MeetupNotes
         meetupId={m.id}
+        max={MAX_WRITE_UP}
         me={me}
         notes={m.notes.map((n) => ({
           id: n.id,

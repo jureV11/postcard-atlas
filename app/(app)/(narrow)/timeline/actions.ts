@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { City } from "@/lib/geo";
-import { MAX_MEETUP_PHOTOS } from "@/lib/meetups";
+import { MAX_MEETUP_PHOTOS, MAX_WRITE_UP } from "@/lib/meetups";
 import { notifyMembers } from "@/lib/push";
 import { requireMember } from "@/lib/session";
 
@@ -24,6 +24,7 @@ export async function saveMeetup(input: MeetupInput): Promise<Result & { id?: st
   const title = input.title.trim();
   if (!title) return { error: "Give the meetup a name." };
   if (input.endsOn && input.endsOn < input.startsOn) return { error: "It can't end before it starts." };
+  if (new Set(input.memberIds).size < 2) return { error: "Add who else was there: a meetup needs at least two people." };
 
   const fields = {
     title,
@@ -198,7 +199,8 @@ export async function setPhotoFocus(photoId: string, x: number, y: number): Prom
 export async function saveMeetupNote(meetupId: string, body: string): Promise<Result> {
   const { supabase, member } = await requireMember();
   const text = body.trim();
-  if (text.length > 4000) return { error: "That's a bit long: keep it under 4,000 characters." };
+  if (text.length > MAX_WRITE_UP)
+    return { error: `That's a bit long: keep it under ${MAX_WRITE_UP.toLocaleString("en")} characters.` };
   const { error } = text
     ? await supabase
         .from("meetup_notes")

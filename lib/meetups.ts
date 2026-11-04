@@ -4,6 +4,7 @@ import { signPaths } from "@/lib/storage";
 import type { Meetup, MeetupNote, MeetupPhoto, Member, Postcard } from "@/lib/types";
 
 export const MAX_MEETUP_PHOTOS = 50;
+export const MAX_WRITE_UP = 200_000; // characters, about 33,000 words (the database checks it too)
 
 export type MeetupWithPhotos = Meetup & {
   memberIds: string[];

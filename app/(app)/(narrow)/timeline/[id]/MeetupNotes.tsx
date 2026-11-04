@@ -10,13 +10,24 @@ import { saveMeetupNote } from "../actions";
 export type NoteItem = { id: string; body: string; date: string; author: MemberWithAvatar | null; mine: boolean };
 
 /** Everyone's write-ups, each signed; yours can be written, edited or deleted. */
-export function MeetupNotes({ meetupId, notes, me }: { meetupId: string; notes: NoteItem[]; me: MemberWithAvatar }) {
+export function MeetupNotes({
+  meetupId,
+  notes,
+  me,
+  max,
+}: {
+  meetupId: string;
+  notes: NoteItem[];
+  me: MemberWithAvatar;
+  max: number;
+}) {
   const router = useRouter();
   const mine = notes.find((n) => n.mine);
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(mine?.body ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
 
   async function save(body: string) {
     setBusy(true);
@@ -67,9 +78,13 @@ export function MeetupNotes({ meetupId, notes, me }: { meetupId: string; notes: 
               className="input min-h-40"
               value={text}
               onChange={(e) => setText(e.target.value)}
-              maxLength={4000}
+              maxLength={max}
               placeholder="What happened, what you'll remember… Links work too: [our video](https://youtu.be/…)"
             />
+            <p className="hint -mt-1 text-right tabular-nums">
+              {words.toLocaleString("en")} {words === 1 ? "word" : "words"}
+              {text.length > max * 0.9 && ` · ${(max - text.length).toLocaleString("en")} characters left`}
+            </p>
             {error && <p className="error">{error}</p>}
             <div className="flex flex-wrap items-center gap-3">
               <button type="button" className="btn" disabled={busy || !text.trim()} onClick={() => save(text)}>
