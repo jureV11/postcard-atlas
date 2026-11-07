@@ -12,6 +12,7 @@ import { groupPassport } from "@/lib/passport";
 import { loadGroupData } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
 import { computeStats, rankMembers } from "@/lib/stats";
+import { defaultReviewYear } from "@/lib/yearReview";
 import type { MemberWithAvatar } from "@/lib/types";
 import { formatCount } from "@/lib/utils";
 
@@ -53,7 +54,7 @@ export default async function LeaderboardPage() {
           <p className="mt-1 text-ink-soft">Three ways to win. Cards only count once they&apos;ve arrived.</p>
         </div>
         <Link href="/review" className="btn-ghost shrink-0 px-4">
-          <span aria-hidden="true">✨</span> {new Date().getFullYear()} in review
+          <span aria-hidden="true">✨</span> {defaultReviewYear()} in review
         </Link>
       </div>
 

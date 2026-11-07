@@ -14,7 +14,15 @@ export type ReviewMeetup = Pick<Meetup, "id" | "title" | "starts_on" | "ends_on"
  */
 const counted = (cards: Postcard[]) => cards.filter((c) => c.status === "received" && c.is_public).filter(isLocated);
 
-/** Years with something to look back on, newest first (always including this one). */
+/**
+ * The year the review opens on: this one, except all through January, when
+ * the year that just ended is what everyone wants to look back on.
+ */
+export function defaultReviewYear(now = new Date()): number {
+  return now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+}
+
+/** Years with something to look back on, newest first (always including `thisYear`). */
 export function reviewYears(cards: Postcard[], meetups: ReviewMeetup[], thisYear: number): number[] {
   const years = new Set<number>([thisYear]);
   for (const c of counted(cards)) years.add(Number(c.sent_on.slice(0, 4)));

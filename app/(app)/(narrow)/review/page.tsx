@@ -8,7 +8,7 @@ import { meetupDates } from "@/lib/meetups";
 import { loadGroupData } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
 import type { LocatedPostcard, MemberWithAvatar } from "@/lib/types";
-import { reviewYears, yearReview, type ReviewMeetup } from "@/lib/yearReview";
+import { defaultReviewYear, reviewYears, yearReview, type ReviewMeetup } from "@/lib/yearReview";
 
 const EARTH_KM = 40_075;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -25,10 +25,10 @@ export default async function YearInReviewPage({ searchParams }: { searchParams:
     ({ meetup_members, ...m }) => ({ ...m, memberIds: meetup_members.map((x) => x.member_id) }),
   );
 
-  const thisYear = new Date().getFullYear();
-  const years = reviewYears(postcards, meetups, thisYear);
+  const opensOn = defaultReviewYear();
+  const years = reviewYears(postcards, meetups, opensOn);
   const asked = Number((await searchParams).year);
-  const year = years.includes(asked) ? asked : thisYear;
+  const year = years.includes(asked) ? asked : opensOn;
   const r = yearReview(year, postcards, members, meetups);
   const empty = r.cards.length === 0 && r.meetups.length === 0;
   const name = (id: string | null) => (id ? membersById.get(id) : undefined);
