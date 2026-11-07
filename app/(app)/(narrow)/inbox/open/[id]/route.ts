@@ -30,7 +30,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const link = String(message.link);
     if (link.startsWith("/") && !link.startsWith("//")) to = link;
     // A meetup or card deleted since: stay in the inbox and say so, not a "page not found"
-    const [, section, target] = link.match(/^\/(timeline|postcards)\/([0-9a-f-]{36})$/) ?? [];
+    const [, section, target] = link.match(/^\/(timeline|postcards)\/([0-9a-f-]{36})(?:#[\w-]*)?$/) ?? [];
     if (target) {
       const { data } = await supabase
         .from(section === "timeline" ? "meetups" : "postcards")

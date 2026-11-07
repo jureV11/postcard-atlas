@@ -30,12 +30,12 @@ Each card's score is out of 100 and depends only on the town it came from. The w
 
 | Factor | Points | Source |
 |---|---|---|
-| Far from the group | 35 | Distance to the nearest friend's home |
-| Rarely visited country | 30 | Tourist arrivals per year ([World Bank](https://data.worldbank.org)) |
+| Rarely visited country | 35 | Tourist arrivals per year ([World Bank](https://data.worldbank.org)) |
+| Far from the group | 25 | Distance to the nearest friend's home (the first few thousand km count the most) |
 | Small place | 20 | Population from [GeoNames](https://www.geonames.org), via the [Open-Meteo](https://open-meteo.com) geocoder |
-| Far from an airport | 15 | Distance to the nearest airport with scheduled flights ([OurAirports](https://ourairports.com/data/)) |
+| Out on an island | 20 | How far out to sea the town is, to the nearest mainland ([Natural Earth](https://www.naturalearthdata.com) land shapes): nothing just off the coast, full from 600 km. Great Britain and other big islands count as mainland |
 
-If a number can't be found, that factor is left out and the others share its points. No value is ever guessed. The airport and tourism tables are bundled in `lib/data/`. To rebuild them, run `node scripts/build-niche-data.mjs`.
+If a number can't be found, that factor is left out and the others share its points. No value is ever guessed. The tourism table is bundled in `lib/data/`. To rebuild it, run `node scripts/build-niche-data.mjs`.
 
 ## Running it yourself
 

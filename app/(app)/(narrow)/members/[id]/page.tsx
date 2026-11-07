@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ProfileMap } from "@/components/atlas/ProfileMap";
 import { Achievements } from "@/components/Achievements";
 import { Avatar } from "@/components/Avatar";
+import { CardBalanceLine, CardsOwed } from "@/components/CardsOwed";
 import { FlagBurst } from "@/components/Confetti";
 import { profileFlag } from "@/lib/flags";
 import { Flag } from "@/components/Flag";
@@ -14,6 +15,7 @@ import type { MapCard } from "@/lib/atlas";
 import { formatDate } from "@/lib/dates";
 import { formatKm } from "@/lib/geo";
 import { recentAchievements } from "@/lib/inbox";
+import { cardBalances, oweYou, youOwe } from "@/lib/owe";
 import { loadGroupData } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
 import { computeStats, rankMembers } from "@/lib/stats";
@@ -55,6 +57,9 @@ export default async function MemberPage({
   // Lost cards go public like arrived ones; until then (trip still travelling) only the sender sees them
   const lost = stats.lost.filter((c) => isMe || c.is_public).length;
   const arrivedCount = stats.sent.filter((c) => c.status === "received").length;
+  // Who owes whom a card: only ever from your side, with what you can already see
+  const balances = cardBalances(me.id, members, postcards);
+  const withThem = balances.find((b) => b.member.id === person.id);
 
   return (
     <div className="space-y-8">
@@ -76,6 +81,12 @@ export default async function MemberPage({
           </Link>
         )}
       </section>
+
+      {isMe ? (
+        <CardsOwed owe={youOwe(balances)} owed={oweYou(balances)} className="sm:max-w-md" />
+      ) : (
+        withThem && <CardBalanceLine balance={withThem} />
+      )}
 
       {/* Stats */}
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">

@@ -16,10 +16,20 @@ import { HandDeliveredField } from "@/components/HandDeliveredField";
 import { logPostcard, markLost, setHandDelivered } from "../actions";
 
 // No photos here on purpose: the recipient photographs the card when it arrives.
-export function NewPostcardForm({ recipients, addresses }: { recipients: MemberWithAvatar[]; addresses: Address[] }) {
+export function NewPostcardForm({
+  recipients,
+  addresses,
+  initialTo,
+}: {
+  recipients: MemberWithAvatar[];
+  addresses: Address[];
+  initialTo?: string; // picked already, e.g. from "you owe them a card"
+}) {
   const router = useRouter();
   // Several recipients = one card each, same trip (revealed together once all arrive).
-  const [recipientIds, setRecipientIds] = useState<string[]>(recipients.length === 1 ? [recipients[0].id] : []);
+  const [recipientIds, setRecipientIds] = useState<string[]>(
+    initialTo ? [initialTo] : recipients.length === 1 ? [recipients[0].id] : [],
+  );
   // Which address each card goes to: the recipient's current one unless changed (e.g. a card sent in the past).
   const [chosenAddress, setChosenAddress] = useState<Record<string, string>>({});
   const addressesOf = (memberId: string) => addresses.filter((a) => a.member_id === memberId);

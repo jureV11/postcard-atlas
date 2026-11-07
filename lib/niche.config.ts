@@ -6,20 +6,23 @@
  * factor whose number can't be found is left out and the remaining weights are
  * scaled up to still total 100.
  *
- * What makes a card niche: it came from far away, from a country few people
- * ever visit, from a small place, far from the nearest airport.
+ * What makes a card niche: it came from a country few people ever visit, far
+ * from the group, from a small place, from an island out at sea.
  */
 export const NICHE = {
   /** Points out of 100. */
   weights: {
-    distance: 35,
-    tourism: 30,
+    distance: 25,
+    tourism: 35,
     population: 20,
-    remoteness: 15,
+    island: 20,
   },
 
-  /** Km from the nearest friend's home in the group. Linear: next door = 0, the other side of the world = full. */
-  distance: { zero: 100, full: 9_000 },
+  /**
+   * Km from the nearest friend's home in the group. Log scale, so the first few
+   * thousand km count the most: a long-haul flight alone doesn't make a place niche.
+   */
+  distance: { zero: 150, full: 6_000 },
 
   /** Tourist arrivals per year for the whole country (World Bank, latest year up to 2019). Log scale. */
   tourism: { full: 100_000, zero: 40_000_000 },
@@ -27,8 +30,12 @@ export const NICHE = {
   /** Town population (GeoNames). Anything this small or smaller scores full, so tiny villages don't get extra. Log scale. */
   population: { full: 5_000, zero: 5_000_000 },
 
-  /** Km to the nearest airport with scheduled flights (OurAirports). Linear. */
-  remoteness: { zero: 0, full: 150 },
+  /**
+   * Km out to sea: from the town to the nearest mainland, which is any land of at
+   * least `mainlandKm2` (Great Britain, Java and Honshu count). Log scale: an island
+   * just off the coast scores nothing, Malta (~280 km) most of it, Hawaii full.
+   */
+  island: { zero: 25, full: 600, mainlandKm2: 120_000 },
 
   /** How long a town's looked-up population is cached on the server. */
   cacheSeconds: 60 * 60 * 24 * 30,
