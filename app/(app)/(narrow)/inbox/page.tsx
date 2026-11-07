@@ -2,7 +2,7 @@ import type { InboxMessage } from "@/lib/inbox";
 import { requireMember } from "@/lib/session";
 import { deleteMessage, markInboxRead, restoreMessage, setMessageRead } from "./actions";
 
-const ICONS: Record<InboxMessage["kind"], string> = { arrived: "📬", achievement: "🏅", meetup: "🗓️" };
+const ICONS: Record<InboxMessage["kind"], string> = { arrived: "📬", achievement: "🏅", meetup: "🗓️", comment: "💬" };
 
 export default async function InboxPage({ searchParams }: { searchParams: Promise<{ deleted?: string; gone?: string }> }) {
   const { deleted, gone } = await searchParams; // just binned: offer "Undo". Gone: what a message pointed to was deleted
@@ -23,7 +23,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
         <div>
           <h1 className="font-display text-3xl font-semibold tracking-tight">Inbox</h1>
           <p className="mt-1 text-ink-soft">
-            {unread ? `${unread} new` : "All caught up"} · cards arriving, achievements and meetups you&apos;re in.
+            {unread ? `${unread} new` : "All caught up"} · cards arriving, comments, achievements and meetups you&apos;re in.
           </p>
         </div>
         {unread > 0 && (
@@ -51,7 +51,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
       {messages.length === 0 ? (
         <div className="card text-center">
           <p className="font-display text-xl font-semibold">Nothing here yet</p>
-          <p className="mt-1 text-ink-soft">You&apos;ll get a note when a card you sent arrives, when you unlock an achievement, or when someone adds you to a meetup.</p>
+          <p className="mt-1 text-ink-soft">You&apos;ll get a note when a card you sent arrives, when someone comments on your cards, when you unlock an achievement, or when someone adds you to a meetup.</p>
         </div>
       ) : (
         <ul className="space-y-2">

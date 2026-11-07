@@ -47,9 +47,14 @@ export default async function LeaderboardPage() {
 
   return (
     <div className="space-y-10">
-      <div>
-        <h1 className="font-display text-3xl font-semibold tracking-tight">Leaderboard</h1>
-        <p className="mt-1 text-ink-soft">Three ways to win. Cards only count once they&apos;ve arrived.</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="font-display text-3xl font-semibold tracking-tight">Leaderboard</h1>
+          <p className="mt-1 text-ink-soft">Three ways to win. Cards only count once they&apos;ve arrived.</p>
+        </div>
+        <Link href="/review" className="btn-ghost shrink-0 px-4">
+          <span aria-hidden="true">✨</span> {new Date().getFullYear()} in review
+        </Link>
       </div>
 
       <GroupPassport passport={passport} membersById={membersById} />
@@ -235,7 +240,8 @@ export default async function LeaderboardPage() {
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>
               <strong className="text-ink">Far from the group — up to {NICHE.weights.distance}.</strong> Distance to the
-              nearest friend&apos;s home; {NICHE.distance.full.toLocaleString("en")} km or more scores full.
+              nearest friend&apos;s home; the first few thousand km count the most, and{" "}
+              {NICHE.distance.full.toLocaleString("en")} km or more scores full.
             </li>
             <li>
               <strong className="text-ink">Rarely visited country — up to {NICHE.weights.tourism}.</strong> How many tourists
@@ -247,8 +253,9 @@ export default async function LeaderboardPage() {
               small town. (GeoNames)
             </li>
             <li>
-              <strong className="text-ink">Far from an airport — up to {NICHE.weights.remoteness}.</strong> Distance to the
-              nearest airport with scheduled flights; {NICHE.remoteness.full} km or more scores full. (OurAirports)
+              <strong className="text-ink">Out on an island — up to {NICHE.weights.island}.</strong> How far out to sea it is,
+              from the nearest mainland: an island just off the coast scores nothing, Malta or the Faroes most of it, and{" "}
+              {NICHE.island.full} km or more full. Great Britain and the other big islands count as mainland. (Natural Earth)
             </li>
           </ul>
           <p className="mt-2">

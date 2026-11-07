@@ -5,7 +5,8 @@ import { signAvatarUrls } from "@/lib/storage";
 import type { Member } from "@/lib/types";
 import { NewPostcardForm } from "./NewPostcardForm";
 
-export default async function NewPostcardPage() {
+export default async function NewPostcardPage({ searchParams }: { searchParams: Promise<{ to?: string }> }) {
+  const { to } = await searchParams; // from "you owe them a card": start with them picked
   const { supabase, member } = await requireMember();
   const { data } = await supabase
     .from("members")
@@ -39,7 +40,7 @@ export default async function NewPostcardPage() {
           </Link>
         </div>
       ) : (
-        <NewPostcardForm recipients={others} addresses={addresses} />
+        <NewPostcardForm recipients={others} addresses={addresses} initialTo={others.some((m) => m.id === to) ? to : undefined} />
       )}
       <p className="text-center text-sm text-ink-soft">
         Sending one to someone outside the group?{" "}

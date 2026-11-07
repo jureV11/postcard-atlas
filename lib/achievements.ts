@@ -38,9 +38,9 @@ function festive(date: string): boolean {
 
 /**
  * A member's achievements, from cards that count everywhere else: sent cards
- * that arrived and are public, and public cards they received. Lost cards are
- * only used for the one (secret) badge about them. Hand-delivered cards never
- * went through the post, so they don't count for delivery-time badges.
+ * that arrived and are public, and public cards they received. Lost cards don't
+ * count. Hand-delivered cards never went through the post, so they don't count
+ * for delivery-time badges.
  */
 export function achievementsFor(
   member: Member,
@@ -71,7 +71,6 @@ export function achievementsFor(
   const receivedCountries = new Set(receivedCards.map((c) => c.from_country_code));
   const receivedContinents = new Set([...receivedCountries].map(continentOf).filter(Boolean));
   const receivedFrom = new Set(receivedCards.map((c) => c.sender_id));
-  const lostOne = cards.some((c) => c.sender_id === member.id && c.status === "lost");
   const handDelivered = sent.some((c) => c.hand_delivered);
   const nearest = sent.reduce((m, c) => Math.min(m, cardKm(c, membersById.get(c.recipient_id))), Infinity);
 
@@ -215,13 +214,6 @@ export function achievementsFor(
       name: "Special delivery",
       description: handDelivered ? "Hand-delivered a postcard" : "A secret one…",
       earned: handDelivered,
-      secret: true,
-    },
-    {
-      id: "lost",
-      name: "Lost at sea",
-      description: lostOne ? "Had a postcard go missing in the post" : "A secret one…",
-      earned: lostOne,
       secret: true,
     },
   ];

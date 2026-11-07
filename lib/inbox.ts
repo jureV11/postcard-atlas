@@ -6,7 +6,7 @@ import type { Member } from "@/lib/types";
 
 export type InboxMessage = {
   id: string;
-  kind: "arrived" | "achievement" | "meetup";
+  kind: "arrived" | "achievement" | "meetup" | "comment";
   title: string;
   body: string;
   link: string | null;

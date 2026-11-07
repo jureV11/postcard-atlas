@@ -24,8 +24,6 @@ const ICONS: Record<string, string> = {
   "pen-pal": "M4 7h16v11H4zM4 8l8 5.5L20 8M12 17.2l-1.6-1.4c-1.3-1.1-.6-3 .9-2.6.3.1.5.3.7.5.2-.2.4-.4.7-.5 1.5-.4 2.2 1.5.9 2.6z",
   // Mailbox
   mailbox: "M5 11a4 4 0 0 1 8 0v8H5zM13 7h4a4 4 0 0 1 2 3.5V19h-6M9 19v3M15 4v5h2",
-  // Waves
-  lost: "M3 9c2 0 2-1.5 4.5-1.5S10 9 12 9s2.5-1.5 4.5-1.5S19 9 21 9M3 14c2 0 2-1.5 4.5-1.5S10 14 12 14s2.5-1.5 4.5-1.5S19 14 21 14M3 19c2 0 2-1.5 4.5-1.5S10 19 12 19s2.5-1.5 4.5-1.5S19 19 21 19",
   // Three continents: three little globes
   "world-mail": "M7 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM17 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM12 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM9.5 8.5l1.5 6M14.5 8.5 13 14.5M10 6h4",
   // Every continent: a globe with a star

@@ -3,9 +3,11 @@ import { AddressesPanel } from "@/components/atlas/AddressesPanel";
 import { Atlas } from "@/components/atlas/Atlas";
 import { loadAddresses, loadMyAddressesInUse } from "@/lib/addresses";
 import { Avatar } from "@/components/Avatar";
+import { CardsOwed } from "@/components/CardsOwed";
 import { Flag } from "@/components/Flag";
 import type { MapCard } from "@/lib/atlas";
 import { formatDate } from "@/lib/dates";
+import { cardBalances, oweYou, youOwe } from "@/lib/owe";
 import { loadGroupData } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
 import { computeStats, groupCountries, rankMembers } from "@/lib/stats";
@@ -39,6 +41,7 @@ export default async function MapPage() {
     .filter(isLocated)
     .sort((a, b) => (b.received_on ?? "").localeCompare(a.received_on ?? ""))
     .slice(0, 4);
+  const balances = cardBalances(member.id, members, postcards);
 
   return (
     <div className="space-y-4">
@@ -64,6 +67,8 @@ export default async function MapPage() {
         <Atlas cards={cards} members={members} />
 
         <aside className="space-y-4 lg:pt-11">
+          <CardsOwed owe={youOwe(balances)} owed={oweYou(balances)} />
+
           {/* Countries tracker */}
           <section className="card space-y-3">
             <div className="flex items-baseline justify-between">

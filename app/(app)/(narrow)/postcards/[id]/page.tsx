@@ -11,12 +11,14 @@ import { formatKm, haversineKm } from "@/lib/geo";
 import { meetupDates } from "@/lib/meetups";
 import { withFormerLabel } from "@/lib/members";
 import { nicheScores } from "@/lib/niche";
+import { loadPostcardChat } from "@/lib/postcardChat";
 import { visibleTo } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
 import { signAvatarUrls, signPaths } from "@/lib/storage";
 import { destinationOf, isLocated, type Member, type Postcard } from "@/lib/types";
 import { LostButton } from "./LostButton";
 import { PhotosEditor } from "./PhotosEditor";
+import { PostcardChat } from "./PostcardChat";
 
 export default async function PostcardPage({
   params,
@@ -73,6 +75,18 @@ export default async function PostcardPage({
       ? await supabase.from("meetups").select("id, title, starts_on, ends_on").eq("postcard_id", card.id).order("starts_on")
       : { data: null };
   const meetups = (meetupRows ?? []) as { id: string; title: string; starts_on: string; ends_on: string | null }[];
+  // Reactions and comments, once it's out of the post (the database shows them to whoever sees the card)
+  const canChat = arrived || lost;
+  const chat = canChat ? await loadPostcardChat(supabase, card.id) : null;
+  // Everyone in the group, former members too (they keep their name on what they wrote)
+  const { data: groupRows } = canChat ? await supabase.from("members").select("*").eq("group_id", member.group_id) : { data: null };
+  const everyone = (await signAvatarUrls(supabase, (groupRows ?? []) as Member[])).map(withFormerLabel);
+  const me = everyone.find((m) => m.id === member.id) ?? null;
+  const chatHeads = card.is_public
+    ? null
+    : lost
+      ? "Only you can see this card for now. Anything you write here shows to everyone once it's revealed."
+      : `Only you and ${isSender ? recipient?.display_name : sender?.display_name} can see this card for now. Comments show to everyone once it's revealed.`;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -236,6 +250,17 @@ export default async function PostcardPage({
           <span className="shrink-0 text-sm font-medium text-ink-soft">On the timeline →</span>
         </Link>
       ))}
+
+      {chat && me && (
+        <PostcardChat
+          cardId={card.id}
+          reactions={chat.reactions}
+          comments={chat.comments}
+          people={everyone}
+          me={me}
+          heads={chatHeads}
+        />
+      )}
 
       {canEditPhotos && (
         <details className="card group" open={!frontUrl && !backUrl}>

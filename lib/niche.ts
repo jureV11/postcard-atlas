@@ -1,14 +1,15 @@
 import { cityKey } from "@/lib/atlas";
 import { haversineKm } from "@/lib/geo";
 import { NICHE, type NicheFactor } from "@/lib/niche.config";
-import { nearestAirportKm, touristArrivals } from "@/lib/placeFacts";
+import { islandFacts } from "@/lib/islands";
+import { touristArrivals } from "@/lib/placeFacts";
 import { cityPopulation } from "@/lib/population";
 import { isLocated, type LocatedPostcard, type Member, type Postcard } from "@/lib/types";
 
 /**
  * Nicheness: how off-the-beaten-path the town a postcard came from is, out of 100.
- * Four factors (weights in lib/niche.config.ts): far from the group, a country
- * few tourists visit, a small place, far from an airport. Missing data is never
+ * Four factors (weights in lib/niche.config.ts): a country few tourists visit,
+ * far from the group, a small place, an island out at sea. Missing data is never
  * guessed: that factor is dropped and the rest reweighted. It depends only on
  * the place, so sending several cards from one country costs nothing.
  */
@@ -19,7 +20,10 @@ export type NicheFacts = {
   touristArrivals: number | null;
   tourismYear: number | null;
   population: number | null;
-  airportKm: number | null;
+  /** Km² of the land it's on (0: an island too small for the map). */
+  landKm2: number | null;
+  /** Km out to sea, to the nearest mainland (0 on one). */
+  offshoreKm: number | null;
 };
 
 export type NicheFactorResult = {
@@ -42,7 +46,11 @@ export type NicheScore = {
 
 const LOOKUPS_AT_ONCE = 3;
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
-const linear = (v: number, zero: number, full: number) => clamp01((v - zero) / (full - zero));
+
+/** 0 at `zero` or below, 1 at `full` or beyond, log scale in between (bigger = more niche). */
+function logRising(v: number, zero: number, full: number): number {
+  return clamp01((Math.log(Math.max(v, 1e-9)) - Math.log(zero)) / (Math.log(full) - Math.log(zero)));
+}
 
 /** 1 at `full` or beyond, 0 at `zero` or beyond, log scale in between (smaller = more niche). */
 function logScale(v: number, full: number, zero: number): number {
@@ -52,10 +60,10 @@ function logScale(v: number, full: number, zero: number): number {
 
 export function scoreFacts(facts: NicheFacts): Pick<NicheScore, "score" | "factors"> {
   const values: Record<NicheFactor, number | null> = {
-    distance: facts.homeKm === null ? null : linear(facts.homeKm, NICHE.distance.zero, NICHE.distance.full),
+    distance: facts.homeKm === null ? null : logRising(facts.homeKm, NICHE.distance.zero, NICHE.distance.full),
     tourism: facts.touristArrivals === null ? null : logScale(facts.touristArrivals, NICHE.tourism.full, NICHE.tourism.zero),
     population: facts.population === null ? null : logScale(facts.population, NICHE.population.full, NICHE.population.zero),
-    remoteness: facts.airportKm === null ? null : linear(facts.airportKm, NICHE.remoteness.zero, NICHE.remoteness.full),
+    island: facts.offshoreKm === null ? null : logRising(facts.offshoreKm, NICHE.island.zero, NICHE.island.full),
   };
 
   const order = Object.keys(NICHE.weights) as NicheFactor[];
@@ -82,13 +90,15 @@ async function placeFacts(c: LocatedPostcard, homes: Member[]): Promise<NicheFac
     }
   }
   const tourism = touristArrivals(c.from_country_code);
+  const island = await islandFacts(c.from_lat, c.from_lng);
   return {
     homeKm,
     nearestFriend,
     touristArrivals: tourism?.arrivals ?? null,
     tourismYear: tourism?.year ?? null,
     population: await cityPopulation(c.from_city, c.from_lat, c.from_lng),
-    airportKm: nearestAirportKm(c.from_lat, c.from_lng),
+    landKm2: island?.landKm2 ?? null,
+    offshoreKm: island?.offshoreKm ?? null,
   };
 }
 

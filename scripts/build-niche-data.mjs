@@ -1,59 +1,11 @@
-// Rebuilds the bundled tables the nicheness score uses:
-//   lib/data/airports.json — airports with scheduled flights (OurAirports, public domain)
-//   lib/data/tourism.json  — tourist arrivals per country, total and per resident (World Bank)
+// Rebuilds the bundled table the nicheness score uses:
+//   lib/data/tourism.json — tourist arrivals per country, total and per resident (World Bank)
+// (Island sizes come from the world-atlas package's land shapes, nothing to rebuild.)
 // Run: node scripts/build-niche-data.mjs
 import { writeFile } from "node:fs/promises";
 
-const AIRPORTS_URL = "https://davidmegginson.github.io/ourairports-data/airports.csv";
 const WB = (indicator) =>
   `https://api.worldbank.org/v2/country/all/indicator/${indicator}?format=json&per_page=20000&date=2010:2019`;
-
-/** Minimal CSV parser (quoted fields, commas and doubled quotes inside quotes). */
-function parseCsv(text) {
-  const rows = [];
-  let row = [];
-  let field = "";
-  let quoted = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (quoted) {
-      if (ch === '"' && text[i + 1] === '"') {
-        field += '"';
-        i++;
-      } else if (ch === '"') quoted = false;
-      else field += ch;
-    } else if (ch === '"') quoted = true;
-    else if (ch === ",") {
-      row.push(field);
-      field = "";
-    } else if (ch === "\n" || ch === "\r") {
-      if (ch === "\r" && text[i + 1] === "\n") i++;
-      row.push(field);
-      rows.push(row);
-      row = [];
-      field = "";
-    } else field += ch;
-  }
-  if (field || row.length) {
-    row.push(field);
-    rows.push(row);
-  }
-  return rows;
-}
-
-async function airports() {
-  const res = await fetch(AIRPORTS_URL);
-  if (!res.ok) throw new Error(`airports.csv: HTTP ${res.status}`);
-  const [header, ...rows] = parseCsv(await res.text());
-  const col = (name) => header.indexOf(name);
-  const [type, lat, lng, sched, iata] = ["type", "latitude_deg", "longitude_deg", "scheduled_service", "iata_code"].map(col);
-  // Large airports, plus medium ones with scheduled passenger flights.
-  const keep = rows.filter(
-    (r) => r[type] === "large_airport" || (r[type] === "medium_airport" && r[sched] === "yes" && r[iata]),
-  );
-  // [lat, lng] rounded to ~100 m keeps the file small.
-  return keep.map((r) => [Number(Number(r[lat]).toFixed(3)), Number(Number(r[lng]).toFixed(3))]);
-}
 
 async function wb(indicator) {
   const res = await fetch(WB(indicator));
@@ -81,7 +33,6 @@ async function tourism() {
   return out;
 }
 
-const [ap, tr] = await Promise.all([airports(), tourism()]);
-await writeFile(new URL("../lib/data/airports.json", import.meta.url), JSON.stringify(ap));
+const tr = await tourism();
 await writeFile(new URL("../lib/data/tourism.json", import.meta.url), JSON.stringify(tr, null, 0));
-console.log(`airports: ${ap.length}, tourism countries: ${Object.keys(tr).length}`);
+console.log(`tourism countries: ${Object.keys(tr).length}`);

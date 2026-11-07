@@ -10,7 +10,7 @@ const LABELS: Record<NicheFactor, string> = {
   distance: "Far from the group",
   tourism: "Rarely visited country",
   population: "Small place",
-  remoteness: "Far from an airport",
+  island: "Out on an island",
 };
 
 /** A leaderboard row: the row opens the postcard, the score opens its breakdown. */
@@ -137,9 +137,11 @@ function describe(factor: NicheFactor, f: NicheFacts, country: string): ReactNod
         : `${country} gets about ${formatCount(f.touristArrivals)} tourists a year (${f.tourismYear})`;
     case "population":
       return f.population === null ? "Population not found" : `About ${formatCount(f.population)} people live here`;
-    case "remoteness":
-      return f.airportKm === null
-        ? "No airport data"
-        : `${Math.round(f.airportKm).toLocaleString("en")} km to the nearest airport with scheduled flights`;
+    case "island":
+      return f.offshoreKm === null
+        ? "No map data"
+        : f.offshoreKm === 0
+          ? "On a mainland, or a big island like Great Britain"
+          : `On ${f.landKm2 ? `an island of about ${formatCount(Math.round(f.landKm2))} km²` : "a tiny island"}, ${Math.round(f.offshoreKm).toLocaleString("en")} km from the nearest mainland`;
   }
 }
