@@ -17,6 +17,12 @@ html {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Side padding that also clears the notch when a phone is turned sideways */
+@utility px-safe {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+
 body {
   color: var(--color-ink);
   /* Journal paper: a warm page with a faint grain and a soft vignette */
