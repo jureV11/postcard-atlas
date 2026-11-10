@@ -5,6 +5,15 @@ TypeScript, Tailwind v4, Supabase (auth, Postgres with row-level security, stora
 d3-geo for the flat map and react-globe.gl for the globe. Real friends use the live site
 every day, so stay careful. How to set up and contribute is in [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Read the spec first
+
+[docs/spec/](docs/spec/README.md) says what every feature does, the rules it must keep and
+why things are the way they are. Read [principles.md](docs/spec/principles.md) and
+[privacy.md](docs/spec/privacy.md) before any change, and the feature file for the part
+you're touching. **Every pull request that changes behaviour updates the spec in the same
+pull request**, plus a line in [decisions.md](docs/spec/decisions.md) when a choice was made.
+If the code and the spec disagree, ask instead of picking one.
+
 ## Hard rules
 
 - **Never touch production.** Only use a test Supabase project in `.env.local`. Never ask for,
