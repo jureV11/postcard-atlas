@@ -170,7 +170,7 @@ function MemberAddresses({
                 <span className="mt-0.5">
                   <Flag code={a.country_code} size={14} />
                 </span>
-                <span className="min-w-0 whitespace-pre-line">{a.address_line}</span>
+                <span className="min-w-0 whitespace-pre-line break-words">{a.address_line}</span>
               </p>
               <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                 {a.is_current ? (
@@ -238,7 +238,7 @@ function MemberAddresses({
                   <span className="mt-0.5">
                     <Flag code={a.country_code} size={12} />
                   </span>
-                  <span className="min-w-0 whitespace-pre-line">{a.address_line}</span>
+                  <span className="min-w-0 whitespace-pre-line break-words">{a.address_line}</span>
                 </p>
                 <button
                   type="button"

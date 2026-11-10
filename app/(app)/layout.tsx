@@ -18,13 +18,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   ]);
 
   return (
-    <div className="min-h-dvh">
+    // Clipped sideways: anything too wide for a phone would otherwise let the page
+    // zoom out past the screen, leaving the header covering only part of it (#44).
+    <div className="min-h-dvh overflow-x-clip">
       <header
         className="sticky top-0 z-40 bg-ink text-paper shadow-[0_8px_24px_-12px_rgb(42_38_34/0.6)]"
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
         {/* Three columns, the outer two equal, so the links sit in the middle of the screen */}
-        <div className="mx-auto flex h-14 max-w-[1720px] items-center justify-between gap-3 px-4 sm:grid sm:h-16 sm:grid-cols-[1fr_auto_1fr]">
+        <div className="mx-auto flex h-14 max-w-[1720px] items-center justify-between gap-3 px-safe sm:grid sm:h-16 sm:grid-cols-[1fr_auto_1fr]">
           <Link href="/" className="min-w-0 shrink justify-self-start">
             <Brand subtitle={group?.name} />
           </Link>
@@ -44,7 +46,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="airmail-strip" aria-hidden="true" />
       </header>
       {/* Bottom padding clears the phone tab bar */}
-      <main className="mx-auto max-w-[1720px] px-4 pb-28 pt-5 sm:pb-16 sm:pt-6">{children}</main>
+      <main className="mx-auto max-w-[1720px] px-safe pb-28 pt-5 sm:pb-16 sm:pt-6">{children}</main>
       <TabBar />
       <ServiceWorker />
     </div>

@@ -330,7 +330,8 @@ export default function GlobeView({
     [homes, oldHomeCountries, sentFrom, lift],
   );
   return (
-    <div ref={containerRef} className={`absolute inset-0 ${showNames && zoomedIn ? "globe-labels" : ""}`}>
+    // touch-none: a pinch that starts on a pin or a name zooms the globe, not the whole page
+    <div ref={containerRef} className={`absolute inset-0 touch-none ${showNames && zoomedIn ? "globe-labels" : ""}`}>
       {(!ready || !shaped) && (
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
           <div className="flex items-center gap-2.5 rounded-full border border-ink/10 bg-[#fffdf8]/95 px-4 py-2 text-sm text-ink-soft shadow-sm">
