@@ -16,8 +16,13 @@
 
 - Most use is on phones: check every change at 375 px.
 - The page uses the whole screen (`viewportFit: "cover"`), so the header pads for the
-  status bar and the tab bar for the home indicator (`env(safe-area-inset-*)`).
-- Full-width blocks on phones use `-mx-4` against the page's `px-4`.
+  status bar, the tab bar for the home indicator, and the page sides for the notch when the
+  phone is sideways (`px-safe` in `globals.css`: at least 1rem, more where the notch is).
+- **Nothing may make the page wider than the screen.** The app layout is clipped sideways
+  (`overflow-x-clip`), because anything too wide let phones zoom the page out past the
+  screen, leaving the header covering only part of the top (#44). Still keep things from
+  overflowing: long text wraps (`break-words`), and wide content scrolls inside its own box.
+- Full-width blocks on phones use `-mx-4` against the page's 1rem side padding.
 - Inputs avoid the phone's own date picker where it misbehaves (see the timeline).
 
 ## Installable app

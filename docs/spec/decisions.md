@@ -5,6 +5,8 @@ request makes a choice someone might later wonder about. Issue numbers are GitHu
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-10 | The app layout is clipped sideways, and pinching the globe only moves the globe (#44) | On phones, pinching the globe zoomed the page, and anything too wide let it zoom out past the screen, so the header only covered part of the top |
+| 2026-11-10 | `docs/spec/` is read first by every agent and updated in every pull request | Agents kept re-deriving why the code is the way it is, and could break old rules nobody mentioned |
 | 2026-11-07 | The year in review opens on last year all through January | In January the year that just ended is the one people want to look back on |
 | 2026-11-07 | Nicheness v4: "far from an airport" replaced by "out on an island" (km out to sea); weights tourism 35, distance 25 (log), population 20, island 20 | Being on an island usually means an airport nearby, so airport distance scored Vanuatu as *not* niche. Distance was overweighted |
 | 2026-11-07 | Removed the "Lost at sea" achievement | Rewarding a lost card made no sense |
