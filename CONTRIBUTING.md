@@ -33,9 +33,10 @@ anyone's real postcards.
 Open Claude Code in the project folder. Claude reads [CLAUDE.md](CLAUDE.md) on its own, which
 has the house rules. Start a session by pasting this, with your idea at the end:
 
-> Read CLAUDE.md and CONTRIBUTING.md first. Then make a new branch from the latest `main`
+> Read CLAUDE.md, CONTRIBUTING.md and docs/spec/ first. Then make a new branch from the latest `main`
 > and help me with the change below. Test it on my local server (`npm run dev`, test database
-> only), run the three checks in CLAUDE.md, and show me what changed. When I'm happy, commit,
+> only), run the three checks in CLAUDE.md, update docs/spec/ for anything that changed, and
+> show me what changed. When I'm happy, commit,
 > push the branch and open a pull request. If it needs a database change, write a new additive
 > migration, tell me to run it on my test database, and mark the pull request "Needs migration".
 >

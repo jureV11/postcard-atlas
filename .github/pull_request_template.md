@@ -8,3 +8,4 @@
 
 - [ ] `npm run typecheck`, `npm run check:client` and `npm run build` pass
 - [ ] Database changes only add things (no dropped or renamed columns or tables)
+- [ ] `docs/spec/` updated if behaviour changed (and `decisions.md` if a choice was made)
