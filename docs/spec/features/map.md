@@ -46,3 +46,6 @@ data shaping in `lib/atlas.ts`.
   the flat map (smoother) and puts your view back when done. "On its way" rings only show
   here, as history, never live. Only arrived public cards with a known arrival date.
 - Clicking a route, town or home opens a panel (`AtlasPanel.tsx`), at the bottom on phones.
+- **Pinching or dragging on the map moves the map, never the page**: `touch-none` on the
+  globe's container (so a pinch starting on a pin or a name counts too) and on the flat
+  map's SVG. Without it, pinching the globe zoomed the whole page (#44).
