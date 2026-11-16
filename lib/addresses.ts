@@ -1,8 +1,8 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { PostgrestClient } from "@supabase/postgrest-js";
 import type { Address } from "@/lib/types";
 
 /** Everyone's addresses in your group (the database only returns your group's). */
-export async function loadAddresses(supabase: SupabaseClient): Promise<Address[]> {
+export async function loadAddresses(supabase: PostgrestClient): Promise<Address[]> {
   const { data } = await supabase
     .from("member_addresses")
     .select("*")
@@ -12,7 +12,7 @@ export async function loadAddresses(supabase: SupabaseClient): Promise<Address[]
 }
 
 /** Which of your own addresses postcards were sent to (so they can't be deleted, only retired). */
-export async function loadMyAddressesInUse(supabase: SupabaseClient): Promise<string[]> {
+export async function loadMyAddressesInUse(supabase: PostgrestClient): Promise<string[]> {
   const { data, error } = await supabase.rpc("my_addresses_in_use");
   if (error) return []; // e.g. before migration 0013 — the database still refuses unsafe deletes
   return (data ?? []) as string[];

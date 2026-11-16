@@ -8,7 +8,7 @@ export function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
-/** Supabase errors aren't always `Error` instances — pull a message out of anything. */
+/** Pull a readable message from errors that are not `Error` instances. */
 export function errorMessage(err: unknown): string {
   if (err && typeof err === "object" && "message" in err) return String(err.message);
   return "Something went wrong";

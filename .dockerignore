@@ -6,6 +6,8 @@ node_modules
 .claude
 .env
 .env*.local
+/library
+/postgres
 *.tsbuildinfo
 next-env.d.ts
 *.cmd

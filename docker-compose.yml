@@ -1,28 +1,54 @@
-# Postcard Atlas
-#
-#   docker compose --env-file .env.local up --build -d    (settings in .env.local)
-#   docker compose up --build -d                          (settings in .env)
-#
-# Settings come from .env.local or .env next to this file, whichever you have.
-# Optional: HOST_PORT=3020 in that file to serve on another port.
-# Then open http://localhost:3000 (or your HOST_PORT). The database, sign-in and
-# photo storage stay on Supabase.
-
 services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: postcard
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+    volumes:
+      - ${DB_DATA_LOCATION:-./postgres}:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+      - ./supabase/migrations:/app-migrations:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postcard"]
+      interval: 5s
+      retries: 12
+    restart: unless-stopped
+  api:
+    image: postgrest/postgrest:v13.0.7
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${DB_PASSWORD:?Set DB_PASSWORD in .env}@db:5432/postcard
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${API_JWT_SECRET:?Set API_JWT_SECRET in .env}
+      PGRST_DB_POOL: 5
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
   web:
-    build:
-      context: .
-      args:
-        # Baked into the browser code at build time
-        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?Missing — run with --env-file .env.local, or put your settings in .env}
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:?Missing — run with --env-file .env.local, or put your settings in .env}
+    build: .
     image: postcard-atlas:latest
-    container_name: postcard-atlas
-    env_file:
-      - path: .env.local
-        required: false
-      - path: .env
-        required: false
+    environment:
+      DB_HOST: db
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      POSTGREST_URL: http://api:3000
+      API_JWT_SECRET: ${API_JWT_SECRET:?Set API_JWT_SECRET in .env}
+      CF_ACCESS_TEAM_DOMAIN: ${CF_ACCESS_TEAM_DOMAIN:?Set CF_ACCESS_TEAM_DOMAIN in .env}
+      CF_ACCESS_AUD: ${CF_ACCESS_AUD:?Set CF_ACCESS_AUD in .env}
+      MEDIA_ROOT: /data
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      PUSH_SECRET: ${PUSH_SECRET:-}
+      PRIDE_FLAG_NAMES: ${PRIDE_FLAG_NAMES:-}
+    volumes:
+      - ${UPLOAD_LOCATION:-./library}:/data
     ports:
-      - "${HOST_PORT:-3000}:3000"
+      - "127.0.0.1:${HOST_PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      api:
+        condition: service_started
     restart: unless-stopped

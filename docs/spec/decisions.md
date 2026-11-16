@@ -5,6 +5,7 @@ request makes a choice someone might later wonder about. Issue numbers are GitHu
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-15 | Run Postcard Atlas with local PostgreSQL, filesystem media and Cloudflare Access identity | Preserve the existing database rules and user IDs while removing hosted Supabase and app passwords |
 | 2026-11-10 | The app layout is clipped sideways, and pinching the globe only moves the globe (#44) | On phones, pinching the globe zoomed the page, and anything too wide let it zoom out past the screen, so the header only covered part of the top |
 | 2026-11-10 | `docs/spec/` is read first by every agent and updated in every pull request | Agents kept re-deriving why the code is the way it is, and could break old rules nobody mentioned |
 | 2026-11-07 | The year in review opens on last year all through January | In January the year that just ended is the one people want to look back on |

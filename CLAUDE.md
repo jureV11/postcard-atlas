@@ -1,7 +1,8 @@
 # Working on Postcard Atlas
 
-A private postcard log for a small group of friends: Next.js 15 (App Router), React 19,
-TypeScript, Tailwind v4, Supabase (auth, Postgres with row-level security, storage),
+A private postcard log for a small group of friends: Next.js (App Router), React 19,
+TypeScript, Tailwind v4, local PostgreSQL with row-level security, filesystem media,
+Cloudflare Access identity, and Docker Compose,
 d3-geo for the flat map and react-globe.gl for the globe. Real friends use the live site
 every day, so stay careful. How to set up and contribute is in [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -16,9 +17,8 @@ If the code and the spec disagree, ask instead of picking one.
 
 ## Hard rules
 
-- **Never touch production.** Only use a test Supabase project in `.env.local`. Never ask for,
-  use or write down the production keys or the `service_role` key. If something can only be
-  checked on production, say so and let the person do it.
+- **Never touch production.** Use only local Compose and a test Supabase project for migration rehearsals. Never ask for,
+  use or write down production keys or the `service_role` key. The owner runs production export and cutover.
 - **Database changes are new, numbered migrations** in `supabase/migrations/` (next number
   after the highest one there). They must only *add*: never drop or rename a column or table
   that holds data, never delete rows. Make them safe to run twice (`if not exists`,
@@ -29,11 +29,12 @@ If the code and the spec disagree, ask instead of picking one.
 - **Keep surprises safe.** Nothing about a card in transit (sender, origin, photos) may reach
   anyone but its sender until it is revealed. This is enforced in the database (RLS, the
   `postcard_feed` view, `postcard_is_public`), so check those whenever postcard data changes.
-- **No secrets in git.** `.env.local` and `*.local.sql` stay ignored.
+- **No secrets in git.** `.env`, `.env.local` and `*.local.sql` stay ignored.
 - **Server code must not call helper functions from `"use client"` files.** It crashes at
   runtime, and neither the type-check nor the build notices. Put plain helpers in `lib/`;
   client files export only components and hooks. `npm run check:client` catches this.
 - **Never push to `main` directly.** Work on a branch and open a pull request.
+- Run and test the app through Docker Compose; other run modes are unsupported.
 - Don't commit or push unless the person asks you to.
 
 ## Before calling a change done
@@ -46,8 +47,7 @@ npm run build
 
 All three must pass; CI runs the same checks on every pull request. `next build` and `tsc` can
 rewrite `tsconfig.json`; if `git status` shows it changed, restore it with
-`git checkout -- tsconfig.json`. Then look at the change in the browser on `npm run dev`
-(http://localhost:3000), signed in with a test account.
+`git checkout -- tsconfig.json`. Then look at the change through the Compose stack with a test Cloudflare Access identity.
 
 ## Style
 

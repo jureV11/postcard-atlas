@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 
-/** The avatar in the header: opens a small menu with the profile, settings and sign out. */
+/** The avatar in the header opens the profile and settings menu. */
 export function ProfileMenu({
   memberId,
   name,
@@ -85,9 +85,6 @@ export function ProfileMenu({
               Private postcards
             </Link>
           </div>
-          <form action="/auth/signout" method="post" className="border-t border-ink/10 pt-1">
-            <button className={`${item} text-stamp`}>Sign out</button>
-          </form>
         </div>
       )}
     </div>

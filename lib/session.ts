@@ -1,15 +1,13 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getIdentity } from "@/lib/identity";
 import type { Member } from "@/lib/types";
 
 /** Signed-in user plus their membership (null until they create/join a group). */
 export const getSession = cache(async () => {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await getIdentity().catch(() => redirect("/access-denied"));
 
   const { data } = await supabase.from("members").select("*").eq("user_id", user.id).maybeSingle();
   return { supabase, user, member: data as Member | null };

@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Postcard Atlas — production image (Next.js standalone server, ~150 MB).
-# Supabase stays hosted; this image only runs the website.
+# Postgres and media are provided by Docker Compose.
 
 # ─── 1. Install dependencies ────────────────────────────────────────────────
 FROM node:22-alpine AS deps
@@ -14,13 +14,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# NEXT_PUBLIC_* values are baked into the browser bundle at build time,
-# so they're passed as build args (docker-compose.yml reads them from .env.local).
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
-ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
-    NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY \
-    NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # ─── 3. Run ─────────────────────────────────────────────────────────────────
@@ -31,7 +25,7 @@ ENV NODE_ENV=production \
     PORT=3000 \
     HOSTNAME=0.0.0.0
 
-RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
+RUN addgroup -g 1001 -S nodejs && adduser -u 1001 -S nextjs -G nodejs
 COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
 # App icons and the notifications service worker (public/ isn't part of standalone)
@@ -40,5 +34,5 @@ COPY --from=build --chown=nextjs:nodejs /app/public ./public
 USER nextjs
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD wget -q -O /dev/null http://127.0.0.1:3000/login || exit 1
+  CMD wget -q -O /dev/null http://127.0.0.1:3000/api/health || exit 1
 CMD ["node", "server.js"]

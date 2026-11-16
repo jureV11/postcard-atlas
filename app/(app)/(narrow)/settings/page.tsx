@@ -4,7 +4,6 @@ import { NotificationsSettings } from "@/components/NotificationsSettings";
 import { pushPublicKey } from "@/lib/push";
 import { requireMember } from "@/lib/session";
 import { signAvatarUrls } from "@/lib/storage";
-import { PasswordForm } from "./PasswordForm";
 import { SettingsForm } from "./SettingsForm";
 
 export default async function SettingsPage() {
@@ -34,10 +33,6 @@ export default async function SettingsPage() {
 
       <section className="card">
         <NotificationsSettings publicKey={pushPublicKey()} />
-      </section>
-
-      <section className="card">
-        <PasswordForm />
       </section>
 
       <p className="text-center text-sm text-ink-soft">
