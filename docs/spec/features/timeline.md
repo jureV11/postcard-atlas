@@ -11,6 +11,9 @@ Code in `components/Timeline.tsx`, `TimelineMap.tsx`, `TripMap.tsx`, `MeetupStat
 - A photo can be removed by whoever added it **or anyone who was at that meetup**, so
   people can take down photos of themselves.
 - Write-ups: one per person per meetup, signed, only the writer can edit or delete it.
+  A write-up is dated when it was **first written** (`created_at`, which saving never
+  changes). If it was edited on a later day, a small "edited <date>" follows, so adding a
+  memory months later doesn't make the whole write-up look new, but changes still show.
 
 ## Limits
 

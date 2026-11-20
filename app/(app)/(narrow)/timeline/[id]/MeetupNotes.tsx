@@ -7,7 +7,7 @@ import { Linkify } from "@/components/Linkify";
 import type { MemberWithAvatar } from "@/lib/types";
 import { saveMeetupNote } from "../actions";
 
-export type NoteItem = { id: string; body: string; date: string; author: MemberWithAvatar | null; mine: boolean };
+export type NoteItem = { id: string; body: string; date: string; edited: string | null; author: MemberWithAvatar | null; mine: boolean };
 
 const READ_KEY = "postcard-atlas:write-ups-read"; // the write-ups you've chosen to read, on this device
 const countWords = (s: string) => (s.trim() ? s.trim().split(/\s+/).length : 0);
@@ -105,6 +105,7 @@ export function MeetupNotes({
               {/* Signed off like a letter */}
               <span>
                 — <span className="font-medium text-ink">{n.author?.display_name ?? "Someone"}</span> · {n.date}
+                {n.edited && <span className="text-xs italic"> · edited {n.edited}</span>}
               </span>
               {n.mine && (
                 <button type="button" className="ml-auto font-medium text-ink hover:underline" onClick={() => setEditing(true)}>
