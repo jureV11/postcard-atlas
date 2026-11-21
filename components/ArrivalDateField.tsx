@@ -21,6 +21,8 @@ export function ArrivalDateField({
       <label className="label" htmlFor="receivedOn">
         Date received
       </label>
+      {/* Hand-delivered cards use this as the day they were handed over (#62) */}
+      <p className="hint !mt-0 mb-1.5">The day it reached you, in the post or by hand. It doesn&apos;t have to be today.</p>
       <input
         id="receivedOn"
         type="date"

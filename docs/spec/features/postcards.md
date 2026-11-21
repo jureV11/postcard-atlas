@@ -7,7 +7,7 @@ what each person can do.
 
 1. **Logged by the sender** (`/postcards/new`, or the stamp button in the phone tab bar):
    where and when it was posted, who it's for, which of their addresses, a message and a
-   private note. `?to=<member id>` opens the form with that friend picked ("Log one →" in
+   note (up to 2,000 characters since `0025`, #61). `?to=<member id>` opens the form with that friend picked ("Log one →" in
    cards owed). Logging throws confetti with the origin country's flag.
 2. **In the post** (`in_transit`): a secret from everyone but the sender. The sender can
    take it back (delete) only while it's in the post.
@@ -35,7 +35,12 @@ what each person can do.
   the sender can undo.
 - **Hand delivered** (`0019`): the sender ticks it when the card was given in person. It's
   still a surprise until logged as arrived, but it's left out of time-in-the-post stats and
-  shows "by hand" instead of a postmark.
+  shows "by hand" instead of a postmark. The sender's date is then the day it was
+  **written**, and the recipient's arrival date is the day it was **handed over** (#62): the
+  sender often logs it before giving it, and the recipient may log it days later, so the
+  arrival form says the date doesn't have to be today. The card page shows "Written" and
+  "Handed over". The arrival form can't say it was by hand before it's revealed, because
+  the match only returns the card's date.
 - **Arrival date unknown** (`0016`): the card counts as delivered everywhere, but is left
   out of anything about timing (average days, fastest/slowest, replay, charts). No date is
   made up.
@@ -47,7 +52,7 @@ what each person can do.
 - On cards that are out of the post (arrived or lost) and that you can see.
 - Six fixed reactions: ❤️ 😍 😂 🤯 🔥 👏, each once per person; tap again to remove.
   Reactions notify nobody.
-- Comments: 1–2,000 characters, links work, edit or delete your own.
+- Comments: 1–2,000 characters, links, `**bold**` and `*italic*` work, edit or delete your own.
 - A new comment goes to the inbox and phones of the card's sender, its recipient and
   earlier commenters, only those still in the group who can see the card, and never to
   the person writing.
@@ -69,4 +74,5 @@ fastest and slowest as luggage tags), postcards grouped by month with date stamp
 newest or oldest first, search by town, country, person, month or message (accents
 ignored, only over cards you can already see), a "Lost in the post" row.
 Each postcard page shows the country outline with the town marked, the flip-over photos,
-the nicheness breakdown, reactions and comments.
+the nicheness breakdown, reactions and comments. The message and note show links,
+`**bold**` and `*italic*`; short previews (the wall, the map panel, the inbox) drop the stars.

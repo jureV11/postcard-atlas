@@ -38,17 +38,24 @@ export function TimelineMap({ places }: { places: MeetupPlace[] }) {
     };
   }, []);
 
-  // Meetups in the same town share one pin (a trip that passed through twice is listed once)
+  // Meetups in the same town share one pin (a trip that passed through twice is listed once).
+  // A pin is a full pin where a meetup starts; a place a trip only went on to is a small
+  // numbered stop, so one trip doesn't look like several meetups.
   const pins = useMemo(() => {
-    const byPlace = new Map<string, { key: string; lat: number; lng: number; meetups: MeetupPlace[] }>();
+    const byPlace = new Map<string, { key: string; lat: number; lng: number; meetups: MeetupPlace[]; starts: boolean; stop: number }>();
     for (const p of places) {
       const key = `${p.lat.toFixed(1)},${p.lng.toFixed(1)}`;
-      const pin = byPlace.get(key) ?? { key, lat: p.lat, lng: p.lng, meetups: [] };
+      const pin = byPlace.get(key) ?? { key, lat: p.lat, lng: p.lng, meetups: [], starts: false, stop: Infinity };
       if (!pin.meetups.some((m) => m.id === p.id)) pin.meetups.push(p);
+      if (p.step === 0) pin.starts = true;
+      else pin.stop = Math.min(pin.stop, p.step + 1);
       byPlace.set(key, pin);
     }
-    return [...byPlace.values()];
+    // Stops drawn first, so a full pin on the same spot stays on top
+    return [...byPlace.values()].sort((a, b) => Number(a.starts) - Number(b.starts));
   }, [places]);
+  const meetupCount = useMemo(() => new Set(places.map((p) => p.id)).size, [places]);
+  const placeCount = (id: string) => places.filter((p) => p.id === id).length;
 
   // Trips through several places: their stops in order
   const trips = useMemo(() => {
@@ -150,6 +157,8 @@ export function TimelineMap({ places }: { places: MeetupPlace[] }) {
 
   if (!places.length) return null;
   const chosen = pins.find((p) => p.key === picked);
+  // With a pin picked, everything on its meetups stays bright and the rest fades
+  const chosenIds = new Set(chosen?.meetups.map((m) => m.id));
   const zoomButton =
     "flex size-9 items-center justify-center rounded-full bg-[#fffdf8] text-lg font-semibold text-ink shadow ring-1 ring-ink/10 hover:bg-white";
 
@@ -158,7 +167,8 @@ export function TimelineMap({ places }: { places: MeetupPlace[] }) {
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-display text-xl font-semibold">Where we&apos;ve met up</h2>
         <p className="text-sm text-ink-soft">
-          {pins.length} {pins.length === 1 ? "place" : "places"} · tap a pin · scroll, pinch or + / − to zoom
+          {meetupCount} {meetupCount === 1 ? "meetup" : "meetups"} in {pins.length} {pins.length === 1 ? "place" : "places"} · tap a pin ·
+          scroll, pinch or + / − to zoom
         </p>
       </div>
       {drawing ? (
@@ -199,19 +209,28 @@ export function TimelineMap({ places }: { places: MeetupPlace[] }) {
               const [x, y] = t.apply([px, py]);
               const on = p.key === picked;
               const n = p.meetups.length;
+              const faded = !!chosen && !p.meetups.some((m) => chosenIds.has(m.id));
+              const lit = !!chosen && !faded;
               return (
                 <g
                   key={p.key}
                   role="button"
                   tabIndex={0}
-                  aria-label={`${p.meetups[0].city ?? "A place"}: ${n} ${n === 1 ? "meetup" : "meetups"}`}
+                  aria-label={
+                    p.starts
+                      ? `${p.meetups[0].city ?? "A place"}: ${n} ${n === 1 ? "meetup" : "meetups"}`
+                      : `${p.meetups[0].city ?? "A place"}: stop ${p.stop} of ${p.meetups[0].title}`
+                  }
                   className="cursor-pointer outline-none"
+                  opacity={faded ? 0.35 : 1}
                   onClick={() => setPicked(on ? null : p.key)}
                   onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setPicked(on ? null : p.key)}
                 >
                   <title>{p.meetups.map((m) => m.title).join(", ")}</title>
                   {/* A wider invisible ring, so a small pin is still easy to tap */}
                   <circle cx={x} cy={y} r={16 * unit} fill="transparent" />
+                  {p.starts ? (
+                    <>
                   <circle cx={x} cy={y} r={(on ? 11 : 9) * unit} fill="#c2503a" fillOpacity={0.18} />
                   <circle
                     cx={x}
@@ -225,6 +244,30 @@ export function TimelineMap({ places }: { places: MeetupPlace[] }) {
                     <text x={x} y={y + 3 * unit} textAnchor="middle" fontSize={8.5 * unit} fontWeight={700} fill="#fff">
                       {n}
                     </text>
+                  )}
+                    </>
+                  ) : (
+                    // A later stop of a trip: a small paper dot on the trip's line, numbered in the order we went
+                    <>
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r={(on ? 6 : 5) * unit}
+                        fill="#fffdf8"
+                        stroke={on || lit ? "#2a2622" : "#c2503a"}
+                        strokeWidth={1.3 * unit}
+                      />
+                      <text
+                        x={x}
+                        y={y + 2.4 * unit}
+                        textAnchor="middle"
+                        fontSize={6.5 * unit}
+                        fontWeight={700}
+                        fill={on || lit ? "#2a2622" : "#c2503a"}
+                      >
+                        {p.stop}
+                      </text>
+                    </>
                   )}
                 </g>
               );
@@ -254,7 +297,7 @@ export function TimelineMap({ places }: { places: MeetupPlace[] }) {
               <Link href={`/timeline/${m.id}`} className="flex items-baseline justify-between gap-3 rounded-[6px] px-2 py-2 hover:bg-paper-deep/60">
                 <span className="min-w-0 truncate font-medium">{m.title}</span>
                 <span className="shrink-0 text-sm text-ink-soft">
-                  {m.city} · {m.dates}
+                  {placeCount(m.id) > 1 ? `Trip · ${placeCount(m.id)} places` : m.city} · {m.dates}
                 </span>
               </Link>
             </li>

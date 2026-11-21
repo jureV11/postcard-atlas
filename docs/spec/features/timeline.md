@@ -39,10 +39,18 @@ meetup's own city, country and coordinates stay the **first** place, so older me
 unchanged; `stops` holds the places after it. Cards, the timeline map and the stats count
 every stop.
 
+**One meetup is one unbroken stretch together.** Travelling together counts, so a quick
+meetup in Spain before flying on together, a trip round Asia, and a friend then staying a
+few days at yours are all one meetup, with each place as a stop. If you split up and met
+again later, that's a new meetup.
+
 ## Under the timeline
 
-- Map of meetup places: one pin per place (a count when several share it), stops of a trip
-  joined by a dashed line, pins keep their size on phones. Pinch, buttons, Ctrl+scroll or
+- Map of meetup places: a full pin where each meetup starts (a count when several share
+  it); the later stops of a trip are **small numbered dots** on its dashed line, so one trip
+  never looks like several meetups. Tapping a pin highlights its meetups' trips and fades
+  the rest; the list says "Trip · N places". The heading counts meetups and places
+  separately. Pins keep their size on phones. Pinch, buttons, Ctrl+scroll or
   the wheel zoom; a plain scroll past a zoomed-out map still scrolls the page.
 - Stats: meetups, days together, places and countries, busiest year, by year, who comes
   most (shared ranks), travel buddies (every pair, the rest folded after six).
@@ -53,6 +61,7 @@ Photos (main photo, full-screen viewer with zoom, swipe and arrow keys; drag to 
 hold-then-drag on phones), a trip map, and write-ups. Other people's write-ups start
 **blurred like a spoiler** with a word count and a "Read …'s write-up" button; once read
 it stays readable on that device (`localStorage`). Your own is never blurred.
-Links in write-ups and captions work, bare or `[text](link)` (`components/Linkify.tsx`).
+Links in write-ups and captions work, bare or `[text](link)`, and so do `**bold**` and
+`*italic*` (`components/Linkify.tsx`).
 Dates use Day / Month / Year dropdowns, because the iPhone's own picker easily flips to
 a month-and-year wheel.

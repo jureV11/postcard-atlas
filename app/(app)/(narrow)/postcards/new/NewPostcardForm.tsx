@@ -149,7 +149,7 @@ export function NewPostcardForm({
         </div>
         <div>
           <label className="label" htmlFor="sentOn">
-            {handDelivered ? "Date handed over" : "Date sent"}
+            {handDelivered ? "Date written" : "Date sent"}
           </label>
           <input
             id="sentOn"
@@ -188,11 +188,11 @@ export function NewPostcardForm({
           <label className="label" htmlFor="note">
             Note <span className="font-normal text-ink-soft">(optional)</span>
           </label>
-          <input
+          <textarea
             id="note"
-            className="input"
+            className="input min-h-20"
             placeholder="e.g. Found it in a tiny shop by the harbour"
-            maxLength={500}
+            maxLength={2000}
             value={note}
             onChange={(e) => setNote(e.target.value)}
           />

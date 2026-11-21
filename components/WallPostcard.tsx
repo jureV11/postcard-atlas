@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { Flag } from "@/components/Flag";
 import { MysteryGlobe } from "@/components/Mystery";
 import { formatDate } from "@/lib/dates";
+import { plainText } from "@/lib/utils";
 import type { MemberWithAvatar, Postcard } from "@/lib/types";
 
 /** A small, steady tilt per card (from its id), like prints pinned to a wall. */
@@ -78,7 +79,7 @@ export function WallPostcard({
           {/* Back: message, postmark, stamp, address */}
           <div className="paper absolute inset-0 grid grid-cols-[1fr_1px_1fr] gap-2 rounded-[3px] border border-ink/10 p-2.5 shadow-[0_14px_28px_-16px_rgb(42_38_34/0.5)] [backface-visibility:hidden] [transform:rotateY(180deg)]">
             <p className="line-clamp-5 font-hand text-[15px] leading-[1.15] text-ink/80">
-              {card.message ? card.message : <span className="text-ink-soft">No message written down.</span>}
+              {card.message ? plainText(card.message) : <span className="text-ink-soft">No message written down.</span>}
             </p>
             <span className="bg-ink/15" aria-hidden="true" />
             <div className="flex min-w-0 flex-col">
