@@ -1,11 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Caveat, Fraunces, Inter, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const fraunces = Fraunces({ subsets: ["latin"], variable: "--font-fraunces" });
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains" });
-const hand = Caveat({ subsets: ["latin", "latin-ext"], variable: "--font-caveat" });
+const fraunces = localFont({ src: "../assets/fonts/fraunces-latin.woff2", variable: "--font-fraunces", weight: "100 900" });
+const inter = localFont({ src: "../assets/fonts/inter-latin.woff2", variable: "--font-inter", weight: "100 900" });
+const mono = localFont({ src: "../assets/fonts/jetbrains-latin.woff2", variable: "--font-jetbrains", weight: "100 800" });
+const hand = localFont({ src: "../assets/fonts/caveat-latin.woff2", variable: "--font-caveat", weight: "400 700" });
 
 export const metadata: Metadata = {
   title: "Postcard Atlas",

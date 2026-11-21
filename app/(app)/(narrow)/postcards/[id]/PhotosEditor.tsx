@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PhotoPicker } from "@/components/PhotoPicker";
-import { createClient } from "@/lib/supabase/client";
 import { uploadPostcardPhoto } from "@/lib/upload";
 import { errorMessage } from "@/lib/utils";
 import { setPostcardPhotos } from "../actions";
@@ -20,7 +19,6 @@ export function PhotosEditor({
   backUrl: string | null;
 }) {
   const router = useRouter();
-  const [supabase] = useState(createClient);
   const [front, setFront] = useState<File | null>(null);
   const [back, setBack] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -31,8 +29,8 @@ export function PhotosEditor({
     setError(null);
     try {
       const [frontPath, backPath] = await Promise.all([
-        front ? uploadPostcardPhoto(supabase, groupId, cardId, "front", front) : null,
-        back ? uploadPostcardPhoto(supabase, groupId, cardId, "back", back) : null,
+        front ? uploadPostcardPhoto(groupId, cardId, "front", front) : null,
+        back ? uploadPostcardPhoto(groupId, cardId, "back", back) : null,
       ]);
       const result = await setPostcardPhotos(cardId, frontPath, backPath);
       if (result.error) throw new Error(result.error);

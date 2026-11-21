@@ -6,7 +6,7 @@ It's built for one small group, but anyone can run their own copy. Ideas, bug re
 
 ## What it does
 
-- **Surprise mode.** A card stays a mystery while it's in the post. The recipient only sees that *something* is on its way, not who sent it or where it's from. Cards from the same trip are revealed together once they've all arrived.
+- **Surprise mode.** A card stays invisible to everyone but its sender while it's in the post. Cards from the same trip are revealed together once they've all arrived.
 - **Map and globe.** A flat map and a 3D globe show every delivered card as a route coloured like the origin country's flag. Each person has a house pin with their photo. Pick a person to see what they sent (solid lines) and received (dotted).
 - **Replay.** Watch the group's whole postcard history play out in real travel time: 1 day, 1 week or 1 month per second, with a timeline you can drag.
 - **Leaderboard.** Most countries, most kilometres travelled, and a *nicheness* score for the most off-the-beaten-path card. Tap a score to see how it was worked out.
@@ -19,9 +19,9 @@ It's built for one small group, but anyone can run their own copy. Ideas, bug re
 
 ## How it's built
 
-- [Next.js](https://nextjs.org) 15 (App Router) with React 19 and TypeScript
+- [Next.js](https://nextjs.org) 16 (App Router) with React 19 and TypeScript
 - [Tailwind CSS](https://tailwindcss.com) v4
-- [Supabase](https://supabase.com) for sign-in, the Postgres database and photo storage. Access rules (row-level security) are written in the SQL migrations.
+- Docker Compose runs local PostgreSQL, PostgREST and Next.js. Images live on disk; Cloudflare Access identifies the five enabled users. Database access rules remain in the SQL migrations.
 - [d3-geo](https://d3js.org/d3-geo) for the flat map, and [react-globe.gl](https://github.com/vasturiano/react-globe.gl) for the globe
 
 ### Nicheness score
@@ -39,29 +39,9 @@ If a number can't be found, that factor is left out and the others share its poi
 
 ## Running it yourself
 
-You'll need **Node.js 20+** and a free **Supabase** project.
+This app runs through Docker Compose behind Cloudflare Access. Copy `.env.local.example` to `.env`, set the local database and Access values, then run `docker compose up --build -d`. Add allowed emails to `auth.users` as described in [HOSTING.md](HOSTING.md). PostgreSQL and media are persisted in separate host directories. The [hosting guide](HOSTING.md) also covers importing an existing Supabase site.
 
-1. **Set up the database.** In your Supabase project, open the SQL Editor and run each file in [`supabase/migrations/`](supabase/migrations) **in number order** (`0001` to the last one). Run each one once. Together they create the tables, the access rules and the photo storage buckets.
-2. **Add your settings.** Copy `.env.local.example` to `.env.local` and fill in your project's URL and its public *anon* or *publishable* key (Supabase → Project Settings → API). Never use the `service_role` key here; the app doesn't need it.
-3. **Start it:**
-   ```bash
-   npm install
-   npm run dev
-   ```
-   Then open http://localhost:3000, create an account and start a group.
-4. **Optional: notifications.** Run `node scripts/push-keys.mjs http://localhost:3000 --env .env.local --sql push-setup.local.sql`, run the SQL file in Supabase, and restart. See [HOSTING.md](HOSTING.md).
-5. **Set up sign-in links.** In Supabase → Authentication → URL Configuration, add your site's address so password-reset and sign-up emails link back correctly.
-
-To host it, there's a ready Docker setup. See [HOSTING.md](HOSTING.md).
-
-### Useful commands
-
-| Command | What it does |
-|---|---|
-| `npm run dev` | Development server on port 3000 |
-| `npm run dev:lan` | The same, but reachable from your phone on the same Wi-Fi |
-| `npm run typecheck` | TypeScript check |
-| `npm run build` | Production build |
+For code changes, run `npm run typecheck`, `npm run check:client`, and `npm run build`. Test behavior through the Compose stack.
 
 ## Contributing
 
@@ -78,7 +58,7 @@ A few house rules:
 
 - **Database changes go in a new numbered migration** in `supabase/migrations/`. Migrations must only add things: never drop or rename a column or table that holds data, and make them safe to run twice (`if not exists`, `create or replace`).
 - **Keep surprises safe.** Nothing about a card in transit (who sent it, where from, photos) may reach anyone but the sender until it's revealed. This is enforced in the database, so check the access rules when you touch postcard data.
-- **No secrets in the repo.** `.env.local` is ignored by git; keep it that way.
+- **No secrets in the repo.** `.env` is ignored by git; keep it that way.
 - **Server pages can't call functions from `"use client"` files.** Put plain helpers in `lib/`, and keep only components and hooks in client files.
 
 ## Licence

@@ -44,7 +44,7 @@ const env = [
   `PUSH_SECRET=${secret}`,
   "",
 ].join("\n");
-const sql = `-- Run once in Supabase → SQL Editor (after migration 0017).\nupdate public.push_config set secret = '${secret}' where id = 1;\n`;
+const sql = `-- Run once on the local Compose database (after migration 0017).\nupdate public.push_config set secret = '${secret}' where id = 1;\n`;
 
 const envFile = opt("--env");
 const sqlFile = opt("--sql");
@@ -62,7 +62,7 @@ if (envFile) {
 }
 if (sqlFile) {
   await writeFile(sqlFile, sql);
-  console.log(`Wrote the SQL to ${sqlFile} — run it in Supabase → SQL Editor, then delete the file.`);
+  console.log(`Wrote the SQL to ${sqlFile} — run it with docker compose exec -T db psql -U postgres -d postcard, then delete the file.`);
 } else {
   console.log(sql);
 }

@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { PostgrestClient } from "@supabase/postgrest-js";
 import { formatDate } from "@/lib/dates";
 import { signPaths } from "@/lib/storage";
 import type { Meetup, MeetupNote, MeetupPhoto, MeetupStop, Member, Postcard } from "@/lib/types";
@@ -14,7 +14,7 @@ export type MeetupWithPhotos = Meetup & {
 };
 
 /** The group's meetups (all of them, or one), oldest first, with who was there and signed photo URLs. */
-export async function loadMeetups(supabase: SupabaseClient, id?: string): Promise<MeetupWithPhotos[]> {
+export async function loadMeetups(supabase: PostgrestClient, id?: string): Promise<MeetupWithPhotos[]> {
   let query = supabase.from("meetups").select("*, meetup_members(member_id), meetup_photos(*), meetup_notes(*)").order("starts_on");
   if (id) query = query.eq("id", id);
   const { data } = await query;

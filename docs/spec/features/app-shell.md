@@ -10,7 +10,7 @@
 - The map page can be up to 1720 px wide; every other page keeps a reading width
   (`app/(app)/(narrow)/layout.tsx`).
 - Avatar menu (`ProfileMenu.tsx`): inbox (with unread count), your profile, edit profile,
-  private postcards, sign out.
+  private postcards. Cloudflare Access handles sign-in outside the app.
 
 ## Phones
 

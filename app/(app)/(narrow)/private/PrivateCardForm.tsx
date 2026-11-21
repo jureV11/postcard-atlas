@@ -6,7 +6,6 @@ import { CitySearch } from "@/components/CitySearch";
 import { PhotoPicker } from "@/components/PhotoPicker";
 import { todayLocal } from "@/lib/dates";
 import type { City } from "@/lib/geo";
-import { createClient } from "@/lib/supabase/client";
 import { uploadPrivatePhoto } from "@/lib/upload";
 import { errorMessage } from "@/lib/utils";
 import { deletePrivateCard, savePrivateCard, setPrivatePhotos } from "./actions";
@@ -27,7 +26,6 @@ export type PrivateCardValues = {
 /** One private postcard: sent to, or received from, someone outside the group. */
 export function PrivateCardForm({ initial, userId }: { initial: PrivateCardValues; userId: string }) {
   const router = useRouter();
-  const [supabase] = useState(createClient);
   const [v, setV] = useState(initial);
   const [front, setFront] = useState<File | null>(null);
   const [back, setBack] = useState<File | null>(null);
@@ -62,8 +60,8 @@ export function PrivateCardForm({ initial, userId }: { initial: PrivateCardValue
       if (front || back) {
         setBusy("Uploading photos…");
         const [frontPath, backPath] = await Promise.all([
-          front ? uploadPrivatePhoto(supabase, userId, id, "front", front) : null,
-          back ? uploadPrivatePhoto(supabase, userId, id, "back", back) : null,
+          front ? uploadPrivatePhoto(userId, id, "front", front) : null,
+          back ? uploadPrivatePhoto(userId, id, "back", back) : null,
         ]);
         const r = await setPrivatePhotos(id, frontPath, backPath);
         if (r.error) throw new Error(`Saved, but the photos didn't: ${r.error}`);

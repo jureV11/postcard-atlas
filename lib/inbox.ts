@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { PostgrestClient } from "@supabase/postgrest-js";
 import { achievementsFor } from "@/lib/achievements";
 import { loadGroupData } from "@/lib/postcards";
 import { computeStats } from "@/lib/stats";
@@ -19,7 +19,7 @@ export type InboxMessage = {
  * inbox message for any that are new (migration 0020). Never throws: the inbox
  * mustn't break a page, e.g. before the migration has run.
  */
-export async function recordAchievements(supabase: SupabaseClient, member: Member): Promise<void> {
+export async function recordAchievements(supabase: PostgrestClient, member: Member): Promise<void> {
   try {
     const { postcards, members, membersById } = await loadGroupData(supabase, member);
     const stats = computeStats(members, postcards).get(member.id);
@@ -32,7 +32,7 @@ export async function recordAchievements(supabase: SupabaseClient, member: Membe
 }
 
 /** Unread inbox messages, not counting binned ones (0 if the inbox isn't there yet). */
-export async function unreadCount(supabase: SupabaseClient, memberId: string): Promise<number> {
+export async function unreadCount(supabase: PostgrestClient, memberId: string): Promise<number> {
   const { count } = await supabase
     .from("inbox_messages")
     .select("id", { count: "exact", head: true })
@@ -48,7 +48,7 @@ const RECENT_DAYS = 7;
  * Your achievements unlocked in the last week, by id → when. The ones you
  * already had when the inbox first checked (the "_checked" moment) don't count.
  */
-export async function recentAchievements(supabase: SupabaseClient, memberId: string): Promise<Map<string, string>> {
+export async function recentAchievements(supabase: PostgrestClient, memberId: string): Promise<Map<string, string>> {
   const { data } = await supabase.from("member_achievements").select("achievement_id, earned_at").eq("member_id", memberId);
   const rows = (data ?? []) as { achievement_id: string; earned_at: string }[];
   const checked = Date.parse(rows.find((r) => r.achievement_id === "_checked")?.earned_at ?? "");

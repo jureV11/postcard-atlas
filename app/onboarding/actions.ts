@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getIdentity } from "@/lib/identity";
 import type { City } from "@/lib/geo";
 
 type Input = {
@@ -30,10 +31,7 @@ export async function previewGroup(code: string): Promise<GroupPreview | null> {
 // client's copy of the session is stale (e.g. after signing in from another tab).
 export async function createOrJoinGroup(input: Input): Promise<{ groupId?: string; error?: string }> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Your sign-in has expired — please sign in again." };
+  const user = await getIdentity();
 
   const profileArgs = {
     p_display_name: input.displayName,
@@ -52,4 +50,11 @@ export async function createOrJoinGroup(input: Input): Promise<{ groupId?: strin
 
   if (error) return { error: error.message };
   return { groupId: data as string };
+}
+
+export async function setOnboardingAvatar(path: string): Promise<void> {
+  const user = await getIdentity();
+  const client = await createClient();
+  const { error } = await client.from("members").update({ avatar_path: path }).eq("user_id", user.id);
+  if (error) throw error;
 }

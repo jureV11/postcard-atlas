@@ -31,6 +31,7 @@ others can run their own copy, but every choice is made for this one group first
 
 5. **The database is the guard, not the UI.** Who can see or change what is enforced with
    row-level security, views and `security definer` functions in `supabase/migrations/`.
+   Local media routes apply the same visibility rules to files.
    Hiding a button is never enough on its own.
 
 6. **Phones first.** Every page must work at 375 px wide with the bottom tab bar. Check
@@ -40,7 +41,7 @@ others can run their own copy, but every choice is made for this one group first
    strip, grainy paper, stamps, postmarks, handwriting (see `app/globals.css`).
    No jargon in the UI.
 
-8. **Production is off limits to code and agents.** Only test Supabase projects are used in
+8. **Production is off limits to code and agents.** Only local Compose and test Supabase projects are used in
    development. The live database is changed by a person running a migration by hand,
    *before* the live server is updated.
 

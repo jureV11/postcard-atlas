@@ -4,6 +4,8 @@ node_modules
 out
 .env*.local
 .env
+/library/
+/postgres/
 *.tsbuildinfo
 next-env.d.ts
 .vercel

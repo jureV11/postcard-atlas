@@ -1,7 +1,7 @@
 # Privacy: who can see what
 
-The most important rules in the app. All of them are enforced **in the database**
-(`supabase/migrations/`), so a bug in a page can't leak anything. When you touch postcard
+The most important rules in the app. Data rows are protected **in the database**
+(`supabase/migrations/`), and the local media route checks the same visibility for files. When you touch postcard
 data, check the rule here and the SQL that enforces it.
 
 ## Postcards
@@ -24,8 +24,7 @@ What this means in practice:
 
 - A card in the post doesn't exist for anyone but its sender: no route, no count, no
   "something is on its way", no pulsing ring on the live map.
-- Whole rows are hidden, not just some columns. Photos (storage bucket `postcards`)
-  follow the same rule.
+- Whole rows are hidden, not just some columns. Photos on the local filesystem follow the same rule.
 - The table `postcards` can't be read directly: reads go through `postcard_feed`, writes
   through `security definer` functions that check who you are.
 
@@ -56,19 +55,18 @@ Each must use the same rule, never a looser one:
 
 - **Private postcards** (`private_postcards`, `0020`): cards sent to or from people outside
   the group. Only their owner can ever see them: not the group, not the map, not stats.
-  Storage bucket `private-postcards` is owner-only too.
+  The `private-postcards` media directory is owner-only through the media route too.
 - **Addresses** (`member_addresses`, `0012`): readable by your group only, editable by you
   only, through functions that check it's yours.
 - **Phone notification subscriptions** (`push_subscriptions`, `0017`): nobody can read the
   table. Only the server can look them up, by proving it knows `PUSH_SECRET` from its
   settings. The secret never reaches a browser.
 - **Group data in general**: everything is scoped to `my_group_id()`. People in another
-  group see nothing. Avatars live in `avatars/<group_id>/<user_id>/…`, readable by the group.
+  group see nothing. Avatars live on disk at `avatars/<group_id>/<user_id>/…`, readable by the group.
 
 ## Secrets
 
-- Development uses a test Supabase project. The production keys and the `service_role`
-  key are never used, asked for, or written down by code or agents.
-- The app only ever needs Supabase's public *anon*/*publishable* key: the rules above are
-  what protect the data, not the key.
+- Development uses local Compose and a test Supabase project for import rehearsals. Production
+  credentials and the `service_role` key are never used, asked for, or written down by agents.
+- Cloudflare Access identifies users by verified email. Only enabled local identities can use the app.
 - `.env.local`, `.env` and `*.local.sql` (e.g. push setup) stay out of git.

@@ -1,100 +1,30 @@
 # Hosting Postcard Atlas
 
-Thanks for hosting! This is a Next.js website in one Docker container. The
-database, sign-ins and photo storage live on **Supabase** (hosted, already set
-up), so there's no database to run — just this one container.
+Postcard Atlas runs with Docker Compose: Next.js, PostgreSQL, and an internal PostgREST API. Photos live in `UPLOAD_LOCATION`; PostgreSQL files live in `DB_DATA_LOCATION`. Back up **both** directories. Only the web port is published, on loopback, for your Cloudflare-protected reverse proxy or tunnel.
 
-Works on any machine with Docker + Docker Compose (Linux, macOS, Windows; x86 or ARM / Raspberry Pi).
+## First start
 
-## 1. Add the settings file
+1. Copy `.env.local.example` to `.env`. Set a URL-safe random `DB_PASSWORD`, a separate random `API_JWT_SECRET` of at least 32 characters, and your Cloudflare Access team domain and application audience. Keep `.env` private.
+2. Create the media directory and give the web container's UID permission to write it: `mkdir -p library && sudo chown 1001:1001 library`. Set `UPLOAD_LOCATION` in `.env` if you use another path.
+3. Run `docker compose up --build -d`. The database initializes from `supabase/migrations/` on its first start. Check `docker compose ps` and `docker compose logs db api web`.
+4. Add allowed users to the local database. For a new installation, use `docker compose exec db psql -U postgres -d postcard` and run `insert into auth.users(id,email,enabled) values (gen_random_uuid(), 'friend@example.com', true);` for each allowed Cloudflare email. For an import, enable the five imported emails instead: `update auth.users set enabled=true where lower(email) in ('friend1@example.com', ...);` and confirm `select id,email,enabled from auth.users;`. If a friend's Cloudflare email differs from their old Supabase email, update that user's email in this table while keeping their ID.
 
-Create a file called **`.env.local`** (or **`.env`** — either works) in this folder (next to `docker-compose.yml`)
-with the two values you were sent:
+Cloudflare Access must protect **all paths** on the site. The app verifies `Cf-Access-Jwt-Assertion` against Cloudflare's rotating signing keys and the configured audience. The web port must remain reachable only through the trusted proxy or tunnel. PostgreSQL and PostgREST have no published ports. There are no app passwords or sign-in emails.
 
-```
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_...
-```
+## Move an existing Supabase site
 
-(`.env.local.example` shows the format, plus an optional extra setting.) The key is Supabase's *public* key — it's
-safe in the browser; the database's own security rules protect the data.
+The production owner runs these steps. The agent never handles production credentials. Test the full sequence with the development Supabase project first.
 
-## 2. Start it
+1. Pause writes to the old site and take a source backup. Confirm the source has migrations through `0024` and no newer schema changes.
+2. On a trusted machine with `pg_dump`, `psql`, and the Supabase CLI, link the CLI to the source project and run `SOURCE_DATABASE_URL='...' scripts/export-supabase.sh /private/export-dir`. The URL stays in your shell, outside the repo. The export contains `public.dump`, `users.csv`, and every object in the four Storage buckets. Keep the export private.
+3. Start a **fresh** local Compose database with the new settings. Run `scripts/import-supabase.sh /private/export-dir`. It refuses a nonempty database, verifies media checksums, imports user IDs before application rows, and copies media. Compare source and destination row counts, then check representative cards, private cards, avatars, meetups, and files on disk.
+4. Enable only the five intended emails in `auth.users`. Keep the existing domain, Cloudflare Access policy, VAPID keys, and `PUSH_SECRET` if you want existing phone subscriptions to continue. Otherwise ask users to turn notifications on again. Set the local `push_config.secret` to `PUSH_SECRET` using `docker compose exec db psql`, without printing the value in logs.
+5. Switch the reverse proxy or tunnel to the new web container. Keep the old Supabase data untouched until the new site is accepted. If rolling back, pause writes again before switching traffic back; changes made after cutover are not automatically copied to Supabase.
 
-```bash
-docker compose --env-file .env.local up --build -d
-```
+The import intentionally does not copy Supabase password hashes or Storage metadata. The imported users keep their UUIDs, so postcard ownership and history remain linked. The Supabase CLI bulk Storage download uses its experimental `storage cp --recursive --remote` command. [Supabase Storage CLI](https://supabase.com/docs/reference/cli/supabase-storage-cp).
 
-First build takes a few minutes. The site is then on **port 3000**.
+## Operations
 
-- Using `.env` instead? Then it's just `docker compose up --build -d` — Docker reads `.env` by itself.
-- With `.env.local`, `--env-file .env.local` is required: these values are compiled into the site
-  at build time, and the build stops with a message if they're missing.
-- Port 3000 taken? Add `HOST_PORT=8080` (or any free port) to your settings file — no need to edit
-  `docker-compose.yml`, so updates never clash with your setup.
-- It restarts by itself after a reboot (`restart: unless-stopped`).
+Use `docker compose up --build -d` to update, `docker compose logs -f web` for logs, and `docker compose down` to stop. Do not use `down -v` during normal updates. Back up the PostgreSQL database with `pg_dump` and separately back up the media directory. A backup of PostgreSQL alone has no image bytes.
 
-## 3. Put it behind HTTPS
-
-Expose it through your usual reverse proxy with a real domain and HTTPS
-(phones need HTTPS for some features, e.g. copying invite links). For example
-with Caddy:
-
-```
-postcards.example.com {
-    reverse_proxy localhost:3000
-}
-```
-
-## 4. Send back the address
-
-Tell the site owner the final URL (e.g. `https://postcards.example.com`). They
-need to add it in **Supabase → Authentication → URL Configuration** — otherwise
-sign-in emails (password reset, new accounts) will link to the wrong place.
-
-## Updating
-
-When you get a new version, `git pull` (or replace the files, keeping your settings file) and run the
-same command again:
-
-```bash
-docker compose --env-file .env.local up --build -d
-```
-
-## Phone app and notifications (optional)
-
-The site can be installed on phones: **Add to Home Screen** (iPhone: Share button in
-Safari; Android: Chrome menu). That needs nothing on the server.
-
-Phone notifications ("your postcard arrived", "a new card is on the map") need a
-one-time setup, because they use keys only this server knows:
-
-1. Make the keys. In this folder, with Node installed:
-
-   ```bash
-   node scripts/push-keys.mjs https://postcards.example.com --env .env --sql push-setup.local.sql
-   ```
-
-   No Node on the server? The same through Docker:
-
-   ```bash
-   docker run --rm -v "$PWD":/app -w /app node:22-alpine node scripts/push-keys.mjs https://postcards.example.com --env .env --sql push-setup.local.sql
-   ```
-
-   Use your real site address, and your settings file's name (`.env` or `.env.local`).
-   This adds four lines to that file and writes `push-setup.local.sql`. Nothing secret
-   is printed; keep both files out of git and chat.
-2. Run `push-setup.local.sql` in **Supabase → SQL Editor** (after migration 0017), then delete the file.
-3. Restart with the usual `docker compose … up --build -d`.
-
-Then everyone can switch notifications on under **Profile → Notifications**. Android
-works in Chrome straight away; on iPhone (iOS 16.4+) the site must be added to the
-Home Screen and opened from there first.
-
-## Useful commands
-
-```bash
-docker compose logs -f web   # watch the logs
-docker compose ps            # status (shows "healthy" once it's up)
-docker compose down          # stop it
-```
+For a new installation with phone notifications, run `node scripts/push-keys.mjs https://your-site --env .env --sql push-setup.local.sql`, apply that SQL to the local database with `docker compose exec -T db psql -U postgres -d postcard < push-setup.local.sql`, then delete the SQL file and restart the web container. Keep the VAPID keys for the life of the site.
