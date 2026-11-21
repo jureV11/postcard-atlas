@@ -6,6 +6,7 @@ import { Flag } from "@/components/Flag";
 import { PostcardFlip } from "@/components/PostcardFlip";
 import type { CityGroup, LocatedMapCard, Selection } from "@/lib/atlas";
 import { formatDate } from "@/lib/dates";
+import { plainText } from "@/lib/utils";
 import { formatKm, haversineKm } from "@/lib/geo";
 import { destinationOf, type MemberWithAvatar } from "@/lib/types";
 
@@ -210,7 +211,7 @@ function CardDetails({
         )}
       </dl>
       {card.message && (
-        <p className="line-clamp-4 whitespace-pre-line font-display italic text-ink/80">“{card.message}”</p>
+        <p className="line-clamp-4 whitespace-pre-line font-display italic text-ink/80">“{plainText(card.message)}”</p>
       )}
       <Link href={`/postcards/${card.id}`} className="btn-ghost w-full">
         Open postcard

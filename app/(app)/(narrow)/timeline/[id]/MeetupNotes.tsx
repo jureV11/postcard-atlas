@@ -133,7 +133,7 @@ export function MeetupNotes({
               placeholder="What happened, what you'll remember… Links work too: [our video](https://youtu.be/…)"
             />
             <p className="hint -mt-1 text-right tabular-nums">
-              {words.toLocaleString("en")} {words === 1 ? "word" : "words"}
+              **<strong>bold</strong>** *<em>italic</em>* · {words.toLocaleString("en")} {words === 1 ? "word" : "words"}
               {text.length > max * 0.9 && ` · ${(max - text.length).toLocaleString("en")} characters left`}
             </p>
             {error && <p className="error">{error}</p>}

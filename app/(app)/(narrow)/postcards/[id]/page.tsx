@@ -7,6 +7,7 @@ import { MysteryGlobe } from "@/components/Mystery";
 import { NicheCard } from "@/components/NicheBreakdown";
 import { PostcardFlip } from "@/components/PostcardFlip";
 import { daysBetween, formatDate, todayLocal } from "@/lib/dates";
+import { Linkify } from "@/components/Linkify";
 import { formatKm, haversineKm } from "@/lib/geo";
 import { meetupDates } from "@/lib/meetups";
 import { withFormerLabel } from "@/lib/members";
@@ -192,11 +193,11 @@ export default async function PostcardPage({
         </div>
         <dl className="grid grid-cols-3 gap-2 text-sm">
           <div>
-            <dt className="text-ink-soft">Sent</dt>
+            <dt className="text-ink-soft">{card.hand_delivered ? "Written" : "Sent"}</dt>
             <dd className="font-medium">{formatDate(card.sent_on)}</dd>
           </div>
           <div>
-            <dt className="text-ink-soft">{arrived ? "Received" : "Status"}</dt>
+            <dt className="text-ink-soft">{arrived ? (card.hand_delivered ? "Handed over" : "Received") : "Status"}</dt>
             <dd className="font-medium">
               {card.received_on ? formatDate(card.received_on) : arrived ? "Date unknown" : lost ? "Lost" : "In transit"}
             </dd>
@@ -225,12 +226,12 @@ export default async function PostcardPage({
         <section className="card space-y-4">
           {card.message && (
             <blockquote className="whitespace-pre-line font-display text-lg italic leading-relaxed">
-              “{card.message}”
+              “<Linkify text={card.message} />”
             </blockquote>
           )}
           {card.note && (
-            <p className="text-sm text-ink-soft">
-              <span className="font-medium text-ink">Note:</span> {card.note}
+            <p className="whitespace-pre-line break-words text-sm text-ink-soft">
+              <span className="font-medium text-ink">Note:</span> <Linkify text={card.note} />
             </p>
           )}
         </section>
