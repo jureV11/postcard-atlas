@@ -1,5 +1,7 @@
 "use server";
 
+import { listFiles, removeFiles } from "@/lib/media";
+
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { notifyCardArrived } from "@/lib/push";
@@ -79,10 +81,8 @@ export async function unmarkReceived(id: string, groupId: string): Promise<Resul
   if (error) return { error: error.message };
 
   const folder = `${groupId}/${id}`;
-  const { data: files } = await supabase.storage.from("postcards").list(folder);
-  if (files?.length) {
-    await supabase.storage.from("postcards").remove(files.map((f) => `${folder}/${f.name}`));
-  }
+  const files = await listFiles(supabase, "postcards", folder);
+  if (files.length) await removeFiles(supabase, "postcards", files.map((name) => `${folder}/${name}`));
   revalidatePath("/", "layout");
   return {};
 }
@@ -181,10 +181,8 @@ export async function deletePostcard(id: string, groupId: string): Promise<Resul
 
   // Remove the photos first — once the row is gone the storage policy can't check ownership.
   const folder = `${groupId}/${id}`;
-  const { data: files } = await supabase.storage.from("postcards").list(folder);
-  if (files?.length) {
-    await supabase.storage.from("postcards").remove(files.map((f) => `${folder}/${f.name}`));
-  }
+  const files = await listFiles(supabase, "postcards", folder);
+  if (files.length) await removeFiles(supabase, "postcards", files.map((name) => `${folder}/${name}`));
 
   const { error } = await supabase.rpc("delete_postcard", { p_id: id });
   if (error) return { error: error.message };

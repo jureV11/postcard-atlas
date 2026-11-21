@@ -19,7 +19,7 @@ export function plainText(s: string): string {
   return s.replace(TEXT_STYLE, (_, bold, italic) => plainText(bold ?? italic));
 }
 
-/** Supabase errors aren't always `Error` instances — pull a message out of anything. */
+/** Pull a readable message from errors that are not `Error` instances. */
 export function errorMessage(err: unknown): string {
   if (err && typeof err === "object" && "message" in err) return String(err.message);
   return "Something went wrong";

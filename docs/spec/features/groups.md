@@ -6,7 +6,9 @@ Tables and rules from `0001` (groups, members), `0010`/`0011` (leaving), `0012`�
 
 ## Accounts and groups
 
-- Sign in with email and password (Supabase auth); password reset by email link.
+- Cloudflare Access identifies each person by verified email. Only enabled local identities
+  can use the site; there is no app password or password reset.
+- An unapproved email sees “No access yet” with a request to contact the site owner.
 - **One group per account.** After signing up you start a group or join one with its
   invite code (`/join/<code>` shows who you're about to join first).
 - Each member has a display name, a colour (no two the same in a group), an avatar and a

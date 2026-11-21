@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { PostgrestClient } from "@supabase/postgrest-js";
 import webpush from "web-push";
 
 // Phone notifications (web push), sent from the server only. Configured by
@@ -16,7 +16,7 @@ function configured(): boolean {
 }
 
 /** Sends to every phone of these members. Never throws — a failed notification mustn't break anything. */
-export async function notifyMembers(supabase: SupabaseClient, memberIds: string[], payload: Payload): Promise<void> {
+export async function notifyMembers(supabase: PostgrestClient, memberIds: string[], payload: Payload): Promise<void> {
   if (!configured() || memberIds.length === 0) return;
   try {
     webpush.setVapidDetails(
@@ -55,7 +55,7 @@ export async function notifyMembers(supabase: SupabaseClient, memberIds: string[
  * it public (it and its trip are all in), tell everyone else something new is up.
  * Nothing is ever sent about a card that's still on its way.
  */
-export async function notifyCardArrived(supabase: SupabaseClient, cardId: string): Promise<void> {
+export async function notifyCardArrived(supabase: PostgrestClient, cardId: string): Promise<void> {
   if (!configured()) return;
   const { data: card } = await supabase
     .from("postcard_feed")
