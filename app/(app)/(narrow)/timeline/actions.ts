@@ -18,6 +18,8 @@ export type MeetupInput = {
   places: City[]; // in the order you went; the first is the meetup's own city
   memberIds: string[];
   postcardId: string | null;
+  flagCodes: string[]; // countries whose flags it shows (#65); empty = the first place's
+  hadFlags: boolean; // it had flags picked before, so an empty list has to be saved to clear them
 };
 
 /** Add a meetup, or change one (anyone in the group may). Returns its id. */
@@ -42,18 +44,25 @@ export async function saveMeetup(input: MeetupInput): Promise<Result & { id?: st
     stops: rest.map(({ name, country, countryCode, lat, lng }) => ({ name, country, countryCode, lat, lng })),
     postcard_id: input.postcardId,
   };
+  // Only countries on the trip, once each. Sent only when there's something to save, so
+  // meetups still save on a database that hasn't had migration 0026 yet.
+  const countries = new Set(input.places.map((p) => p.countryCode));
+  const flagCodes = [...new Set(input.flagCodes)].filter((c) => countries.has(c));
+  const row = flagCodes.length || input.hadFlags ? { ...fields, flag_codes: flagCodes } : fields;
+  const friendly = (message: string) =>
+    message.includes("flag_codes") ? "Picking flags needs a small database update first (migration 0026)." : message;
 
   let id = input.id;
   if (id) {
-    const { error } = await supabase.from("meetups").update(fields).eq("id", id);
-    if (error) return { error: error.message };
+    const { error } = await supabase.from("meetups").update(row).eq("id", id);
+    if (error) return { error: friendly(error.message) };
   } else {
     const { data, error } = await supabase
       .from("meetups")
-      .insert({ ...fields, group_id: member.group_id, created_by: member.id })
+      .insert({ ...row, group_id: member.group_id, created_by: member.id })
       .select("id")
       .single();
-    if (error) return { error: error.message };
+    if (error) return { error: friendly(error.message) };
     id = data.id as string;
   }
 

@@ -4,9 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CitySearch } from "@/components/CitySearch";
 import { DateField } from "@/components/DateField";
+import { Flag } from "@/components/Flag";
 import { MemberPicker } from "@/components/MemberPicker";
 import type { City } from "@/lib/geo";
-import { MAX_STOPS } from "@/lib/meetups";
+import { MAX_STOPS, pickedFlags } from "@/lib/meetups";
 import type { MemberWithAvatar } from "@/lib/types";
 import { deleteMeetup, saveMeetup } from "./actions";
 
@@ -20,7 +21,55 @@ export type MeetupFormValues = {
   places: (City | null)[]; // in the order you went; an empty one is a search still to fill in
   memberIds: string[];
   postcardId: string;
+  flagCodes: string[]; // picked by hand (#65); empty = the first place's flag
 };
+
+/**
+ * A trip through several countries: which flags it shows on the timeline (#65), so a
+ * quick stop on the way doesn't stand for the whole trip. At least one stays on.
+ */
+function Flags({ places, picked, onChange }: { places: City[]; picked: string[]; onChange: (codes: string[]) => void }) {
+  const countries = [...new Map(places.map((p) => [p.countryCode, p.country])).entries()];
+  if (countries.length < 2) return null;
+  const on = pickedFlags(
+    countries.map(([code]) => code),
+    picked,
+  );
+  const toggle = (code: string) => {
+    const next = on.includes(code) ? on.filter((c) => c !== code) : [...on, code];
+    if (next.length) onChange(countries.map(([c]) => c).filter((c) => next.includes(c))); // keep the order you went
+  };
+
+  return (
+    <div>
+      <p className="label">Flags on the timeline</p>
+      <div className="flex flex-wrap gap-2">
+        {countries.map(([code, name]) => {
+          const active = on.includes(code);
+          return (
+            <button
+              key={code}
+              type="button"
+              aria-pressed={active}
+              onClick={() => toggle(code)}
+              className={`flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-sm transition ${
+                active ? "border-ink bg-ink text-paper" : "border-ink/20 text-ink-soft hover:border-ink/40 hover:text-ink"
+              }`}
+            >
+              <Flag code={code} size={14} />
+              {name || code}
+              {active && <span aria-hidden="true">✓</span>}
+            </button>
+          );
+        })}
+      </div>
+      <p className="hint">
+        Tap the countries the trip was really about. Only these count in the Countries stat, so a quick stop on the way
+        can stay off.
+      </p>
+    </div>
+  );
+}
 
 /**
  * Where it was: one city, or a trip through several in the order you went (#45).
@@ -126,6 +175,8 @@ export function MeetupForm({
       places: v.places.filter((p): p is City => !!p),
       memberIds: v.memberIds,
       postcardId: v.postcardId || null,
+      flagCodes: v.flagCodes,
+      hadFlags: initial.flagCodes.length > 0,
     });
     setBusy(false);
     if (error) return setError(error);
@@ -175,6 +226,7 @@ export function MeetupForm({
       </div>
 
       <Places places={v.places} onChange={(places) => set("places", places)} />
+      <Flags places={v.places.filter((p): p is City => !!p)} picked={v.flagCodes} onChange={(codes) => set("flagCodes", codes)} />
 
       <div>
         <p className="label">Who was there</p>

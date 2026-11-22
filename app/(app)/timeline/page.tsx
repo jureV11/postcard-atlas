@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { MeetupStats } from "@/components/MeetupStats";
 import { Timeline, type TimelineEntry } from "@/components/Timeline";
+import { WriteUpsToDo } from "@/components/WriteUpsToDo";
 import { meetupStats } from "@/lib/meetupStats";
-import { loadMeetups, mainPhoto, meetupDates, meetupPlaces, photoFocus } from "@/lib/meetups";
+import { loadMeetups, mainPhoto, meetupDates, meetupFlags, meetupPlaces, photoFocus } from "@/lib/meetups";
 import { loadGroupData } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
 
@@ -19,12 +20,17 @@ export default async function TimelinePage() {
       dates: meetupDates(m),
       startsOn: m.starts_on,
       places: meetupPlaces(m),
+      flags: meetupFlags(m),
       photoUrl: photo?.url ?? null,
       photoFocus: photo ? photoFocus(photo) : "50% 50%",
       members: m.memberIds.flatMap((id) => membersById.get(id) ?? []),
     };
   });
   const today = new Date().toISOString().slice(0, 10);
+  // Yours to write (#67): past meetups you were at, without your write-up yet
+  const todo = meetups
+    .filter((m) => m.starts_on <= today && m.memberIds.includes(member.id) && !m.notes.some((n) => n.member_id === member.id))
+    .map((m) => ({ id: m.id, title: m.title, dates: meetupDates(m) }));
 
   return (
     <div className="space-y-6">
@@ -48,6 +54,7 @@ export default async function TimelinePage() {
         </div>
       ) : (
         <>
+          <WriteUpsToDo todo={todo} className="max-w-xl" />
           <Timeline entries={entries} today={today} />
           <MeetupStats stats={meetupStats(meetups, members, today)} avatars={membersById} />
         </>

@@ -5,6 +5,9 @@ request makes a choice someone might later wonder about. Issue numbers are GitHu
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-22 | Trips pick their flags by hand, and only those countries count in the Countries stat (#65) | Stops have no dates, so the app can't tell where most time was spent; picking is quicker than typing days per stop, and a stopover shouldn't count as a country visited |
+| 2026-11-22 | The timeline filter by people shows meetups they were all at, with a "Just them" switch (#66) | Both questions come up: everything two friends did together, and the trips with only them |
+| 2026-11-22 | "Write-ups to do" is a list on the timeline and Atlas, not an inbox message (#67) | A reminder to come back to, without a notification for every past meetup |
 | 2026-11-21 | Trip stops after the first are small numbered dots on the meetup map, not full pins | Every stop looked like its own meetup |
 | 2026-11-21 | A meetup is one unbroken stretch together, travelling included; each place is a stop | So everyone logs trips the same way, and the map shows them as one |
 | 2026-11-21 | Hand-delivered cards: the sender gives the date written, the recipient the date handed over (#62) | The sender often logs it before handing it over, and the recipient may log it later |

@@ -29,6 +29,7 @@ export default async function EditMeetupPage({ params }: { params: Promise<{ id:
           places: meetupPlaces(m),
           memberIds: m.memberIds,
           postcardId: m.postcard_id ?? "",
+          flagCodes: m.flag_codes ?? [],
         }}
         // Former members who were there stay listed, so saving doesn't drop them
         members={members.filter((p) => !isFormer(p) || m.memberIds.includes(p.id))}
