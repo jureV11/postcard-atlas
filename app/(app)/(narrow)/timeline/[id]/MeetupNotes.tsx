@@ -66,7 +66,7 @@ export function MeetupNotes({
   }
 
   return (
-    <section className="space-y-4">
+    <section id="write-ups" className="scroll-mt-24 space-y-4">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="font-display text-xl font-semibold">Write-ups</h2>
         {hidden.length > 1 && (

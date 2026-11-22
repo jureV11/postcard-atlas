@@ -1,6 +1,6 @@
 # Timeline and meetups (`/timeline`)
 
-The times the group met up in person. Tables from `0020`, extended by `0021`–`0023`.
+The times the group met up in person. Tables from `0020`, extended by `0021`–`0023` and `0026`.
 Code in `components/Timeline.tsx`, `TimelineMap.tsx`, `TripMap.tsx`, `MeetupStats.tsx`,
 `lib/meetups.ts`, `lib/meetupStats.ts`, `app/(app)/(narrow)/timeline/`.
 
@@ -31,13 +31,35 @@ Code in `components/Timeline.tsx`, `TimelineMap.tsx`, `TripMap.tsx`, `MeetupStat
   resort. Faint travel doodles fill long empty stretches.
 - On phones it's newest first, and Timeline is in the tab bar.
 - Search. Meetups can be linked to postcards about them (arrived public cards only).
+- **Who was there** (#66): everyone who has been at a meetup, as avatar chips (most
+  meetups first; scrolls sideways on its own on phones). Tap people to show only the
+  meetups they were **all** at, on the line, in the search and on the map; with two or
+  more picked, a switch chooses **Anyone else too** or **Just them** (nobody else there).
+  "Show everyone" clears it. Hidden when only two people have ever met up. The stats
+  underneath stay the whole group's.
+- **Write-ups to do** (#67): above the line, the past meetups (started by today) you were
+  tagged in and haven't written about yet, newest first, each linking to its write-ups.
+  Only you see your own list (it's worked out from your write-ups, nothing is stored) and
+  one leaves it as soon as you save a write-up. Meetups still to come never show. The Atlas
+  shows the three newest under "cards owed". No inbox message or notification: it's a
+  reminder you look at, not a nudge.
 
 ## Trips (`0023`)
 
 A meetup can go through several places in order (Beijing → Xi'an → Shanghai). The
 meetup's own city, country and coordinates stay the **first** place, so older meetups are
-unchanged; `stops` holds the places after it. Cards, the timeline map and the stats count
-every stop.
+unchanged; `stops` holds the places after it. Cards, the timeline map and the places
+stat count every stop.
+
+**Flags (`0026`, #65).** A trip through several countries can pick which flags it shows
+(one or several), in the edit form under the places: tap a country to turn its flag on or
+off, at least one stays on. `flag_codes` holds the picked country codes; empty means
+nobody picked, and it shows the first place's flag as before. Picked codes that are no
+longer on the trip are ignored. The shown flags are also the countries the meetup counts
+in the **Countries** stat, so a two-hour stop on the way neither stands for the trip nor
+counts as a country visited (`meetupFlags` in `lib/meetups.ts`). The meetup page still
+lists every stop with its flag. The form only sends `flag_codes` when there is something
+to save, so meetups still save on a database that hasn't had `0026` yet.
 
 **One meetup is one unbroken stretch together.** Travelling together counts, so a quick
 meetup in Spain before flying on together, a trip round Asia, and a friend then staying a

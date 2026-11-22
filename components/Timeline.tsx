@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { Flag } from "@/components/Flag";
 import { TimelineMap } from "@/components/TimelineMap";
@@ -13,10 +13,22 @@ export type TimelineEntry = {
   dates: string;
   startsOn: string;
   places: MeetupStop[]; // in the order we went: one city, or a trip through several
+  flags: string[]; // country codes of the flags it shows: picked by hand, or the first place's (#65)
   photoUrl: string | null;
   photoFocus: string; // which part of the main photo to keep in view (CSS object-position)
   members: MemberWithAvatar[];
 };
+
+/** Its flags side by side (a trip can show several, #65). */
+function Flags({ codes, size }: { codes: string[]; size: number }) {
+  return (
+    <span className="inline-flex shrink-0 gap-1">
+      {codes.map((c) => (
+        <Flag key={c} code={c} size={size} />
+      ))}
+    </span>
+  );
+}
 
 /** "Lisbon", or a trip: "Beijing → Xi'an → Shanghai". */
 const placesLabel = (places: MeetupStop[]) => places.map((p) => p.name).join(" → ");
@@ -36,22 +48,136 @@ const SPACING = 16; // between cards side by side
  * below at their month. On phones it's a list down a vertical line, newest first.
  * Then a map of everywhere we met up.
  */
-export function Timeline({ entries, today }: { entries: TimelineEntry[]; today: string }) {
+export function Timeline({ entries: all, today }: { entries: TimelineEntry[]; today: string }) {
+  const [picked, setPicked] = useState<string[]>([]);
+  const [justThem, setJustThem] = useState(false);
+  // Only the meetups the picked people were all at (#66); "just them" also leaves out any with anyone else
+  const entries = useMemo(
+    () =>
+      picked.length
+        ? all.filter((e) => {
+            const there = new Set(e.members.map((m) => m.id));
+            return picked.every((id) => there.has(id)) && (!justThem || picked.length < 2 || there.size === picked.length);
+          })
+        : all,
+    [all, picked, justThem],
+  );
+
   return (
     <>
-      {entries.length > 1 && <TimelineSearch entries={entries} />}
-      <div className="sm:hidden">
-        <VerticalTimeline entries={entries} today={today} />
-      </div>
-      <div className="hidden sm:block">
-        <ScaledTimeline entries={entries} today={today} />
-      </div>
-      <TimelineMap
-        places={entries.flatMap((e) =>
-          e.places.map((p, step) => ({ id: e.id, title: e.title, dates: e.dates, city: p.name, lat: p.lat, lng: p.lng, step })),
-        )}
-      />
+      {all.length > 1 && (
+        <div className="mb-4 space-y-3">
+          <PeopleFilter entries={all} picked={picked} onPick={setPicked} justThem={justThem} onJustThem={setJustThem} count={entries.length} />
+          <TimelineSearch entries={entries} />
+        </div>
+      )}
+      {entries.length === 0 ? (
+        <p className="card text-center text-ink-soft">
+          {justThem && picked.length > 1 ? "No meetups with just them yet." : "They haven't all been at one meetup yet."}
+        </p>
+      ) : (
+        <>
+          <div className="sm:hidden">
+            <VerticalTimeline entries={entries} today={today} />
+          </div>
+          <div className="hidden sm:block">
+            <ScaledTimeline entries={entries} today={today} />
+          </div>
+          <TimelineMap
+            places={entries.flatMap((e) =>
+              e.places.map((p, step) => ({ id: e.id, title: e.title, dates: e.dates, city: p.name, lat: p.lat, lng: p.lng, step })),
+            )}
+          />
+        </>
+      )}
     </>
+  );
+}
+
+/**
+ * Who was there (#66): tap people to see only the meetups they were all at, with
+ * anyone else too, or "just them" for the ones with nobody else.
+ */
+function PeopleFilter({
+  entries,
+  picked,
+  onPick,
+  justThem,
+  onJustThem,
+  count,
+}: {
+  entries: TimelineEntry[];
+  picked: string[];
+  onPick: (ids: string[]) => void;
+  justThem: boolean;
+  onJustThem: (value: boolean) => void;
+  count: number;
+}) {
+  // Everyone who's been at a meetup, the most meetups first
+  const seen = new Map<string, { member: MemberWithAvatar; n: number }>();
+  for (const e of entries)
+    for (const m of e.members) seen.set(m.id, { member: m, n: (seen.get(m.id)?.n ?? 0) + 1 });
+  const people = [...seen.values()]
+    .sort((a, b) => b.n - a.n || a.member.display_name.localeCompare(b.member.display_name))
+    .map((p) => p.member);
+  if (people.length < 3) return null; // with two people every meetup has both
+  const toggle = (id: string) => onPick(picked.includes(id) ? picked.filter((p) => p !== id) : [...picked, id]);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <p className="text-xs font-medium tracking-wide text-ink-soft uppercase">Who was there</p>
+        {picked.length > 0 && (
+          <>
+            <p className="text-xs text-ink-soft">
+              {count} {count === 1 ? "meetup" : "meetups"}
+            </p>
+            <button type="button" className="text-xs font-medium text-ink hover:underline" onClick={() => onPick([])}>
+              Show everyone
+            </button>
+          </>
+        )}
+      </div>
+      {/* Scrolls sideways on its own on a phone, never the page */}
+      <ul className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
+        {people.map((m) => {
+          const on = picked.includes(m.id);
+          return (
+            <li key={m.id} className="shrink-0">
+              <button
+                type="button"
+                aria-pressed={on}
+                onClick={() => toggle(m.id)}
+                className={`flex min-h-9 items-center gap-1.5 rounded-full border py-1 pr-3 pl-1 text-sm transition ${
+                  on ? "border-ink bg-ink text-paper" : "border-ink/15 bg-[#fffdf8] text-ink-soft hover:border-ink/40 hover:text-ink"
+                }`}
+              >
+                <Avatar name={m.display_name} color={m.color} url={m.avatar_url} size={26} />
+                {m.display_name}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {picked.length >= 2 && (
+        <div className="inline-flex rounded-full border border-ink/15 bg-[#fffdf8] p-0.5 text-sm" role="group" aria-label="Who else">
+          {[
+            { value: false, label: "Anyone else too" },
+            { value: true, label: "Just them" },
+          ].map((o) => (
+            <button
+              key={o.label}
+              type="button"
+              aria-pressed={justThem === o.value}
+              onClick={() => onJustThem(o.value)}
+              className={`min-h-8 rounded-full px-3 transition ${justThem === o.value ? "bg-ink text-paper" : "text-ink-soft hover:text-ink"}`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -77,7 +203,7 @@ function TimelineSearch({ entries }: { entries: TimelineEntry[] }) {
     : [];
 
   return (
-    <div className="relative mb-4 max-w-md">
+    <div className="relative max-w-md">
       <input
         type="search"
         className="input"
@@ -101,7 +227,7 @@ function TimelineSearch({ entries }: { entries: TimelineEntry[] }) {
                 <span className="min-w-0">
                   <span className="block text-sm leading-snug font-medium break-words">{e.title}</span>
                   <span className="flex items-center gap-1.5 truncate text-xs text-ink-soft">
-                    {e.places[0] && <Flag code={e.places[0].countryCode} size={12} />}
+                    {e.flags.length > 0 && <Flags codes={e.flags} size={12} />}
                     {[placesLabel(e.places), e.dates].filter(Boolean).join(" · ")}
                   </span>
                 </span>
@@ -386,7 +512,7 @@ function Snapshot({ entry: e, future }: { entry: TimelineEntry; future: boolean 
         {e.places.length > 0 && (
           <p className="flex items-start gap-1.5 text-sm text-ink-soft">
             <span className="mt-[3px] shrink-0">
-              <Flag code={e.places[0].countryCode} size={14} />
+              <Flags codes={e.flags} size={14} />
             </span>
             <span className="min-w-0 break-words">{placesLabel(e.places)}</span>
           </p>

@@ -4,9 +4,11 @@ import { Atlas } from "@/components/atlas/Atlas";
 import { loadAddresses, loadMyAddressesInUse } from "@/lib/addresses";
 import { Avatar } from "@/components/Avatar";
 import { CardsOwed } from "@/components/CardsOwed";
+import { WriteUpsToDo } from "@/components/WriteUpsToDo";
 import { Flag } from "@/components/Flag";
 import type { MapCard } from "@/lib/atlas";
-import { formatDate } from "@/lib/dates";
+import { formatDate, todayLocal } from "@/lib/dates";
+import { writeUpsToDo } from "@/lib/meetups";
 import { cardBalances, oweYou, youOwe } from "@/lib/owe";
 import { loadGroupData } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
@@ -18,10 +20,11 @@ const WORLD_COUNTRIES = 195;
 
 export default async function MapPage() {
   const { supabase, member } = await requireMember();
-  const [{ postcards, members, membersById }, addresses, addressesInUse] = await Promise.all([
+  const [{ postcards, members, membersById }, addresses, addressesInUse, todo] = await Promise.all([
     loadGroupData(supabase, member),
     loadAddresses(supabase),
     loadMyAddressesInUse(supabase),
+    writeUpsToDo(supabase, member.id, todayLocal()),
   ]);
 
   // Hidden cards have null paths, so only revealed images get signed.
@@ -68,6 +71,7 @@ export default async function MapPage() {
 
         <aside className="space-y-4 lg:pt-11">
           <CardsOwed owe={youOwe(balances)} owed={oweYou(balances)} />
+          <WriteUpsToDo todo={todo} compact />
 
           {/* Countries tracker */}
           <section className="card space-y-3">

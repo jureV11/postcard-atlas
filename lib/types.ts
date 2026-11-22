@@ -130,6 +130,7 @@ export type Meetup = {
   created_by: string | null;
   created_at: string;
   stops?: MeetupStop[]; // the places after the first, on a trip through several (migration 0023)
+  flag_codes?: string[]; // the countries whose flags it shows, picked by hand; empty = the first place's (migration 0026)
 };
 
 /** A place on a meetup: its own city is the first one, `stops` the rest. */

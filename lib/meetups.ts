@@ -51,6 +51,45 @@ export function meetupPlaces(m: Pick<Meetup, "city" | "country" | "country_code"
   return [...first, ...(m.stops ?? [])];
 }
 
+type FlagsLike = Pick<Meetup, "city" | "country" | "country_code" | "lat" | "lng" | "stops" | "flag_codes">;
+
+/**
+ * The flags a meetup shows (#65), in the order you went: the countries picked by hand,
+ * or the first place's when none were (or none of the picked ones are on it any more).
+ * These are also the countries it counts in the stats, so a two-hour stop on the way
+ * doesn't count as a country visited.
+ */
+export function meetupFlags(m: FlagsLike): string[] {
+  return pickedFlags(
+    meetupPlaces(m).map((p) => p.countryCode),
+    m.flag_codes ?? [],
+  );
+}
+
+/** The same rule from a list of country codes in order (the edit form uses it too). */
+export function pickedFlags(countryCodes: string[], picked: string[]): string[] {
+  const countries = [...new Set(countryCodes)];
+  const chosen = countries.filter((c) => picked.includes(c));
+  return chosen.length ? chosen : countries.slice(0, 1);
+}
+
+/** Past meetups you were at and haven't written about yet (#67), oldest first. Only you see these. */
+export async function writeUpsToDo(
+  supabase: PostgrestClient,
+  memberId: string,
+  today: string,
+): Promise<{ id: string; title: string; dates: string }[]> {
+  const [{ data: tagged }, { data: written }] = await Promise.all([
+    supabase.from("meetup_members").select("meetup_id").eq("member_id", memberId),
+    supabase.from("meetup_notes").select("meetup_id").eq("member_id", memberId),
+  ]);
+  const done = new Set((written ?? []).map((n) => n.meetup_id as string));
+  const ids = (tagged ?? []).map((t) => t.meetup_id as string).filter((id) => !done.has(id));
+  if (!ids.length) return [];
+  const { data } = await supabase.from("meetups").select("id, title, starts_on, ends_on").in("id", ids).lte("starts_on", today).order("starts_on");
+  return ((data ?? []) as Pick<Meetup, "id" | "title" | "starts_on" | "ends_on">[]).map((m) => ({ id: m.id, title: m.title, dates: meetupDates(m) }));
+}
+
 /** "12 Mar 2025" or "12–15 Mar 2025" or "30 Dec 2024 – 2 Jan 2025". */
 export function meetupDates(m: Pick<Meetup, "starts_on" | "ends_on">): string {
   const fmt = (d: string, opts: Intl.DateTimeFormatOptions) => {
