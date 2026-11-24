@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PhotoPicker } from "@/components/PhotoPicker";
 import { todayLocal } from "@/lib/dates";
-import { createClient } from "@/lib/supabase/client";
 import { uploadPostcardPhoto } from "@/lib/upload";
 import { errorMessage } from "@/lib/utils";
 import { ArrivalDateField } from "@/components/ArrivalDateField";
@@ -22,7 +21,6 @@ export function ReceiveForm({
   needsMessage: boolean;
 }) {
   const router = useRouter();
-  const [supabase] = useState(createClient);
   const [receivedOn, setReceivedOn] = useState("");
   const [dateUnknown, setDateUnknown] = useState(false);
   const [today, setToday] = useState<string | undefined>(undefined);
@@ -47,8 +45,8 @@ export function ReceiveForm({
       if (front || back) {
         setStatus("Uploading photos…");
         const [frontPath, backPath] = await Promise.all([
-          front ? uploadPostcardPhoto(supabase, groupId, cardId, "front", front) : null,
-          back ? uploadPostcardPhoto(supabase, groupId, cardId, "back", back) : null,
+          front ? uploadPostcardPhoto(groupId, cardId, "front", front) : null,
+          back ? uploadPostcardPhoto(groupId, cardId, "back", back) : null,
         ]);
         const photos = await setPostcardPhotos(cardId, frontPath, backPath);
         if (photos.error) throw new Error(photos.error);

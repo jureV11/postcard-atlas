@@ -6,6 +6,15 @@ request makes a choice someone might later wonder about. Issue numbers are GitHu
 | Date | Decision | Why |
 |---|---|---|
 | 2026-11-24 | Atlas runs as the atlas account with rootless Podman and the Docker Compose provider | The collaborator can rebuild and manage Atlas without host Docker or sudo access. User systemd services provide boot startup and health checks |
+| 2026-11-22 | Trips pick their flags by hand, and only those countries count in the Countries stat (#65) | Stops have no dates, so the app can't tell where most time was spent; picking is quicker than typing days per stop, and a stopover shouldn't count as a country visited |
+| 2026-11-22 | The timeline filter by people shows meetups they were all at, with a "Just them" switch (#66) | Both questions come up: everything two friends did together, and the trips with only them |
+| 2026-11-22 | "Write-ups to do" is a list on the timeline and Atlas, not an inbox message (#67) | A reminder to come back to, without a notification for every past meetup |
+| 2026-11-21 | Trip stops after the first are small numbered dots on the meetup map, not full pins | Every stop looked like its own meetup |
+| 2026-11-21 | A meetup is one unbroken stretch together, travelling included; each place is a stop | So everyone logs trips the same way, and the map shows them as one |
+| 2026-11-21 | Hand-delivered cards: the sender gives the date written, the recipient the date handed over (#62) | The sender often logs it before handing it over, and the recipient may log it later |
+| 2026-11-21 | Postcard notes up to 2,000 characters, as a text box (#61) | 500 was too short |
+| 2026-11-21 | `**bold**` and `*italic*` wherever links already work, plus postcard messages and notes (#56) | Asked for by the group; stars only count when they hug the words, so maths stays as typed |
+| 2026-11-20 | Write-ups show the date first written, plus "edited <date>" when changed on a later day | Adding something months later made the whole write-up look new; hiding edits completely would let a write-up change unseen after others read it |
 | 2026-11-15 | Run Postcard Atlas with local PostgreSQL, filesystem media and Cloudflare Access identity | Preserve the existing database rules and user IDs while moving persistence onto the home server and removing app passwords |
 | 2026-11-10 | The app layout is clipped sideways, and pinching the globe only moves the globe (#44) | On phones, pinching the globe zoomed the page, and anything too wide let it zoom out past the screen, so the header only covered part of the top |
 | 2026-11-10 | `docs/spec/` is read first by every agent and updated in every pull request | Agents kept re-deriving why the code is the way it is, and could break old rules nobody mentioned |

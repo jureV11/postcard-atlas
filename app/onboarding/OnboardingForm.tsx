@@ -4,14 +4,12 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProfileFields, type ProfileValues } from "@/components/ProfileFields";
 import { firstFreeColor, MEMBER_COLORS } from "@/lib/colors";
-import { createClient } from "@/lib/supabase/client";
 import { uploadAvatar } from "@/lib/upload";
 import { errorMessage } from "@/lib/utils";
-import { createOrJoinGroup, previewGroup, type GroupPreview as Preview } from "./actions";
+import { createOrJoinGroup, previewGroup, setOnboardingAvatar, type GroupPreview as Preview } from "./actions";
 
 export function OnboardingForm({ userId, initialCode }: { userId: string; initialCode: string }) {
   const router = useRouter();
-  const [supabase] = useState(createClient);
   const [mode, setMode] = useState<"create" | "join">(initialCode ? "join" : "create");
   const [groupName, setGroupName] = useState("");
   const [code, setCode] = useState(initialCode);
@@ -79,8 +77,8 @@ export function OnboardingForm({ userId, initialCode }: { userId: string; initia
 
       if (profile.avatarFile) {
         try {
-          const path = await uploadAvatar(supabase, groupId, userId, profile.avatarFile);
-          await supabase.from("members").update({ avatar_path: path }).eq("user_id", userId);
+          const path = await uploadAvatar(groupId, userId, profile.avatarFile);
+          await setOnboardingAvatar(path);
         } catch {
           // Membership exists already; the photo can be added from the profile page.
         }

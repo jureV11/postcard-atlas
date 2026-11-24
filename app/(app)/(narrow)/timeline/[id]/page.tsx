@@ -142,7 +142,9 @@ export default async function MeetupPage({ params }: { params: Promise<{ id: str
         notes={m.notes.map((n) => ({
           id: n.id,
           body: n.body,
-          date: formatDate(n.updated_at.slice(0, 10)),
+          // Dated when first written; a later edit only adds a small "edited" note
+          date: formatDate(n.created_at.slice(0, 10)),
+          edited: n.updated_at.slice(0, 10) > n.created_at.slice(0, 10) ? formatDate(n.updated_at.slice(0, 10)) : null,
           author: membersById.get(n.member_id) ?? null,
           mine: n.member_id === member.id,
         }))}

@@ -4,10 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ProfileFields, type ProfileValues } from "@/components/ProfileFields";
-import { createClient } from "@/lib/supabase/client";
 import type { Member } from "@/lib/types";
 import { uploadAvatar } from "@/lib/upload";
 import { errorMessage } from "@/lib/utils";
+import { removePendingAvatar, saveProfile } from "./actions";
 
 export function SettingsForm({
   member,
@@ -19,7 +19,6 @@ export function SettingsForm({
   takenColors: string[];
 }) {
   const router = useRouter();
-  const [supabase] = useState(createClient);
   const [profile, setProfile] = useState<ProfileValues>({
     displayName: member.display_name,
     color: member.color,
@@ -49,33 +48,21 @@ export function SettingsForm({
     try {
       if (profile.avatarFile) {
         // Your own, current membership — only former members have no account attached.
-        newPath = await uploadAvatar(supabase, member.group_id, member.user_id!, profile.avatarFile);
+        newPath = await uploadAvatar(member.group_id, member.user_id!, profile.avatarFile);
       }
 
-      const { error } = await supabase
-        .from("members")
-        .update({
-          // Home now follows your current address (Map page → Addresses).
-          display_name: displayName,
-          color: profile.color,
-          ...(newPath ? { avatar_path: newPath } : {}),
-        })
-        .eq("id", member.id);
+      const { error, code } = await saveProfile(displayName, profile.color, newPath);
 
       if (error) {
-        if (error.code === "23505") throw new Error("Someone just took that colour — pick another.");
-        throw error;
-      }
-
-      if (newPath && member.avatar_path) {
-        await supabase.storage.from("avatars").remove([member.avatar_path]);
+        if (code === "23505") throw new Error("Someone just took that colour — pick another.");
+        throw new Error(error);
       }
 
       setProfile((p) => ({ ...p, avatarFile: null }));
       setSaved(true);
       router.refresh();
     } catch (err) {
-      if (newPath) await supabase.storage.from("avatars").remove([newPath]);
+      if (newPath) await removePendingAvatar(newPath);
       setError(errorMessage(err));
     } finally {
       setBusy(false);

@@ -1,5 +1,6 @@
 import type { InboxMessage } from "@/lib/inbox";
 import { requireMember } from "@/lib/session";
+import { plainText } from "@/lib/utils";
 import { deleteMessage, markInboxRead, restoreMessage, setMessageRead } from "./actions";
 
 const ICONS: Record<InboxMessage["kind"], string> = { arrived: "📬", achievement: "🏅", meetup: "🗓️", comment: "💬" };
@@ -66,7 +67,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
                     <span className="truncate font-medium">{m.title}</span>
                     {!m.read_at && <span className="shrink-0 rounded-full bg-stamp px-1.5 text-[10px] font-bold text-white uppercase">New</span>}
                   </span>
-                  <span className="block text-sm text-ink-soft">{m.body}</span>
+                  <span className="block text-sm text-ink-soft">{plainText(m.body)}</span>
                   <span className="mt-0.5 block text-xs text-ink-soft/80">{when(m.created_at)}</span>
                 </span>
               </>

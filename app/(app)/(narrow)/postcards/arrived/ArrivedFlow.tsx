@@ -44,7 +44,7 @@ export function ArrivedFlow({
     return (
       <div className="space-y-4">
         <p className="rounded-xl bg-paper-deep px-4 py-3 text-sm">
-          <strong>Found it!</strong> The postcard {sender?.display_name} sent on {formatDate(match.sentOn)}. Add the
+          <strong>Found it!</strong> The postcard from {sender?.display_name}, dated {formatDate(match.sentOn)}. Add the
           date and photos to reveal it.
         </p>
         <section className="card">

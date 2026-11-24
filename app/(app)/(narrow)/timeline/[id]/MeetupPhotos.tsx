@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Linkify } from "@/components/Linkify";
-import { createClient } from "@/lib/supabase/client";
 import { uploadMeetupPhoto } from "@/lib/upload";
 import { errorMessage } from "@/lib/utils";
 import {
@@ -46,7 +45,6 @@ export function MeetupPhotos({
   max: number;
 }) {
   const router = useRouter();
-  const [supabase] = useState(createClient);
   const input = useRef<HTMLInputElement>(null);
   const [shownId, setShownId] = useState<string | null>(null); // by id, so it stays put when the order changes
   const [busy, setBusy] = useState<string | null>(null);
@@ -146,7 +144,7 @@ export function MeetupPhotos({
       const paths: string[] = [];
       for (const [i, file] of picked.entries()) {
         setBusy(picked.length > 1 ? `Uploading ${i + 1} of ${picked.length}…` : "Uploading…");
-        paths.push(await uploadMeetupPhoto(supabase, groupId, meetupId, file));
+        paths.push(await uploadMeetupPhoto(groupId, meetupId, file));
       }
       const { error } = await addMeetupPhotos(meetupId, paths);
       if (error) throw new Error(error);

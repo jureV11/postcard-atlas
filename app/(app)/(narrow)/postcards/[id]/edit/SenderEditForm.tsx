@@ -113,7 +113,7 @@ export function SenderEditForm({
         </div>
         <div>
           <label className="label" htmlFor="sentOn">
-            {handDelivered ? "Date handed over" : "Date sent"}
+            {handDelivered ? "Date written" : "Date sent"}
           </label>
           <input
             id="sentOn"
@@ -145,7 +145,7 @@ export function SenderEditForm({
           <label className="label" htmlFor="note">
             Note <span className="font-normal text-ink-soft">(optional)</span>
           </label>
-          <input id="note" className="input" maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} />
+          <textarea id="note" className="input min-h-20" maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
       </section>
 

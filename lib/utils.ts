@@ -8,7 +8,18 @@ export function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
-/** Supabase errors aren't always `Error` instances — pull a message out of anything. */
+/**
+ * **bold** and *italic* in written text (#56): on one line, and only when the stars hug
+ * the words, so "5 * 3 * 2" stays as it is. Shown by `components/Linkify.tsx`.
+ */
+export const TEXT_STYLE = /\*\*(?=\S)([^\n]*?\S)\*\*|\*(?=[^\s*])([^*\n]*?[^\s*])\*/g;
+
+/** Written text without its bold and italic stars, for short previews. */
+export function plainText(s: string): string {
+  return s.replace(TEXT_STYLE, (_, bold, italic) => plainText(bold ?? italic));
+}
+
+/** Pull a readable message from errors that are not `Error` instances. */
 export function errorMessage(err: unknown): string {
   if (err && typeof err === "object" && "message" in err) return String(err.message);
   return "Something went wrong";

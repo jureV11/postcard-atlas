@@ -1,8 +1,8 @@
-import { meetupPlaces } from "@/lib/meetups";
+import { meetupFlags, meetupPlaces } from "@/lib/meetups";
 import type { YearBar } from "@/lib/passport";
 import type { Meetup, Member } from "@/lib/types";
 
-type MeetupLike = Pick<Meetup, "starts_on" | "ends_on" | "city" | "country" | "country_code" | "lat" | "lng" | "stops"> & {
+type MeetupLike = Pick<Meetup, "starts_on" | "ends_on" | "city" | "country" | "country_code" | "lat" | "lng" | "stops" | "flag_codes"> & {
   memberIds: string[];
 };
 
@@ -53,9 +53,9 @@ export function meetupStats(meetups: MeetupLike[], members: Member[], today: str
     years,
     busiest: years.length ? years.reduce((b, y) => (y.count > b.count ? y : b)) : null,
     upcoming: meetups.length - past.length,
-    // Every stop of a trip counts
+    // Every stop of a trip counts as a place; as a country only if picked for its flags (#65)
     places: new Set(past.flatMap((m) => meetupPlaces(m).map((p) => `${p.name}|${p.countryCode}`))).size,
-    countries: new Set(past.flatMap((m) => meetupPlaces(m).map((p) => p.countryCode))).size,
+    countries: new Set(past.flatMap((m) => meetupFlags(m))).size,
     days: past.reduce((sum, m) => sum + dayCount(m), 0),
     attendance: current
       .map((member) => ({ member, count: count.get(member.id) ?? 0 }))

@@ -3,7 +3,7 @@ import { meetupPlaces } from "@/lib/meetups";
 import { cardKm, computeStats, groupStats, type CountryTally } from "@/lib/stats";
 import { isLocated, type LocatedPostcard, type Meetup, type MeetupStop, type Member, type Postcard } from "@/lib/types";
 
-export type ReviewMeetup = Pick<Meetup, "id" | "title" | "starts_on" | "ends_on" | "city" | "country" | "country_code" | "lat" | "lng" | "stops"> & {
+export type ReviewMeetup = Pick<Meetup, "id" | "title" | "starts_on" | "ends_on" | "city" | "country" | "country_code" | "lat" | "lng" | "stops" | "flag_codes"> & {
   memberIds: string[];
 };
 

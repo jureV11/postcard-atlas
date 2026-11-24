@@ -8,7 +8,8 @@ export function HandDeliveredField({ checked, onChange }: { checked: boolean; on
       <span>
         Hand delivered
         <span className="block text-xs text-ink-soft">
-          Given in person instead of posted. It still counts — just not in the time-in-the-post stats.
+          Given in person instead of posted. Put the day you wrote it: they add the day you handed it over when
+          they log it. It still counts — just not in the time-in-the-post stats.
         </span>
       </span>
     </label>

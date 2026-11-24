@@ -1,5 +1,7 @@
 "use server";
 
+import { removeFiles } from "@/lib/media";
+
 import { revalidatePath } from "next/cache";
 import type { City } from "@/lib/geo";
 import { requireMember } from "@/lib/session";
@@ -57,7 +59,7 @@ export async function setPrivatePhotos(id: string, frontPath: string | null, bac
   if (error) return { error: error.message };
 
   const replaced = [frontPath && card.front_path, backPath && card.back_path].filter((p): p is string => !!p);
-  if (replaced.length) await supabase.storage.from("private-postcards").remove(replaced);
+  if (replaced.length) await removeFiles(supabase, "private-postcards", replaced);
   revalidatePath("/private", "layout");
   return {};
 }
@@ -67,7 +69,7 @@ export async function deletePrivateCard(id: string): Promise<Result> {
   const { data: card } = await supabase.from("private_postcards").select("front_path, back_path").eq("id", id).single();
   if (!card) return { error: "That postcard is already gone." };
   const paths = [card.front_path, card.back_path].filter((p): p is string => !!p);
-  if (paths.length) await supabase.storage.from("private-postcards").remove(paths);
+  if (paths.length) await removeFiles(supabase, "private-postcards", paths);
   const { error } = await supabase.from("private_postcards").delete().eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/private", "layout");

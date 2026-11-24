@@ -4,7 +4,7 @@ import { Flag } from "@/components/Flag";
 import { StatTile } from "@/components/StatTile";
 import { formatDate } from "@/lib/dates";
 import { formatKm } from "@/lib/geo";
-import { meetupDates } from "@/lib/meetups";
+import { meetupDates, meetupFlags } from "@/lib/meetups";
 import { loadGroupData } from "@/lib/postcards";
 import { requireMember } from "@/lib/session";
 import type { LocatedPostcard, MemberWithAvatar } from "@/lib/types";
@@ -19,7 +19,7 @@ export default async function YearInReviewPage({ searchParams }: { searchParams:
   const [{ postcards, members, membersById }, { data: group }, { data: meetupRows }] = await Promise.all([
     loadGroupData(supabase, member),
     supabase.from("groups").select("name").eq("id", member.group_id).single(),
-    supabase.from("meetups").select("id, title, starts_on, ends_on, city, country, country_code, lat, lng, stops, meetup_members(member_id)"),
+    supabase.from("meetups").select("*, meetup_members(member_id)"),
   ]);
   const meetups: ReviewMeetup[] = ((meetupRows ?? []) as (Omit<ReviewMeetup, "memberIds"> & { meetup_members: { member_id: string }[] })[]).map(
     ({ meetup_members, ...m }) => ({ ...m, memberIds: meetup_members.map((x) => x.member_id) }),
@@ -254,7 +254,15 @@ export default async function YearInReviewPage({ searchParams }: { searchParams:
                 {r.meetups.map((m) => (
                   <li key={m.id}>
                     <Link href={`/timeline/${m.id}`} className="card flex items-center gap-3 p-4 transition hover:bg-white">
-                      {m.places[0] ? <Flag code={m.places[0].countryCode} size={22} /> : <span aria-hidden="true">✶</span>}
+                      {m.places[0] ? (
+                        <span className="flex shrink-0 gap-1">
+                          {meetupFlags(m).map((c) => (
+                            <Flag key={c} code={c} size={22} />
+                          ))}
+                        </span>
+                      ) : (
+                        <span aria-hidden="true">✶</span>
+                      )}
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-medium">{m.title}</span>
                         <span className="block truncate text-xs text-ink-soft">
