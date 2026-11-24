@@ -1,0 +1,7 @@
+services:
+  db:
+    image: docker.io/library/postgres:17-alpine
+  api:
+    image: docker.io/postgrest/postgrest:v13.0.7
+  web:
+    image: localhost/postcard-atlas:latest
