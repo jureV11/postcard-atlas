@@ -13,6 +13,8 @@ unknown arrival date or handed over in person count, but not in anything about t
 - Postcards **by year** posted, not by month (monthly bars looked empty). With more than
   10 years, the latest 10 show and a slider goes back.
 - Achievements leaderboard: who has the most badges, shared places on ties, rarest first.
+  Each row shows as many seals as fit its width, then "+N" for the rest, never clipped
+  (`components/SealRow.tsx`, #71).
 - A button to the year in review.
 
 ## Nicheness

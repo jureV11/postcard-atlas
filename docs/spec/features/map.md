@@ -6,10 +6,12 @@ data shaping in `lib/atlas.ts`.
 ## Layout
 
 - Desktop: addresses on the left, the map in the middle (it takes all the extra width,
-  page up to 1720 px), small stats on the right (280 px): cards owed, write-ups to do (#67), countries reached,
-  mini leaderboard, latest arrivals.
-- Phones: one column; the map is full width, edge to edge. "Log a postcard" is hidden next
-  to the title because the tab bar's stamp button does it; "A postcard arrived!" stays.
+  page up to 1720 px), small stats on the right (280 px): cards owed, countries reached,
+  mini leaderboard, write-ups to do (#67, #69), latest arrivals.
+- Phones: one column that never grows wider than the screen (#44); the map is full width,
+  edge to edge, and the person chips wrap onto more lines so every name can be tapped.
+  "Log a postcard" is hidden next to the title because the tab bar's stamp button does it;
+  "A postcard arrived!" stays.
 
 ## Two views
 

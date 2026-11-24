@@ -61,8 +61,9 @@ export default async function MapPage() {
         </div>
       </div>
 
-      {/* Addresses on the left, the map in the middle (it gets all the extra width), stats on the right */}
-      <div className="grid gap-6 lg:grid-cols-[auto_minmax(0,1fr)_280px]">
+      {/* Addresses on the left, the map in the middle (it gets all the extra width), stats on the right.
+          On phones one column that never grows past the screen: a long row inside used to widen it (#44). */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[auto_minmax(0,1fr)_280px]">
         <div className="lg:pt-11">
           <AddressesPanel members={members} addresses={addresses} meId={member.id} inUse={addressesInUse} />
         </div>
@@ -71,7 +72,6 @@ export default async function MapPage() {
 
         <aside className="space-y-4 lg:pt-11">
           <CardsOwed owe={youOwe(balances)} owed={oweYou(balances)} />
-          <WriteUpsToDo todo={todo} compact />
 
           {/* Countries tracker */}
           <section className="card space-y-3">
@@ -133,6 +133,9 @@ export default async function MapPage() {
               ))}
             </ol>
           </section>
+
+          {/* Your meetups still to write about (#67), between the leaderboard and the latest arrivals (#69) */}
+          <WriteUpsToDo todo={todo} compact />
 
           {/* Latest arrivals */}
           {recent.length > 0 && (
