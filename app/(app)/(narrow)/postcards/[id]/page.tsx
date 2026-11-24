@@ -108,7 +108,7 @@ export default async function PostcardPage({
         </p>
       )}
 
-      <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,1fr)_260px]">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 sm:grid-cols-[minmax(0,1fr)_260px]">
         <div>
           <h1 className="flex items-center gap-3 font-display text-3xl font-semibold tracking-tight">
             <Flag code={card.from_country_code} size={32} />
