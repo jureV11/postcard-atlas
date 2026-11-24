@@ -14,7 +14,8 @@ export function MemberFilter({
 }) {
   const chip = "flex shrink-0 items-center gap-2 rounded-full border py-1 text-sm font-medium transition";
   return (
-    <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
+    // Wraps onto more lines on phones too, so every name can be tapped
+    <div className="flex flex-wrap gap-2">
       <button
         type="button"
         onClick={() => onChange(null)}

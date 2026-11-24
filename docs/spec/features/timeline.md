@@ -41,7 +41,7 @@ Code in `components/Timeline.tsx`, `TimelineMap.tsx`, `TripMap.tsx`, `MeetupStat
   tagged in and haven't written about yet, newest first, each linking to its write-ups.
   Only you see your own list (it's worked out from your write-ups, nothing is stored) and
   one leaves it as soon as you save a write-up. Meetups still to come never show. The Atlas
-  shows the three newest under "cards owed". No inbox message or notification: it's a
+  shows the three newest between the leaderboard and the latest arrivals (#69). No inbox message or notification: it's a
   reminder you look at, not a nudge.
 
 ## Trips (`0023`)

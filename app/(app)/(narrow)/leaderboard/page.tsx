@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { AchievementSeal } from "@/components/AchievementSeal";
 import { Avatar } from "@/components/Avatar";
 import { Flag } from "@/components/Flag";
 import { NicheRow } from "@/components/NicheBreakdown";
 import { GroupPassport } from "@/components/passport/GroupPassport";
+import { SealRow } from "@/components/SealRow";
 import { achievementsFor } from "@/lib/achievements";
 import { formatKm } from "@/lib/geo";
 import { nicheLeaders, nicheScores, type NicheScore } from "@/lib/niche";
@@ -18,7 +18,6 @@ import { formatCount } from "@/lib/utils";
 
 const MEDALS: Record<number, string> = { 1: "#d4a017", 2: "#9aa3a8", 3: "#b07a4a" };
 const MAX_FLAGS = 10;
-const MAX_SEALS = 5; // rarest first, then "+N"
 
 export default async function LeaderboardPage() {
   const { supabase, member: me } = await requireMember();
@@ -148,14 +147,7 @@ export default async function LeaderboardPage() {
                     {m.id === me.id && <span className="ml-1.5 text-xs font-normal text-ink-soft">(you)</span>}
                   </span>
                   {earned.length ? (
-                    <span className="mt-0.5 flex items-center gap-0.5 [&_svg]:size-7">
-                      {earned.slice(0, MAX_SEALS).map((a) => (
-                        <span key={a.id} title={`${a.name}${holders.get(a.id) === 1 ? " · only one with it" : ""}`}>
-                          <AchievementSeal id={a.id} earned />
-                        </span>
-                      ))}
-                      {earned.length > MAX_SEALS && <span className="ml-1 text-xs text-ink-soft">+{earned.length - MAX_SEALS}</span>}
-                    </span>
+                    <SealRow seals={earned.map((a) => ({ id: a.id, title: `${a.name}${holders.get(a.id) === 1 ? " · only one with it" : ""}` }))} />
                   ) : (
                     <span className="block text-xs text-ink-soft">None yet</span>
                   )}
