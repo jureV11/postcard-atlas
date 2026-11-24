@@ -88,6 +88,8 @@ Links in write-ups and captions work, bare or `[text](link)`, and so do `**bold*
 `*italic*` (`components/Linkify.tsx`).
 Dates use Day / Month / Year dropdowns, because the iPhone's own picker easily flips to
 a month-and-year wheel.
+On phones the page never grows wider than the screen: the row of thumbnails scrolls
+sideways on its own, and "+ Add photos or videos" sits under it so it's always in reach.
 
 ## Videos (`0028`, #55)
 

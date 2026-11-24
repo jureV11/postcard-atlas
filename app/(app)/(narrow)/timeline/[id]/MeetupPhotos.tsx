@@ -544,19 +544,27 @@ export function MeetupPhotos({
               ? `${photos.length} of ${max} photos and videos`
               : `No photos yet: add up to ${max} photos and videos (each video up to 500 MB).`)}
         </p>
-        {photos.length > 1 && !arranging && (
-          <button
-            type="button"
-            className="text-sm font-medium text-ink hover:underline"
-            disabled={!!busy}
-            onClick={() => {
-              setFraming(null);
-              setOrder(photos.map((p) => p.id));
-            }}
-          >
-            ⇄ Reorder photos
-          </button>
-        )}
+        <span className="flex shrink-0 flex-wrap justify-end gap-x-4 gap-y-1">
+          {/* Always in view, even when the "+ Add" tile is at the far end of a long row */}
+          {photos.length > 0 && room > 0 && !arranging && (
+            <button type="button" className="text-sm font-medium text-ink hover:underline" disabled={!!busy} onClick={() => input.current?.click()}>
+              + Add photos or videos
+            </button>
+          )}
+          {photos.length > 1 && !arranging && (
+            <button
+              type="button"
+              className="text-sm font-medium text-ink hover:underline"
+              disabled={!!busy}
+              onClick={() => {
+                setFraming(null);
+                setOrder(photos.map((p) => p.id));
+              }}
+            >
+              ⇄ Reorder
+            </button>
+          )}
+        </span>
       </div>
       {error && <p className="error">{error}</p>}
       {viewing !== null && photos.length > 0 && (

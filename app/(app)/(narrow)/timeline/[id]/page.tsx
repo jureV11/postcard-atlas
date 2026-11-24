@@ -62,7 +62,9 @@ export default async function MeetupPage({ params }: { params: Promise<{ id: str
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-[3fr_2fr]">
+      {/* Columns that never grow past the screen: the row of photo thumbnails used to widen
+          the page on phones and push "+ Add" off the right edge */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <MeetupPhotos
           meetupId={m.id}
           groupId={member.group_id}
