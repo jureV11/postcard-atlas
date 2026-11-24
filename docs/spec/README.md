@@ -7,6 +7,10 @@ quietly break an old one.
 
 Start with the first two. They hold the rules that apply everywhere.
 
+For live server access, deployment, service controls, and backups, read
+[HOSTING.md](../../HOSTING.md#atlas-server-with-rootless-podman). Agents use the `atlas`
+SSH account and rootless Podman in `/mnt/docker/postcard-atlas`.
+
 | File | What's in it |
 |---|---|
 | [principles.md](principles.md) | The rules every change must keep |

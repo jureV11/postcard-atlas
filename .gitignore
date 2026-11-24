@@ -4,6 +4,12 @@ node_modules
 out
 .env*.local
 .env
+/library/
+/postgres/
+/.atlas-home/
+/.podman-data/
+/.podman-migration/
+/.server-access/
 *.tsbuildinfo
 next-env.d.ts
 .vercel

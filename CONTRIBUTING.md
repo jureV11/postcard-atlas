@@ -6,27 +6,7 @@ anyone's real postcards.
 
 ## 1. One-time setup
 
-1. Install [Node.js 20+](https://nodejs.org), [Git](https://git-scm.com) and
-   [Claude Code](https://claude.com/claude-code) (the desktop app or the terminal version).
-2. Accept the GitHub invite to the repository, then download the code:
-   ```bash
-   git clone https://github.com/jureV11/postcard-atlas.git
-   ```
-3. **Make your own test database.** Create a free project at [supabase.com](https://supabase.com).
-   In its **SQL Editor**, run every file in `supabase/migrations/` **in number order**
-   (`0001`, `0002`, … up to the last one), each once.
-   Then go to **Authentication → Sign In / Providers → Email** and turn **Confirm email** off,
-   so test accounts work straight away.
-4. Copy `.env.local.example` to `.env.local` and fill in your test project's URL and its
-   *anon* (or *publishable*) key from **Project Settings → API**. Never use the `service_role` key.
-5. Start it:
-   ```bash
-   npm install
-   npm run dev
-   ```
-   Open http://localhost:3000, create an account, start a group, and log a few made-up
-   postcards. To have "friends" in your test group, sign up again with `you+friend@gmail.com`:
-   Supabase treats it as a different person, but the email still reaches you.
+Install Docker and Docker Compose. Copy `.env.local.example` to `.env`, fill in the local database secrets and a test Cloudflare Access application, then run `docker compose up --build -d`. Create test identities in `auth.users` as explained in [HOSTING.md](HOSTING.md). Use fictional postcards and media in a separate development database.
 
 ## 2. Making a change with Claude
 
@@ -34,11 +14,10 @@ Open Claude Code in the project folder. Claude reads [CLAUDE.md](CLAUDE.md) on i
 has the house rules. Start a session by pasting this, with your idea at the end:
 
 > Read CLAUDE.md, CONTRIBUTING.md and docs/spec/ first. Then make a new branch from the latest `main`
-> and help me with the change below. Test it on my local server (`npm run dev`, test database
-> only), run the three checks in CLAUDE.md, update docs/spec/ for anything that changed, and
+> and help me with the change below. Test it on my local Compose stack, run the three checks in CLAUDE.md, update docs/spec/ for anything that changed, and
 > show me what changed. When I'm happy, commit,
 > push the branch and open a pull request. If it needs a database change, write a new additive
-> migration, tell me to run it on my test database, and mark the pull request "Needs migration".
+> migration, test it on the local database, and mark the pull request "Needs migration".
 >
 > My change: …
 
@@ -47,10 +26,15 @@ has the house rules. Start a session by pasting this, with your idea at the end:
 1. **Open a pull request** (Claude can do it). GitHub runs the checks automatically: wait for
    the green tick.
 2. **Merge it** into `main`, after a quick look from someone else if it's a big change.
-3. **New migration?** Ask Jure to run it on the **production** database **before** the server
-   is updated. Production keys are never shared, so this step is always his.
-4. **Tell Alex to update the server** (`git pull` and restart, see [HOSTING.md](HOSTING.md)).
-   Until then the live site keeps running the old version.
+3. **New migration?** With the owner's authorization, apply the numbered migration to the server's local PostgreSQL before updating the web image. Commands and backup instructions are in [HOSTING.md](HOSTING.md#atlas-server-with-rootless-podman).
+4. **Deploy the authorized revision** as `atlas@t.alexmagnus.uk`, in `/mnt/docker/postcard-atlas`. Inspect the working tree before pulling or switching branches, preserve local changes, then run `./scripts/deploy-rootless.sh`. Check `podman ps` and `curl --fail --silent http://127.0.0.1:3020/api/health` afterward.
+
+The live stack uses rootless Podman with the installed Docker Compose provider. Routine
+deployments and SQL migrations run as `atlas`. Live-server work stays within
+`/mnt/docker/postcard-atlas` and its documented rootless stack. The rest of the server is
+infrastructure provided by the owner. Report infrastructure problems to the owner rather
+than changing or repairing host configuration, accounts, packages, networking, or other
+services. Agents do not use sudo or the host Docker daemon.
 
 ## Good to know
 
