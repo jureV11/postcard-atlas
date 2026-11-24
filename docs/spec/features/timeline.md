@@ -19,8 +19,9 @@ Code in `components/Timeline.tsx`, `TimelineMap.tsx`, `TripMap.tsx`, `MeetupStat
 
 - At least **two people** per meetup (checked in `timeline/actions.ts`).
 - Title up to 120 characters; titles show in full on the timeline (they wrap).
-- Up to **50 photos** per meetup (`meetup_photo_limit()`), each with a caption, an order and a
-  focus point for the main photo's crop on the timeline.
+- Up to **50 photos and videos** per meetup together (`meetup_photo_limit()`), each with a
+  caption and an order; photos also have a focus point for the main photo's crop on the timeline.
+- Videos up to **500 MB** each (`lib/videoLimits.ts`), about 3–5 minutes of phone video.
 - Write-ups up to **200,000 characters** (`0022`). Text is tiny; the limit only guards
   against a huge accidental paste.
 
@@ -87,3 +88,35 @@ Links in write-ups and captions work, bare or `[text](link)`, and so do `**bold*
 `*italic*` (`components/Linkify.tsx`).
 Dates use Day / Month / Year dropdowns, because the iPhone's own picker easily flips to
 a month-and-year wheel.
+
+## Videos (`0028`, #55)
+
+Meetups only: postcards stay a photo of the front and back. A video is a row in
+`meetup_photos` like a photo (`kind = 'video'`), so it has a caption, an order, counts in
+the 50 and is seen, added and removed by the same people as photos.
+
+- **Upload:** "+ Add" takes photos and videos together. A video goes up in **8 MB
+  pieces** (`uploadMeetupVideo` in `lib/upload.ts` → `PUT /api/videos/<meetup>/<upload>`),
+  because Cloudflare turns away anything over 100 MB in one request; a piece that fails is
+  sent again (up to 5 tries, waiting longer each time), and one that arrived twice is only
+  kept once. There's a progress bar, and leaving the page mid-upload asks first. Pieces
+  wait in `MEDIA_ROOT/.uploads`, outside every bucket, so nothing can serve them; ones
+  untouched for two days are deleted when the server starts.
+- **Checked:** only someone in the meetup's group can send pieces, the whole video can't
+  pass 500 MB, and it must start like an MP4/MOV or WebM file before it's converted.
+- **Converted** on the server (`lib/videoJobs.ts`), one at a time: H.264 + AAC MP4, at
+  most 1920 px on the long side, made to start playing before it's fully downloaded,
+  plus a still image (`poster_path`). iPhone videos (HEVC) don't play on most Android
+  phones or Windows otherwise. ffmpeg (in the Docker image) runs on two cores at low
+  priority, so the server stays quick. The **original is deleted** afterwards; only the
+  converted video and still are kept. A job survives a restart (`instrumentation.ts`
+  picks it up again).
+- **While converting** the tile shows a reel and "Getting the video ready…", and the page
+  looks again every 8 seconds. If converting fails it says so, and it can be removed.
+  Removing it (or deleting the meetup) mid-conversion is fine: the converter drops its
+  files when it finds the row gone.
+- **Playing:** in the gallery and the full-screen viewer, with sound and controls, on any
+  phone. Videos are streamed from disk in parts (`Range`), which iPhones need.
+- **Never the main photo:** the timeline shows the main photo as a picture, so a video
+  can't be picked (the database checks too), and when the main photo is removed the next
+  *photo* takes over. Focus points are for photos only.

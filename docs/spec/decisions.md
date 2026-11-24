@@ -5,6 +5,9 @@ request makes a choice someone might later wonder about. Issue numbers are GitHu
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-24 | Videos on meetups only, up to 500 MB, converted on the server to H.264 MP4 (max 1080p) with the original deleted (#55) | iPhone HEVC doesn't play on most Android phones or Windows; converting keeps every video playable and Alex's disk small. Postcards stay front-and-back photos |
+| 2026-11-24 | Videos upload in 8 MB pieces that are retried on their own | Cloudflare refuses over 100 MB per request, and phones on mobile data drop connections |
+| 2026-11-24 | A video can't be the main photo | The timeline shows the main photo as a picture |
 | 2026-11-24 | Atlas runs as the atlas account with rootless Podman and the Docker Compose provider | The collaborator can rebuild and manage Atlas without host Docker or sudo access. User systemd services provide boot startup and health checks |
 | 2026-11-22 | Trips pick their flags by hand, and only those countries count in the Countries stat (#65) | Stops have no dates, so the app can't tell where most time was spent; picking is quicker than typing days per stop, and a stopover shouldn't count as a country visited |
 | 2026-11-22 | The timeline filter by people shows meetups they were all at, with a "Just them" switch (#66) | Both questions come up: everything two friends did together, and the trips with only them |

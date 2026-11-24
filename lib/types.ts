@@ -148,6 +148,10 @@ export type MeetupPhoto = {
   position?: number | null;
   focus_x?: number | null; // which part of the photo shows when it's cropped, in % (empty = the middle)
   focus_y?: number | null;
+  // Migration 0028: videos sit in the same gallery (may be missing before it has run)
+  kind?: "photo" | "video";
+  poster_path?: string | null; // a video's still image
+  video_status?: "processing" | "ready" | "failed" | null;
 };
 
 /** A card sent to, or received from, someone outside the group: only its owner ever sees it (migration 0020). */

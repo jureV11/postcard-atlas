@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Postcard Atlas — production image (Next.js standalone server, ~150 MB).
+# Postcard Atlas — production image (Next.js standalone server and ffmpeg, ~250 MB).
 # Postgres and media are provided by Docker Compose.
 
 # ─── 1. Install dependencies ────────────────────────────────────────────────
@@ -26,6 +26,8 @@ ENV NODE_ENV=production \
     HOSTNAME=0.0.0.0
 
 RUN addgroup -g 1001 -S nodejs && adduser -u 1001 -S nextjs -G nodejs
+# ffmpeg converts uploaded meetup videos so they play on every phone (#55)
+RUN apk add --no-cache ffmpeg
 COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
 # App icons and the notifications service worker (public/ isn't part of standalone)
