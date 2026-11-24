@@ -76,6 +76,9 @@ export default async function MeetupPage({ params }: { params: Promise<{ id: str
             caption: p.caption ?? null,
             focusX: p.focus_x ?? null,
             focusY: p.focus_y ?? null,
+            kind: p.kind ?? "photo",
+            status: p.video_status ?? null,
+            posterUrl: p.posterUrl,
           }))}
         />
 

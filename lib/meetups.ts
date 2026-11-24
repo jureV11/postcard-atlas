@@ -10,7 +10,7 @@ export const MAX_STOPS = 30; // places on one trip after the first (the database
 export type MeetupWithPhotos = Meetup & {
   memberIds: string[];
   notes: MeetupNote[]; // oldest first
-  photos: (MeetupPhoto & { url: string | null })[]; // in the order people put them
+  photos: (MeetupPhoto & { url: string | null; posterUrl: string | null })[]; // in the order people put them (videos too, #55)
 };
 
 /** The group's meetups (all of them, or one), oldest first, with who was there and signed photo URLs. */
@@ -21,20 +21,20 @@ export async function loadMeetups(supabase: PostgrestClient, id?: string): Promi
   type Row = Meetup & { meetup_members: { member_id: string }[]; meetup_photos: MeetupPhoto[]; meetup_notes: MeetupNote[] };
   const rows = (data ?? []) as Row[];
 
-  const urls = await signPaths(supabase, "meetups", rows.flatMap((r) => r.meetup_photos.map((p) => p.path)));
+  const urls = await signPaths(supabase, "meetups", rows.flatMap((r) => r.meetup_photos.flatMap((p) => [p.path, p.poster_path])));
   return rows.map(({ meetup_members, meetup_photos, meetup_notes, ...m }) => ({
     ...m,
     memberIds: meetup_members.map((mm) => mm.member_id),
     notes: [...meetup_notes].sort((a, b) => a.created_at.localeCompare(b.created_at)),
     photos: [...meetup_photos]
       .sort((a, b) => (a.position ?? 0) - (b.position ?? 0) || a.created_at.localeCompare(b.created_at))
-      .map((p) => ({ ...p, url: urls.get(p.path) ?? null })),
+      .map((p) => ({ ...p, url: urls.get(p.path) ?? null, posterUrl: p.poster_path ? (urls.get(p.poster_path) ?? null) : null })),
   }));
 }
 
-/** The meetup's main photo (or the first one). */
-export function mainPhoto<P extends Pick<MeetupPhoto, "is_main">>(photos: P[]): P | undefined {
-  return photos.find((p) => p.is_main) ?? photos[0];
+/** The meetup's main photo (or the first photo). Never a video: it's shown as a picture. */
+export function mainPhoto<P extends Pick<MeetupPhoto, "is_main" | "kind">>(photos: P[]): P | undefined {
+  return photos.find((p) => p.is_main && p.kind !== "video") ?? photos.find((p) => p.kind !== "video");
 }
 
 /** CSS object-position for a cropped photo: the part someone chose, or the middle. */

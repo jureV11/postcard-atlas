@@ -1,5 +1,7 @@
 "use server";
 
+import { rename, stat, unlink } from "node:fs/promises";
+import path from "node:path";
 import { removeFiles, removeMeetupFilesOnDelete, removePendingMeetupFiles } from "@/lib/media";
 
 import { revalidatePath } from "next/cache";
@@ -7,6 +9,9 @@ import type { City } from "@/lib/geo";
 import { MAX_MEETUP_PHOTOS, MAX_STOPS, MAX_WRITE_UP } from "@/lib/meetups";
 import { notifyMembers } from "@/lib/push";
 import { requireMember } from "@/lib/session";
+import type { MeetupPhoto } from "@/lib/types";
+import { isUuid, looksLikeVideo, partPath } from "@/lib/videoFiles";
+import { queueVideo } from "@/lib/videoJobs";
 
 type Result = { error?: string };
 
@@ -100,8 +105,9 @@ export async function deleteMeetup(id: string): Promise<Result> {
   const { data: meetup } = await supabase.from("meetups").select("created_by").eq("id", id).single();
   if (!meetup || meetup.created_by !== member.id) return { error: "Only the person who added this meetup can delete it." };
 
-  const { data: photos } = await supabase.from("meetup_photos").select("path").eq("meetup_id", id);
-  const paths = (photos ?? []).map((p) => p.path as string);
+  // "*" so it works before and after 0028 (a video's still image goes too)
+  const { data: photos } = await supabase.from("meetup_photos").select("*").eq("meetup_id", id);
+  const paths = ((photos ?? []) as MeetupPhoto[]).flatMap((p) => [p.path, p.poster_path ?? null].filter((x): x is string => !!x));
   if (paths.length) await removeMeetupFilesOnDelete(supabase, id, paths);
 
   const { error } = await supabase.from("meetups").delete().eq("id", id);
@@ -127,8 +133,59 @@ export async function addMeetupPhotos(meetupId: string, paths: string[]): Promis
   return {};
 }
 
+/**
+ * A video whose pieces have all arrived (`app/api/videos/…`): add it to the meetup's
+ * gallery, "getting ready" until the server has converted it (#55). Goes at the end.
+ */
+export async function addMeetupVideo(meetupId: string, uploadId: string): Promise<Result> {
+  const { supabase, member } = await requireMember();
+  if (!isUuid(meetupId) || !isUuid(uploadId) || !member.user_id) return { error: "That upload didn't work. Try again." };
+  const { data: meetup } = await supabase.from("meetups").select("group_id").eq("id", meetupId).maybeSingle();
+  if (!meetup) return { error: "That meetup is gone." };
+
+  const part = partPath(meetupId, uploadId);
+  const size = await stat(part).then((s) => s.size).catch(() => 0);
+  if (!size) return { error: "That upload didn't arrive. Try again." };
+  if (!(await looksLikeVideo(part))) {
+    await unlink(part).catch(() => {});
+    return { error: "That doesn't look like a video. Try an MP4 or MOV from your phone." };
+  }
+
+  const { data: existing } = await supabase.from("meetup_photos").select("position").eq("meetup_id", meetupId);
+  const after = Math.max(-1, ...(existing ?? []).map((p) => (p.position as number | null) ?? 0)) + 1;
+  const base = `${meetup.group_id}/${meetupId}/${uploadId}`;
+  const { data: added, error } = await supabase
+    .from("meetup_photos")
+    .insert({
+      meetup_id: meetupId,
+      path: `${base}.mp4`,
+      poster_path: `${base}.jpg`,
+      kind: "video",
+      video_status: "processing",
+      uploaded_by: member.id,
+      is_main: false,
+      position: after,
+    })
+    .select("id")
+    .single();
+  if (error) {
+    await unlink(part).catch(() => {});
+    if (/kind|poster_path|video_status/.test(error.message)) return { error: "Videos need a small database update first (migration 0028)." };
+    return { error: error.message.includes("up to 50") ? `A meetup can have up to ${MAX_MEETUP_PHOTOS} photos and videos.` : error.message };
+  }
+
+  // Out of the way of new pieces, then into the converter's queue
+  const source = path.join(path.dirname(part), `${uploadId}.source`);
+  await rename(part, source);
+  await queueVideo({ photoId: added.id as string, userId: member.user_id!, source, video: `${base}.mp4`, poster: `${base}.jpg` });
+  revalidatePath("/timeline", "layout");
+  return {};
+}
+
 export async function setMainPhoto(meetupId: string, photoId: string): Promise<Result> {
   const { supabase } = await requireMember();
+  const { data: chosen } = await supabase.from("meetup_photos").select("*").eq("id", photoId).maybeSingle();
+  if ((chosen as MeetupPhoto | null)?.kind === "video") return { error: "The main photo has to be a photo, not a video." };
   // One main photo per meetup: clear the old one first
   const { error: clearError } = await supabase.from("meetup_photos").update({ is_main: false }).eq("meetup_id", meetupId).eq("is_main", true);
   if (clearError) return { error: clearError.message };
@@ -141,11 +198,14 @@ export async function setMainPhoto(meetupId: string, photoId: string): Promise<R
 /** Whoever added the photo, or anyone who was there, may remove it. */
 export async function removeMeetupPhoto(photoId: string): Promise<Result> {
   const { supabase } = await requireMember();
-  const { data: photo } = await supabase.from("meetup_photos").select("path, is_main, meetup_id").eq("id", photoId).single();
+  const { data: row } = await supabase.from("meetup_photos").select("*").eq("id", photoId).maybeSingle();
+  const photo = row as MeetupPhoto | null;
   if (!photo) return { error: "That photo is already gone." };
 
-  // The file first: the database checks the photo's row to allow it
-  const removed = await removeFiles(supabase, "meetups", [photo.path as string]);
+  // The files first: the database checks the photo's row to allow it. A video's still
+  // image goes with it; one still converting has no files yet, and the converter
+  // drops what it made once it finds the row gone.
+  const removed = await removeFiles(supabase, "meetups", [photo.path, photo.poster_path ?? null].filter((x): x is string => !!x));
   if (!removed) return { error: "Only whoever added this photo, or someone who was there, can remove it." };
 
   const { error } = await supabase.from("meetup_photos").delete().eq("id", photoId);
@@ -153,14 +213,14 @@ export async function removeMeetupPhoto(photoId: string): Promise<Result> {
 
   // Keep a main photo if there are any left
   if (photo.is_main) {
-    const { data: next } = await supabase
+    const { data: rest } = await supabase
       .from("meetup_photos")
-      .select("id")
+      .select("*")
       .eq("meetup_id", photo.meetup_id)
       .order("position", { nullsFirst: true })
-      .order("created_at")
-      .limit(1);
-    if (next?.length) await supabase.from("meetup_photos").update({ is_main: true }).eq("id", next[0].id);
+      .order("created_at");
+    const next = ((rest ?? []) as MeetupPhoto[]).find((p) => p.kind !== "video"); // never a video
+    if (next) await supabase.from("meetup_photos").update({ is_main: true }).eq("id", next.id);
   }
   revalidatePath("/timeline", "layout");
   return {};

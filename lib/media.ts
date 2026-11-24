@@ -13,8 +13,14 @@ function filePath(bucket: string, name: string): string {
       name.split("/").some((part) => !/^[A-Za-z0-9_.-]+$/.test(part) || part === "." || part === "..")) {
     throw new Error("Invalid media path");
   }
-  if (!/\.(jpe?g|png|webp)$/.test(name)) throw new Error("Invalid media type");
+  // Videos (#55) only on meetups, always the converted MP4
+  if (!/\.(jpe?g|png|webp)$/.test(name) && !(bucket === "meetups" && name.endsWith(".mp4"))) throw new Error("Invalid media type");
   return path.join(process.env.MEDIA_ROOT || "/data", bucket, name);
+}
+
+/** Where a media file lives on disk (after the same checks as every other access). */
+export function mediaFilePath(bucket: Bucket, name: string): string {
+  return filePath(bucket, name);
 }
 
 export async function canUseMedia(client: PostgrestClient, bucket: Bucket, name: string, mode: "read" | "write" | "delete") {
@@ -45,7 +51,10 @@ export async function canUseMedia(client: PostgrestClient, bucket: Bucket, name:
   const { data: meetup } = await client.from("meetups").select("id,group_id").eq("id", second).maybeSingle();
   if (!meetup || meetup.group_id !== first) return false;
   if (mode === "write") return true;
-  const { data: photo } = await client.from("meetup_photos").select("id").eq("meetup_id", second).eq("path", name).maybeSingle();
+  let { data: photo } = await client.from("meetup_photos").select("id").eq("meetup_id", second).eq("path", name).maybeSingle();
+  // A video's still image goes with the video (only looked up when it isn't a photo, so this works before 0028 too)
+  if (!photo && name.endsWith(".jpg"))
+    ({ data: photo } = await client.from("meetup_photos").select("id").eq("meetup_id", second).eq("poster_path", name).maybeSingle());
   if (!photo) return false;
   if (mode === "read") return true;
   const { data } = await client.rpc("can_remove_meetup_photo", { p_photo: photo.id });
@@ -58,6 +67,7 @@ export async function readMedia(client: PostgrestClient, bucket: Bucket, name: s
 }
 
 export function mediaContentType(name: string) {
+  if (name.endsWith(".mp4")) return "video/mp4";
   if (name.endsWith(".png")) return "image/png";
   if (name.endsWith(".webp")) return "image/webp";
   return "image/jpeg";
