@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Postmark } from "@/components/Postmark";
+import styles from "./PostcardFlip.module.css";
 
 type PostmarkInfo = { city: string; country: string; date: string };
 
@@ -42,7 +43,6 @@ export function PostcardFlip({
 
   return (
     <div className="space-y-2">
-      {/* Not a <button>: Firefox flattens 3D transforms inside buttons, which breaks the flip. */}
       <div
         role="button"
         tabIndex={0}
@@ -57,15 +57,9 @@ export function PostcardFlip({
         aria-pressed={flipped}
         className="card-bump block w-full cursor-pointer select-none rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink/40"
       >
-        <div className="[perspective:1800px]">
-          <div
-            className={`relative aspect-[3/2] w-full transition-transform duration-700 ease-[cubic-bezier(.3,.7,.2,1)] [transform-style:preserve-3d] motion-reduce:duration-0 ${
-              flipped ? "[transform:rotateY(180deg)]" : "[transform:rotateY(0deg)]"
-            }`}
-          >
-            <Face url={frontUrl} alt={`${alt} — front`} label="Front" size={size} postmark={postmark} />
-            <Face url={backUrl} alt={`${alt} — back`} label="Back" size={size} back />
-          </div>
+        <div className={`${styles.card} relative aspect-[3/2] w-full`} data-flipped={flipped}>
+          <Face url={frontUrl} alt={`${alt} — front`} label="Front" size={size} postmark={postmark} hidden={flipped} />
+          <Face url={backUrl} alt={`${alt} — back`} label="Back" size={size} back hidden={!flipped} />
         </div>
       </div>
       <p className="text-center text-xs text-ink-soft">
@@ -81,6 +75,7 @@ function Face({
   label,
   size,
   back,
+  hidden,
   postmark,
   static: isStatic,
 }: {
@@ -89,16 +84,16 @@ function Face({
   label: string;
   size: "sm" | "lg";
   back?: boolean;
+  hidden?: boolean;
   postmark?: PostmarkInfo;
   static?: boolean;
 }) {
   return (
     <div
-      className={`${isStatic ? "relative aspect-[3/2]" : "absolute inset-0"} overflow-hidden ${
+      aria-hidden={hidden}
+      className={`${isStatic ? "relative aspect-[3/2]" : `absolute inset-0 ${back ? styles.back : styles.front}`} overflow-hidden ${
         size === "lg" ? "rounded-xl" : "rounded-lg"
-      } border border-ink/10 bg-paper-deep shadow-[0_2px_6px_rgb(42_38_34/0.08),0_12px_32px_-12px_rgb(42_38_34/0.35)] [backface-visibility:hidden] ${
-        back ? "[transform:rotateY(180deg)]" : ""
-      }`}
+      } border border-ink/10 bg-paper-deep shadow-[0_2px_6px_rgb(42_38_34/0.08),0_12px_32px_-12px_rgb(42_38_34/0.35)]`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={url} alt={alt} className="size-full object-contain" draggable={false} />

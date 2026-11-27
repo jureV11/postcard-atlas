@@ -76,3 +76,7 @@ ignored, only over cards you can already see), a "Lost in the post" row.
 Each postcard page shows the country outline with the town marked, the flip-over photos,
 the nicheness breakdown, reactions and comments. The message and note show links,
 `**bold**` and `*italic*`; short previews (the wall, the map panel, the inbox) drop the stars.
+
+When both photos are available, click, tap, or use Enter or Space to turn the card
+over. The other photo appears immediately when reduced motion is enabled. A single
+photo is shown without a flip control.

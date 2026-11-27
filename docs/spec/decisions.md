@@ -5,6 +5,7 @@ request makes a choice someone might later wonder about. Issue numbers are GitHu
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-27 | Animate postcard photo flips with horizontal scaling | Both sides can be shown without depending on the browser's 3D back-face rendering |
 | 2026-11-24 | Videos on meetups only, up to 500 MB, converted on the server to H.264 MP4 (max 1080p) with the original deleted (#55) | iPhone HEVC doesn't play on most Android phones or Windows; converting keeps every video playable and Alex's disk small. Postcards stay front-and-back photos |
 | 2026-11-24 | Videos upload in 8 MB pieces that are retried on their own | Cloudflare refuses over 100 MB per request, and phones on mobile data drop connections |
 | 2026-11-24 | A video can't be the main photo | The timeline shows the main photo as a picture |

@@ -1,0 +1,38 @@
+@property --postcard-flip-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+
+.card {
+  --postcard-flip-angle: 0deg;
+  transition: --postcard-flip-angle 700ms cubic-bezier(.3, .7, .2, 1);
+}
+
+.card[data-flipped="true"] {
+  --postcard-flip-angle: 180deg;
+}
+
+/* Collapse each face to zero width during the half-turn when it faces away.
+   Both faces use the same angle, so reversing a flip keeps them in sync. */
+@supports (transform: scaleX(max(0, cos(0deg)))) {
+  .front {
+    transform: scaleX(max(0, cos(var(--postcard-flip-angle))));
+  }
+
+  .back {
+    transform: scaleX(max(0, -1 * cos(var(--postcard-flip-angle))));
+  }
+}
+
+@supports not (transform: scaleX(max(0, cos(0deg)))) {
+  .card > [aria-hidden="true"] {
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+}
